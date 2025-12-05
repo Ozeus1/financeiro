@@ -131,76 +131,93 @@ class GerenciadorSyncBancos:
         """Cria frame com botões de operações"""
         frame = ttk.LabelFrame(parent, text="Operações", padding="10")
         frame.pack(fill=tk.BOTH, expand=True, pady=5)
-        
+
         # Grid para organizar botões
         btn_width = 30
-        
-        # Linha 1: Backups
-        ttk.Label(frame, text="BACKUPS:", font=('Arial', 10, 'bold')).grid(
+
+        # Linha 0: Configuração
+        ttk.Label(frame, text="CONFIGURAÇÃO:", font=('Arial', 10, 'bold')).grid(
             row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
         )
-        
+
+        ttk.Button(
+            frame,
+            text="⚙️ Configurar Servidor Remoto",
+            command=self.abrir_configurador_remoto,
+            width=btn_width
+        ).grid(row=1, column=0, columnspan=2, padx=5, pady=2, sticky=tk.EW)
+
+        # Separador
+        ttk.Separator(frame, orient='horizontal').grid(
+            row=2, column=0, columnspan=2, sticky=tk.EW, pady=10
+        )
+
+        # Linha 3: Backups
+        ttk.Label(frame, text="BACKUPS:", font=('Arial', 10, 'bold')).grid(
+            row=3, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+        )
+
         ttk.Button(
             frame,
             text="📦 Backup Flask DB",
             command=self.backup_flask,
             width=btn_width
-        ).grid(row=1, column=0, padx=5, pady=2, sticky=tk.EW)
-        
+        ).grid(row=4, column=0, padx=5, pady=2, sticky=tk.EW)
+
         ttk.Button(
             frame,
             text="📦 Backup Desktop DBs",
             command=self.backup_desktop,
             width=btn_width
-        ).grid(row=1, column=1, padx=5, pady=2, sticky=tk.EW)
-        
+        ).grid(row=4, column=1, padx=5, pady=2, sticky=tk.EW)
+
         # Separador
         ttk.Separator(frame, orient='horizontal').grid(
-            row=2, column=0, columnspan=2, sticky=tk.EW, pady=10
+            row=5, column=0, columnspan=2, sticky=tk.EW, pady=10
         )
-        
-        # Linha 2: Sincronização
+
+        # Linha 6: Sincronização
         ttk.Label(frame, text="SINCRONIZAÇÃO:", font=('Arial', 10, 'bold')).grid(
-            row=3, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+            row=6, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
         )
-        
+
         ttk.Button(
             frame,
             text="⬇️ Flask → Desktop (Importar)",
             command=self.importar_flask_para_desktop,
             width=btn_width
-        ).grid(row=4, column=0, padx=5, pady=2, sticky=tk.EW)
-        
+        ).grid(row=7, column=0, padx=5, pady=2, sticky=tk.EW)
+
         ttk.Button(
             frame,
             text="⬆️ Desktop → Flask (Exportar)",
             command=self.exportar_desktop_para_flask,
             width=btn_width
-        ).grid(row=4, column=1, padx=5, pady=2, sticky=tk.EW)
-        
+        ).grid(row=7, column=1, padx=5, pady=2, sticky=tk.EW)
+
         # Separador
         ttk.Separator(frame, orient='horizontal').grid(
-            row=5, column=0, columnspan=2, sticky=tk.EW, pady=10
+            row=8, column=0, columnspan=2, sticky=tk.EW, pady=10
         )
-        
-        # Linha 3: Restauração
+
+        # Linha 9: Restauração
         ttk.Label(frame, text="RESTAURAÇÃO:", font=('Arial', 10, 'bold')).grid(
-            row=6, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+            row=9, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
         )
-        
+
         ttk.Button(
             frame,
             text="📂 Restaurar Flask DB",
             command=self.restaurar_flask,
             width=btn_width
-        ).grid(row=7, column=0, padx=5, pady=2, sticky=tk.EW)
-        
+        ).grid(row=10, column=0, padx=5, pady=2, sticky=tk.EW)
+
         ttk.Button(
             frame,
             text="📂 Restaurar Desktop DBs",
             command=self.restaurar_desktop,
             width=btn_width
-        ).grid(row=7, column=1, padx=5, pady=2, sticky=tk.EW)
+        ).grid(row=10, column=1, padx=5, pady=2, sticky=tk.EW)
         
         # Configurar colunas para expandir igualmente
         frame.columnconfigure(0, weight=1)
@@ -258,6 +275,16 @@ class GerenciadorSyncBancos:
         """Limpa o log"""
         self.log_text.delete('1.0', tk.END)
 
+    def abrir_configurador_remoto(self):
+        """Abre a janela de configuração de servidor remoto"""
+        try:
+            import sync_remote_config
+            sync_remote_config.abrir_configurador(self.root)
+            # Atualizar verificação após configurar
+            self.verificar_bancos()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao abrir configurador:\n{e}")
+
     def _perguntar_modo_sync(self, titulo, mensagem):
         """
         Pergunta ao usuário o modo de sincronização.
@@ -309,12 +336,49 @@ class GerenciadorSyncBancos:
         thread.daemon = True
         thread.start()
 
+    def _obter_database_url(self):
+        """Obtém a DATABASE_URL considerando configuração local ou remota"""
+        try:
+            # Tentar carregar configuração do banco
+            conn = sqlite3.connect(self.desktop_db)
+            cursor = conn.cursor()
+
+            # Verificar modo de sincronização
+            cursor.execute("SELECT valor FROM configuracoes WHERE chave = 'sync_mode'")
+            res = cursor.fetchone()
+            modo = res[0] if res else 'local'
+
+            if modo == 'remoto':
+                # Carregar configuração remota
+                configs = {}
+                for chave in ['remote_host', 'remote_port', 'remote_database', 'remote_user', 'remote_password']:
+                    cursor.execute("SELECT valor FROM configuracoes WHERE chave = ?", (chave,))
+                    res = cursor.fetchone()
+                    configs[chave] = res[0] if res else ''
+
+                conn.close()
+
+                # Construir URL remota
+                if all(configs.values()):
+                    return (
+                        f"postgresql://{configs['remote_user']}:{configs['remote_password']}"
+                        f"@{configs['remote_host']}:{configs['remote_port']}/{configs['remote_database']}"
+                    )
+            else:
+                conn.close()
+                # Usar DATABASE_URL do .env (local)
+                return os.environ.get('DATABASE_URL')
+
+        except Exception as e:
+            print(f"Erro ao obter DATABASE_URL: {e}")
+            return os.environ.get('DATABASE_URL')
+
     def _verificar_bancos_thread(self):
         """Verifica status dos bancos de dados (Executado em thread)"""
         self.root.after(0, lambda: self.log("Verificando bancos de dados..."))
-        
-        # Flask DB (PostgreSQL)
-        db_url = os.environ.get('DATABASE_URL')
+
+        # Flask DB (PostgreSQL) - com suporte a remoto
+        db_url = self._obter_database_url()
         if db_url:
             try:
                 # Adiciona timeout de 5 segundos
@@ -410,7 +474,7 @@ class GerenciadorSyncBancos:
 
     def importar_flask_para_desktop(self):
         """Importa dados do Flask para Desktop (somente admin)"""
-        db_url = os.environ.get('DATABASE_URL')
+        db_url = self._obter_database_url()
         if not db_url:
             messagebox.showerror("Erro", "Configuração do banco Flask (PostgreSQL) não encontrada!")
             return
@@ -669,8 +733,8 @@ class GerenciadorSyncBancos:
         if not os.path.exists(self.desktop_db):
             messagebox.showerror("Erro", "Banco Desktop não encontrado!")
             return
-        
-        db_url = os.environ.get('DATABASE_URL')
+
+        db_url = self._obter_database_url()
         if not db_url:
             messagebox.showerror("Erro", "Configuração do banco Flask (PostgreSQL) não encontrada!")
             return
@@ -877,7 +941,7 @@ class GerenciadorSyncBancos:
 
     def backup_flask(self):
         """Backup do banco Flask (PostgreSQL)"""
-        db_url = os.environ.get('DATABASE_URL')
+        db_url = self._obter_database_url()
         if not db_url:
             messagebox.showerror("Erro", "Configuração do banco Flask não encontrada!")
             return
@@ -1052,7 +1116,7 @@ class GerenciadorSyncBancos:
 
     def restaurar_flask(self):
         """Restaura banco Flask de um backup SQL (PostgreSQL)"""
-        db_url = os.environ.get('DATABASE_URL')
+        db_url = self._obter_database_url()
         if not db_url:
             messagebox.showerror("Erro", "Configuração do banco Flask não encontrada!")
             return

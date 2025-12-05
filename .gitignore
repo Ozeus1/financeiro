@@ -101,8 +101,9 @@ flask/
 # Arquivos de serviço
 *.service
 
-# Nginx config
+# Nginx config (exceto nginx_finan.conf de produção)
 nginx_*.conf
+!nginx_finan.conf
 
 # Ícones
 *.ico

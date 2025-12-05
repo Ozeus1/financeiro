@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Upload de Banco de Dados{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">📤 Upload de Banco de Dados Desktop</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>ℹ️ Informação:</strong>
+                        <p class="mb-0">
+                            Faça upload do seu banco de dados SQLite do sistema desktop para sincronizar os dados com o servidor.
+                        </p>
+                    </div>
+
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <!-- Seleção de arquivo -->
+                        <div class="mb-3">
+                            <label for="database_file" class="form-label">
+                                <strong>Arquivo do Banco de Dados</strong>
+                            </label>
+                            <input
+                                type="file"
+                                class="form-control"
+                                id="database_file"
+                                name="database_file"
+                                accept=".db,.sqlite,.sqlite3"
+                                required
+                            >
+                            <small class="text-muted">
+                                Arquivos aceitos: .db, .sqlite, .sqlite3 (normalmente: financas.db)
+                            </small>
+                        </div>
+
+                        <!-- Modo de importação -->
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Modo de Importação</strong></label>
+
+                            <div class="form-check">
+                                <input
+                                    class="form-check-input"
+                                    type="radio"
+                                    name="modo"
+                                    id="modo_parcial"
+                                    value="parcial"
+                                    checked
+                                >
+                                <label class="form-check-label" for="modo_parcial">
+                                    <strong>Parcial (Adicionar)</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        Adiciona os dados do arquivo aos dados existentes no servidor (recomendado)
+                                    </small>
+                                </label>
+                            </div>
+
+                            <div class="form-check mt-2">
+                                <input
+                                    class="form-check-input"
+                                    type="radio"
+                                    name="modo"
+                                    id="modo_total"
+                                    value="total"
+                                >
+                                <label class="form-check-label" for="modo_total">
+                                    <strong>Total (Substituir)</strong>
+                                    <br>
+                                    <small class="text-danger">
+                                        ⚠️ APAGA todos os seus dados no servidor e substitui pelos dados do arquivo
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Aviso modo total -->
+                        <div class="alert alert-warning d-none" id="avisoTotal">
+                            <strong>⚠️ ATENÇÃO:</strong>
+                            <p class="mb-0">
+                                O modo TOTAL irá apagar TODOS os seus dados atuais no servidor antes de importar.
+                                Use apenas se tiver certeza!
+                            </p>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="btnUpload">
+                                📤 Fazer Upload e Importar
+                            </button>
+                            <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">
+                                Cancelar
+                            </a>
+                        </div>
+                    </form>
+
+                    <!-- Barra de progresso -->
+                    <div class="mt-3 d-none" id="progressContainer">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                 role="progressbar"
+                                 style="width: 100%">
+                                Processando...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resultado -->
+                    <div class="mt-3" id="resultado"></div>
+                </div>
+            </div>
+
+            <!-- Instruções -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <strong>📋 Como Usar</strong>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li class="mb-2">
+                            <strong>Localize o arquivo do banco:</strong>
+                            <ul>
+                                <li>No sistema desktop, o arquivo geralmente está em: <code>financas.db</code></li>
+                                <li>Normalmente na mesma pasta do executável do sistema</li>
+                            </ul>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Escolha o modo de importação:</strong>
+                            <ul>
+                                <li><strong>Parcial:</strong> Adiciona dados sem apagar os existentes (use se já tem dados no servidor)</li>
+                                <li><strong>Total:</strong> Apaga tudo e substitui (use para primeira sincronização ou migração completa)</li>
+                            </ul>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Clique em "Fazer Upload e Importar"</strong>
+                        </li>
+                        <li>
+                            <strong>Aguarde a confirmação</strong> da importação
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('uploadForm');
+    const modoTotal = document.getElementById('modo_total');
+    const modoParcial = document.getElementById('modo_parcial');
+    const avisoTotal = document.getElementById('avisoTotal');
+    const progressContainer = document.getElementById('progressContainer');
+    const resultado = document.getElementById('resultado');
+    const btnUpload = document.getElementById('btnUpload');
+
+    // Mostrar/ocultar aviso de modo total
+    modoTotal.addEventListener('change', function() {
+        if (this.checked) {
+            avisoTotal.classList.remove('d-none');
+        }
+    });
+
+    modoParcial.addEventListener('change', function() {
+        if (this.checked) {
+            avisoTotal.classList.add('d-none');
+        }
+    });
+
+    // Submit do formulário
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const modo = document.querySelector('input[name="modo"]:checked').value;
+
+        // Confirmar se modo total
+        if (modo === 'total') {
+            if (!confirm('⚠️ ATENÇÃO: Isso irá APAGAR todos os seus dados atuais no servidor!\n\nTem certeza que deseja continuar?')) {
+                return;
+            }
+        }
+
+        const formData = new FormData(form);
+
+        // Mostrar progresso
+        progressContainer.classList.remove('d-none');
+        btnUpload.disabled = true;
+        resultado.innerHTML = '';
+
+        // Fazer upload
+        fetch('{{ url_for("upload_database.upload_database") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            progressContainer.classList.add('d-none');
+            btnUpload.disabled = false;
+
+            if (data.success) {
+                resultado.innerHTML = `
+                    <div class="alert alert-success">
+                        <h5>✓ Importação Concluída!</h5>
+                        <ul class="mb-0">
+                            <li><strong>${data.importadas}</strong> despesas importadas</li>
+                            ${data.orcamentos ? `<li><strong>${data.orcamentos}</strong> orçamentos sincronizados</li>` : ''}
+                            ${data.erros > 0 ? `<li class="text-warning"><strong>${data.erros}</strong> erros (dados já existentes ou inválidos)</li>` : ''}
+                        </ul>
+                        <hr>
+                        <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">Ir para Dashboard</a>
+                    </div>
+                `;
+
+                // Limpar formulário
+                form.reset();
+            } else {
+                resultado.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5>✗ Erro na Importação</h5>
+                        <p class="mb-0">${data.error}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            progressContainer.classList.add('d-none');
+            btnUpload.disabled = false;
+
+            resultado.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5>✗ Erro na Requisição</h5>
+                    <p class="mb-0">Erro ao enviar arquivo: ${error.message}</p>
+                </div>
+            `;
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -33,7 +33,8 @@ def create_app(config_name='default'):
     from routes.configuracao import config_bp
     from routes.relatorios import relatorios_bp
     from routes.fluxo_caixa import fluxo_caixa_bp
-    
+    from routes.upload_database import bp as upload_database_bp
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(despesas_bp, url_prefix='/despesas')
@@ -41,6 +42,7 @@ def create_app(config_name='default'):
     app.register_blueprint(config_bp, url_prefix='/configuracao')
     app.register_blueprint(relatorios_bp, url_prefix='/relatorios')
     app.register_blueprint(fluxo_caixa_bp)
+    app.register_blueprint(upload_database_bp)
     
     return app
 

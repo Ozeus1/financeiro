@@ -195,14 +195,21 @@ class GerenciadorSyncBancos:
             width=btn_width
         ).grid(row=7, column=1, padx=5, pady=2, sticky=tk.EW)
 
+        ttk.Button(
+            frame,
+            text="🌐 Upload via Web (Sem Porta)",
+            command=self.upload_via_web,
+            width=btn_width
+        ).grid(row=8, column=0, columnspan=2, padx=5, pady=2, sticky=tk.EW)
+
         # Separador
         ttk.Separator(frame, orient='horizontal').grid(
-            row=8, column=0, columnspan=2, sticky=tk.EW, pady=10
+            row=9, column=0, columnspan=2, sticky=tk.EW, pady=10
         )
 
-        # Linha 9: Restauração
+        # Linha 10: Restauração
         ttk.Label(frame, text="RESTAURAÇÃO:", font=('Arial', 10, 'bold')).grid(
-            row=9, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+            row=10, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
         )
 
         ttk.Button(
@@ -210,14 +217,14 @@ class GerenciadorSyncBancos:
             text="📂 Restaurar Flask DB",
             command=self.restaurar_flask,
             width=btn_width
-        ).grid(row=10, column=0, padx=5, pady=2, sticky=tk.EW)
+        ).grid(row=11, column=0, padx=5, pady=2, sticky=tk.EW)
 
         ttk.Button(
             frame,
             text="📂 Restaurar Desktop DBs",
             command=self.restaurar_desktop,
             width=btn_width
-        ).grid(row=10, column=1, padx=5, pady=2, sticky=tk.EW)
+        ).grid(row=11, column=1, padx=5, pady=2, sticky=tk.EW)
         
         # Configurar colunas para expandir igualmente
         frame.columnconfigure(0, weight=1)
@@ -1284,6 +1291,65 @@ class GerenciadorSyncBancos:
             self.progress.stop()
             self.log(f"✗ Erro na restauração: {e}", 'error')
             messagebox.showerror("Erro", f"Erro ao restaurar:\n{e}")
+
+    def upload_via_web(self):
+        """Abre o navegador para fazer upload do banco via interface web"""
+        try:
+            # Obter configuração do servidor
+            conn = sqlite3.connect(self.desktop_db)
+            cursor = conn.cursor()
+
+            # Buscar host/URL configurado
+            cursor.execute("SELECT valor FROM configuracoes WHERE chave = 'remote_host'")
+            res = cursor.fetchone()
+            host = res[0] if res else None
+
+            conn.close()
+
+            if not host:
+                # Se não tiver host configurado, perguntar
+                resposta = messagebox.askyesno(
+                    "Configurar Servidor",
+                    "Servidor remoto não configurado.\n\n"
+                    "Deseja configurar agora?"
+                )
+                if resposta:
+                    self.abrir_configurador_remoto()
+                return
+
+            # Construir URL
+            # Se o host não tiver protocolo, adicionar https://
+            if not host.startswith('http'):
+                url = f"https://{host}/config/upload_database"
+            else:
+                url = f"{host}/config/upload_database"
+
+            self.log(f"Abrindo navegador: {url}", 'info')
+
+            # Abrir no navegador
+            import webbrowser
+            webbrowser.open(url)
+
+            # Mostrar instruções
+            msg = (
+                "✓ Navegador aberto!\n\n"
+                "Instruções:\n"
+                "1. Faça login no sistema web (se ainda não estiver logado)\n"
+                "2. Selecione o arquivo do banco de dados (financas.db)\n"
+                "3. Escolha o modo de importação:\n"
+                "   • Parcial: Adiciona aos dados existentes\n"
+                "   • Total: Substitui todos os dados\n"
+                "4. Clique em 'Fazer Upload e Importar'\n"
+                "5. Aguarde a confirmação\n\n"
+                f"📂 Arquivo do banco: {self.desktop_db}\n\n"
+                "⚠️ Vantagem: Não precisa abrir porta do PostgreSQL!"
+            )
+
+            messagebox.showinfo("Upload via Web", msg)
+
+        except Exception as e:
+            self.log(f"Erro ao abrir navegador: {e}", 'error')
+            messagebox.showerror("Erro", f"Erro ao abrir navegador:\n{e}")
 
 
 def iniciar_gerenciador_sync(parent_root):

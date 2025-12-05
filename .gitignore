@@ -49,7 +49,10 @@ env/
 # Logs
 *.log
 logs/
+
+# Arquivos txt (exceto requirements.txt)
 *.txt
+!requirements.txt
 
 # OS
 .DS_Store

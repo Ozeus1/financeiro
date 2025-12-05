@@ -6,18 +6,210 @@ from utils.supabase_client import SupabaseClient
 import json
 from datetime import datetime
 import os
+import sqlite3
+from datetime import datetime
 
 config_bp = Blueprint('config', __name__)
+
+def importar_sqlite_desktop(sqlite_path, user_id, modo='parcial'):
+    """
+    Importa dados do SQLite desktop para PostgreSQL
+
+    Args:
+        sqlite_path: Caminho do arquivo SQLite
+        user_id: ID do usuário para associar os dados
+        modo: 'parcial' (adicionar) ou 'total' (substituir)
+
+    Returns:
+        Dict com resultado da importação
+    """
+    try:
+        # Conectar ao SQLite
+        sqlite_conn = sqlite3.connect(sqlite_path)
+        sqlite_cursor = sqlite_conn.cursor()
+
+        # Verificar se é um banco válido
+        sqlite_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='despesas'")
+        if not sqlite_cursor.fetchone():
+            return {'sucesso': False, 'erro': 'Arquivo não é um banco de dados válido (tabela despesas não encontrada)'}
+
+        # Se modo total, limpar dados do usuário
+        if modo == 'total':
+            Despesa.query.filter_by(user_id=user_id).delete()
+            Orcamento.query.filter_by(user_id=user_id).delete()
+            db.session.commit()
+
+        # Importar despesas
+        sqlite_cursor.execute("""
+            SELECT descricao, meio_pagamento, conta_despesa, valor,
+                   num_parcelas, data_registro, data_pagamento
+            FROM despesas
+            ORDER BY data_registro
+        """)
+
+        despesas_importadas = 0
+        categorias_criadas = 0
+        meios_criados = 0
+        erros = 0
+
+        for row in sqlite_cursor.fetchall():
+            try:
+                descricao, meio_pagamento_nome, categoria_nome, valor, num_parcelas, data_registro, data_pagamento = row
+
+                # Obter ou criar categoria
+                categoria = CategoriaDespesa.query.filter_by(nome=categoria_nome).first()
+                if not categoria:
+                    categoria = CategoriaDespesa(nome=categoria_nome, ativo=True)
+                    db.session.add(categoria)
+                    db.session.flush()
+                    categorias_criadas += 1
+
+                # Obter ou criar meio de pagamento
+                meio_pagamento = MeioPagamento.query.filter_by(nome=meio_pagamento_nome).first()
+                if not meio_pagamento:
+                    meio_pagamento = MeioPagamento(nome=meio_pagamento_nome, tipo='outros', ativo=True)
+                    db.session.add(meio_pagamento)
+                    db.session.flush()
+                    meios_criados += 1
+
+                # Criar despesa
+                despesa = Despesa(
+                    descricao=descricao,
+                    valor=float(valor),
+                    num_parcelas=int(num_parcelas) if num_parcelas else 1,
+                    data_registro=datetime.strptime(data_registro, '%Y-%m-%d').date() if data_registro else datetime.now().date(),
+                    data_pagamento=datetime.strptime(data_pagamento, '%Y-%m-%d').date() if data_pagamento else None,
+                    user_id=user_id,
+                    categoria_id=categoria.id,
+                    meio_pagamento_id=meio_pagamento.id
+                )
+                db.session.add(despesa)
+                despesas_importadas += 1
+
+            except Exception as e:
+                erros += 1
+                continue
+
+        # Importar orçamentos
+        orcamentos_importados = 0
+        try:
+            sqlite_cursor.execute("SELECT conta_despesa, valor_orcado FROM orcamento")
+            orcamentos = sqlite_cursor.fetchall()
+
+            for categoria_nome, valor_orcado in orcamentos:
+                # Obter ou criar categoria
+                categoria = CategoriaDespesa.query.filter_by(nome=categoria_nome).first()
+                if not categoria:
+                    categoria = CategoriaDespesa(nome=categoria_nome, ativo=True)
+                    db.session.add(categoria)
+                    db.session.flush()
+                    categorias_criadas += 1
+
+                # Verificar se orçamento já existe
+                orcamento = Orcamento.query.filter_by(
+                    user_id=user_id,
+                    categoria_id=categoria.id
+                ).first()
+
+                if orcamento:
+                    orcamento.valor_orcado = float(valor_orcado)
+                else:
+                    orcamento = Orcamento(
+                        user_id=user_id,
+                        categoria_id=categoria.id,
+                        valor_orcado=float(valor_orcado)
+                    )
+                    db.session.add(orcamento)
+
+                orcamentos_importados += 1
+
+        except Exception as e:
+            # Tabela de orçamento pode não existir
+            pass
+
+        # Commit final
+        db.session.commit()
+        sqlite_conn.close()
+
+        return {
+            'sucesso': True,
+            'despesas': despesas_importadas,
+            'orcamentos': orcamentos_importados,
+            'categorias': categorias_criadas,
+            'meios_pagamento': meios_criados,
+            'erros': erros
+        }
+
+    except Exception as e:
+        db.session.rollback()
+        return {
+            'sucesso': False,
+            'erro': str(e)
+        }
 
 @config_bp.route('/importar-dados-antigos', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def importar_dados_antigos():
-    """Importar dados do sistema antigo (apenas admin)"""
+    """Importar dados do sistema desktop (SQLite) para PostgreSQL (apenas admin)"""
     if request.method == 'POST':
-        from utils.importador import importar_dados_antigos, importar_fluxo_caixa
         from flask import current_app
-        
+        import tempfile
+        from werkzeug.utils import secure_filename
+
+        # Verificar se é upload de arquivo ou seleção de arquivo local
+        tipo_importacao = request.form.get('tipo_importacao', 'upload')
+
+        if tipo_importacao == 'upload':
+            # NOVO: Upload de arquivo SQLite do desktop
+            if 'arquivo_sqlite' not in request.files:
+                flash('Nenhum arquivo foi enviado!', 'warning')
+                return redirect(url_for('config.importar_dados_antigos'))
+
+            file = request.files['arquivo_sqlite']
+
+            if file.filename == '':
+                flash('Nenhum arquivo selecionado!', 'warning')
+                return redirect(url_for('config.importar_dados_antigos'))
+
+            if not file.filename.endswith(('.db', '.sqlite', '.sqlite3')):
+                flash('Tipo de arquivo inválido! Use arquivos .db, .sqlite ou .sqlite3', 'danger')
+                return redirect(url_for('config.importar_dados_antigos'))
+
+            try:
+                # Salvar arquivo temporariamente
+                temp_dir = tempfile.gettempdir()
+                filename = secure_filename(file.filename)
+                temp_path = os.path.join(temp_dir, f'upload_{datetime.now().strftime("%Y%m%d%H%M%S")}_{filename}')
+                file.save(temp_path)
+
+                # Importar do arquivo SQLite
+                modo = request.form.get('modo_importacao', 'parcial')
+                resultado = importar_sqlite_desktop(temp_path, current_user.id, modo)
+
+                # Remover arquivo temporário
+                os.remove(temp_path)
+
+                if resultado['sucesso']:
+                    flash(f"""✓ Importação concluída com sucesso!
+                        Despesas: {resultado.get('despesas', 0)}
+                        Orçamentos: {resultado.get('orcamentos', 0)}
+                        Categorias: {resultado.get('categorias', 0)}
+                        Meios de Pagamento: {resultado.get('meios_pagamento', 0)}
+                    """, 'success')
+                else:
+                    flash(f"✗ Erro na importação: {resultado.get('erro', 'Erro desconhecido')}", 'danger')
+
+            except Exception as e:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                flash(f'Erro ao processar arquivo: {str(e)}', 'danger')
+
+            return redirect(url_for('config.importar_dados_antigos'))
+
+        # Importação antiga (arquivos locais)
+        from utils.importador import importar_dados_antigos, importar_fluxo_caixa
+
         # Obter caminhos dos arquivos selecionados
         caminho_financas = request.form.get('caminho_financas')
         caminho_receitas = request.form.get('caminho_receitas')

@@ -1,21 +1,105 @@
 {% extends "base.html" %}
 
-{% block title %}Importar Dados do Sistema Antigo{% endblock %}
+{% block title %}Importar Dados do Sistema Desktop{% endblock %}
 
 {% block content %}
 <div class="row mt-4">
     <div class="col-md-10 offset-md-1">
         <div class="card">
             <div class="card-header bg-primary text-white">
-                <h4><i class="bi bi-download"></i> Importar Dados do Sistema Antigo</h4>
+                <h4><i class="bi bi-download"></i> Importar Dados do Sistema Desktop</h4>
             </div>
             <div class="card-body">
+                <!-- NOVO: Upload de Arquivo SQLite -->
+                <div class="card mb-4 border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-cloud-upload"></i> 📤 Fazer Upload do Banco Desktop</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-success">
+                            <strong>✅ Recomendado:</strong> Envie o arquivo <code>financas.db</code> do sistema desktop para sincronizar os dados.
+                            <br><strong>Vantagem:</strong> Não precisa abrir porta do PostgreSQL!
+                        </div>
+
+                        <form method="POST" enctype="multipart/form-data" id="formUpload">
+                            <input type="hidden" name="tipo_importacao" value="upload">
+
+                            <div class="mb-3">
+                                <label for="arquivo_sqlite" class="form-label">
+                                    <strong>Selecione o arquivo do banco de dados</strong>
+                                </label>
+                                <input
+                                    type="file"
+                                    class="form-control"
+                                    id="arquivo_sqlite"
+                                    name="arquivo_sqlite"
+                                    accept=".db,.sqlite,.sqlite3"
+                                    required
+                                >
+                                <small class="text-muted">
+                                    Arquivo: <code>financas.db</code> (localizado na pasta do sistema desktop)
+                                </small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label"><strong>Modo de Importação</strong></label>
+
+                                <div class="form-check">
+                                    <input
+                                        class="form-check-input"
+                                        type="radio"
+                                        name="modo_importacao"
+                                        id="modo_parcial"
+                                        value="parcial"
+                                        checked
+                                    >
+                                    <label class="form-check-label" for="modo_parcial">
+                                        <strong>Parcial (Adicionar)</strong>
+                                        <br>
+                                        <small class="text-muted">Adiciona os dados do arquivo aos dados existentes (recomendado)</small>
+                                    </label>
+                                </div>
+
+                                <div class="form-check mt-2">
+                                    <input
+                                        class="form-check-input"
+                                        type="radio"
+                                        name="modo_importacao"
+                                        id="modo_total"
+                                        value="total"
+                                    >
+                                    <label class="form-check-label" for="modo_total">
+                                        <strong>Total (Substituir)</strong>
+                                        <br>
+                                        <small class="text-danger">⚠️ APAGA todos os seus dados no servidor e substitui pelos dados do arquivo</small>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-warning d-none" id="avisoTotal">
+                                <strong>⚠️ ATENÇÃO:</strong> O modo TOTAL irá apagar TODOS os seus dados antes de importar. Use apenas se tiver certeza!
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-cloud-upload"></i> 📤 Fazer Upload e Importar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Separador -->
+                <div class="text-center my-4">
+                    <span class="badge bg-secondary">OU</span>
+                </div>
+
+                <!-- Importação de arquivos locais (método antigo) -->
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle"></i>
-                    <strong>Esta ferramenta importa dados do sistema antigo (sistema_financeiro_v14.py)</strong>
+                    <strong>Importação de arquivos locais (servidor)</strong>
                     <p class="mb-0 mt-2">
-                        Foram encontrados <strong>{{ total_arquivos }}</strong> arquivos de banco de dados na pasta do
-                        projeto.
+                        Foram encontrados <strong>{{ total_arquivos }}</strong> arquivos de banco de dados na pasta do servidor.
                     </p>
                 </div>
 
@@ -253,6 +337,36 @@
             `Fluxo de Caixa: ${fluxoCaixa}\n\n` +
             `Balanços e eventos serão importados.\n\n` +
             `Deseja continuar?`);
+    }
+
+    // Aviso para modo total no upload
+    const modoTotal = document.getElementById('modo_total');
+    const modoParcial = document.getElementById('modo_parcial');
+    const avisoTotal = document.getElementById('avisoTotal');
+    const formUpload = document.getElementById('formUpload');
+
+    if (modoTotal && avisoTotal) {
+        modoTotal.addEventListener('change', function() {
+            if (this.checked) {
+                avisoTotal.classList.remove('d-none');
+            }
+        });
+
+        modoParcial.addEventListener('change', function() {
+            if (this.checked) {
+                avisoTotal.classList.add('d-none');
+            }
+        });
+
+        // Confirmar antes de enviar no modo total
+        formUpload.addEventListener('submit', function(e) {
+            if (modoTotal.checked) {
+                if (!confirm('⚠️ ATENÇÃO: Isso irá APAGAR todos os seus dados atuais no servidor!\n\nTem certeza que deseja continuar?')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
     }
 </script>
 {% endblock %}

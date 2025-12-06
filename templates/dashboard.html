@@ -4,8 +4,14 @@
 
 {% block content %}
 <div class="row mt-4">
-    <div class="col-12">
+    <div class="col-12 d-flex justify-content-between align-items-center">
         <h2><i class="bi bi-speedometer2"></i> Dashboard - {{ mes_atual }}/{{ ano_atual }}</h2>
+        <button class="btn btn-outline-secondary" id="toggleValores" title="Mostrar/Ocultar Valores">
+            <i class="bi bi-eye-slash" id="iconToggle"></i>
+            <span id="textToggle">Ocultar Valores</span>
+        </button>
+    </div>
+    <div class="col-12">
         <hr>
     </div>
 </div>
@@ -16,7 +22,7 @@
         <div class="card text-white bg-success mb-3">
             <div class="card-body">
                 <h5 class="card-title"><i class="bi bi-cash-coin"></i> Receitas do Mês</h5>
-                <h3>R$ {{ "%.2f"|format(total_receitas)|replace('.', ',') }}</h3>
+                <h3 class="valor-monetario">R$ {{ total_receitas|moeda }}</h3>
             </div>
         </div>
     </div>
@@ -25,7 +31,7 @@
         <div class="card text-white bg-danger mb-3">
             <div class="card-body">
                 <h5 class="card-title"><i class="bi bi-wallet2"></i> Despesas do Mês</h5>
-                <h3>R$ {{ "%.2f"|format(total_despesas)|replace('.', ',') }}</h3>
+                <h3 class="valor-monetario">R$ {{ total_despesas|moeda }}</h3>
             </div>
         </div>
     </div>
@@ -34,7 +40,7 @@
         <div class="card text-white {% if saldo >= 0 %}bg-primary{% else %}bg-warning{% endif %} mb-3">
             <div class="card-body">
                 <h5 class="card-title"><i class="bi bi-piggy-bank"></i> Saldo do Mês</h5>
-                <h3>R$ {{ "%.2f"|format(saldo)|replace('.', ',') }}</h3>
+                <h3 class="valor-monetario">R$ {{ saldo|moeda }}</h3>
             </div>
         </div>
     </div>
@@ -49,7 +55,7 @@
         <div class="card text-white bg-info mb-3">
             <div class="card-body">
                 <h5 class="card-title">Entradas (Caixa)</h5>
-                <h3>R$ {{ "%.2f"|format(fluxo_entradas)|replace('.', ',') }}</h3>
+                <h3 class="valor-monetario">R$ {{ fluxo_entradas|moeda }}</h3>
             </div>
         </div>
     </div>
@@ -57,7 +63,7 @@
         <div class="card text-white bg-secondary mb-3">
             <div class="card-body">
                 <h5 class="card-title">Saídas (Caixa)</h5>
-                <h3>R$ {{ "%.2f"|format(fluxo_saidas)|replace('.', ',') }}</h3>
+                <h3 class="valor-monetario">R$ {{ fluxo_saidas|moeda }}</h3>
             </div>
         </div>
     </div>
@@ -65,7 +71,7 @@
         <div class="card text-white {% if fluxo_saldo >= 0 %}bg-primary{% else %}bg-warning{% endif %} mb-3">
             <div class="card-body">
                 <h5 class="card-title">Saldo (Caixa)</h5>
-                <h3>R$ {{ "%.2f"|format(fluxo_saldo)|replace('.', ',') }}</h3>
+                <h3 class="valor-monetario">R$ {{ fluxo_saldo|moeda }}</h3>
             </div>
         </div>
     </div>
@@ -91,7 +97,7 @@
                             <span class="badge bg-secondary">{{ despesa.categoria.nome }}</span>
                             <span class="badge bg-info">{{ despesa.meio_pagamento.nome }}</span>
                         </p>
-                        <strong class="text-danger">R$ {{ "%.2f"|format(despesa.valor)|replace('.', ',') }}</strong>
+                        <strong class="text-danger valor-monetario">R$ {{ despesa.valor|moeda }}</strong>
                     </div>
                     {% endfor %}
                 </div>
@@ -124,7 +130,7 @@
                             <span class="badge bg-secondary">{{ receita.categoria.nome }}</span>
                             <span class="badge bg-info">{{ receita.meio_recebimento.nome }}</span>
                         </p>
-                        <strong class="text-success">R$ {{ "%.2f"|format(receita.valor)|replace('.', ',') }}</strong>
+                        <strong class="text-success valor-monetario">R$ {{ receita.valor|moeda }}</strong>
                     </div>
                     {% endfor %}
                 </div>
@@ -178,4 +184,31 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('toggleValores').addEventListener('click', function() {
+        const valores = document.querySelectorAll('.valor-monetario');
+        const icon = document.getElementById('iconToggle');
+        const text = document.getElementById('textToggle');
+
+        // Verifica o estado atual (se está oculto ou não)
+        const isHidden = valores[0].style.filter === 'blur(8px)';
+
+        valores.forEach(valor => {
+            if (isHidden) {
+                // Mostrar valores
+                valor.style.filter = 'none';
+                icon.className = 'bi bi-eye-slash';
+                text.textContent = 'Ocultar Valores';
+            } else {
+                // Ocultar valores
+                valor.style.filter = 'blur(8px)';
+                icon.className = 'bi bi-eye';
+                text.textContent = 'Mostrar Valores';
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

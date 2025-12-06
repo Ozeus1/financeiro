@@ -24,7 +24,21 @@ def create_app(config_name='default'):
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
-    
+
+    # Filtro customizado para formatar valores monetários com separador de milhares
+    @app.template_filter('moeda')
+    def formatar_moeda(valor):
+        """Formata valor como moeda brasileira com separador de milhares"""
+        try:
+            valor_float = float(valor)
+            # Formatar com 2 casas decimais e separador de milhares
+            valor_formatado = f"{valor_float:,.2f}"
+            # Trocar . por , e , por .
+            valor_formatado = valor_formatado.replace(',', 'X').replace('.', ',').replace('X', '.')
+            return valor_formatado
+        except (ValueError, TypeError):
+            return "0,00"
+
     # Registrar blueprints
     from routes.auth import auth_bp
     from routes.main import main_bp

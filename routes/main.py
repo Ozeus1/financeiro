@@ -98,9 +98,14 @@ def dashboard():
     # Últimas receitas
     ultimas_receitas = receitas_query.order_by(Receita.data_registro.desc()).limit(5).all()
     
-    # Nome do mês
-    nome_mes = calendar.month_name[mes_atual]
-    
+    # Nome do mês em português
+    meses_pt = {
+        1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+        5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+        9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+    }
+    nome_mes = meses_pt[mes_atual]
+
     return render_template('dashboard.html',
                          total_despesas=total_despesas_mes,
                          total_receitas=total_receitas_mes,

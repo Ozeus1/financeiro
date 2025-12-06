@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from routes.auth import admin_required, gerente_required
-from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa, Receita
+from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa, Receita, BalancoMensal, EventoCaixaAvulso
 from utils.supabase_client import SupabaseClient
 import json
 from datetime import datetime
@@ -124,6 +124,138 @@ def importar_sqlite_receitas(sqlite_path, user_id, modo='parcial'):
             'receitas': receitas_importadas,
             'categorias': categorias_criadas,
             'meios_recebimento': meios_criados,
+            'erros': erros
+        }
+
+    except Exception as e:
+        db.session.rollback()
+        return {
+            'sucesso': False,
+            'erro': str(e)
+        }
+
+def importar_sqlite_fluxo_caixa(sqlite_path, user_id, modo='parcial'):
+    """
+    Importa dados de FLUXO DE CAIXA do SQLite desktop para PostgreSQL
+
+    Args:
+        sqlite_path: Caminho do arquivo SQLite (fluxo_caixa.db)
+        user_id: ID do usuário para associar os dados
+        modo: 'parcial' (adicionar) ou 'total' (substituir)
+
+    Returns:
+        Dict com resultado da importação
+    """
+    try:
+        # Conectar ao SQLite
+        sqlite_conn = sqlite3.connect(sqlite_path)
+        sqlite_cursor = sqlite_conn.cursor()
+
+        # Verificar se é um banco válido
+        sqlite_cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tabelas = [row[0] for row in sqlite_cursor.fetchall()]
+
+        if 'balanco_mensal' not in tabelas and 'eventos_caixa_avulsos' not in tabelas:
+            return {'sucesso': False, 'erro': 'Arquivo não é um banco de fluxo de caixa válido (tabelas não encontradas)'}
+
+        # Se modo total, limpar dados do usuário
+        if modo == 'total':
+            BalancoMensal.query.filter_by(user_id=user_id).delete()
+            EventoCaixaAvulso.query.filter_by(user_id=user_id).delete()
+            db.session.commit()
+
+        balancos_importados = 0
+        eventos_importados = 0
+        erros = 0
+
+        # Importar balanços mensais
+        if 'balanco_mensal' in tabelas:
+            try:
+                sqlite_cursor.execute("""
+                    SELECT ano, mes, total_entradas, total_saidas, saldo_mes, observacoes
+                    FROM balanco_mensal
+                    ORDER BY ano, mes
+                """)
+
+                for row in sqlite_cursor.fetchall():
+                    try:
+                        ano, mes, total_entradas, total_saidas, saldo_mes, observacoes = row
+
+                        # Verificar se já existe (apenas em modo parcial)
+                        if modo == 'parcial':
+                            balanco_existente = BalancoMensal.query.filter_by(
+                                user_id=user_id,
+                                ano=ano,
+                                mes=mes
+                            ).first()
+
+                            if balanco_existente:
+                                # Atualizar valores
+                                balanco_existente.total_entradas = float(total_entradas) if total_entradas else 0.0
+                                balanco_existente.total_saidas = float(total_saidas) if total_saidas else 0.0
+                                balanco_existente.saldo_mes = float(saldo_mes) if saldo_mes else 0.0
+                                balanco_existente.observacoes = observacoes
+                                balancos_importados += 1
+                                continue
+
+                        # Criar novo balanço
+                        balanco = BalancoMensal(
+                            ano=int(ano),
+                            mes=int(mes),
+                            total_entradas=float(total_entradas) if total_entradas else 0.0,
+                            total_saidas=float(total_saidas) if total_saidas else 0.0,
+                            saldo_mes=float(saldo_mes) if saldo_mes else 0.0,
+                            observacoes=observacoes,
+                            user_id=user_id
+                        )
+                        db.session.add(balanco)
+                        balancos_importados += 1
+
+                    except Exception as e:
+                        erros += 1
+                        continue
+
+            except Exception as e:
+                pass  # Tabela pode não existir ou estar vazia
+
+        # Importar eventos de caixa avulsos
+        if 'eventos_caixa_avulsos' in tabelas:
+            try:
+                sqlite_cursor.execute("""
+                    SELECT data, descricao, valor
+                    FROM eventos_caixa_avulsos
+                    ORDER BY data
+                """)
+
+                for row in sqlite_cursor.fetchall():
+                    try:
+                        data_str, descricao, valor = row
+
+                        # Criar evento
+                        evento = EventoCaixaAvulso(
+                            data=datetime.strptime(data_str, '%Y-%m-%d').date() if data_str else datetime.now().date(),
+                            descricao=descricao,
+                            valor=float(valor) if valor else 0.0,
+                            user_id=user_id
+                        )
+                        db.session.add(evento)
+                        eventos_importados += 1
+
+                    except Exception as e:
+                        erros += 1
+                        continue
+
+            except Exception as e:
+                pass  # Tabela pode não existir ou estar vazia
+
+        # Commit final
+        db.session.commit()
+        sqlite_conn.close()
+
+        return {
+            'sucesso': True,
+            'balancos': balancos_importados,
+            'eventos': eventos_importados,
             'erros': erros
         }
 
@@ -285,9 +417,14 @@ def importar_dados_antigos():
 
         if tipo_importacao == 'upload':
             # NOVO: Upload de arquivo SQLite do desktop
-            tipo_banco = request.form.get('tipo_banco', 'despesas')  # 'despesas' ou 'receitas'
+            tipo_banco = request.form.get('tipo_banco', 'despesas')  # 'despesas', 'receitas' ou 'fluxo_caixa'
 
-            campo_arquivo = 'arquivo_sqlite_despesas' if tipo_banco == 'despesas' else 'arquivo_sqlite_receitas'
+            if tipo_banco == 'despesas':
+                campo_arquivo = 'arquivo_sqlite_despesas'
+            elif tipo_banco == 'receitas':
+                campo_arquivo = 'arquivo_sqlite_receitas'
+            else:  # fluxo_caixa
+                campo_arquivo = 'arquivo_sqlite_fluxo_caixa'
 
             if campo_arquivo not in request.files:
                 flash('Nenhum arquivo foi enviado!', 'warning')
@@ -327,7 +464,7 @@ def importar_dados_antigos():
                     else:
                         flash(f"✗ Erro na importação: {resultado.get('erro', 'Erro desconhecido')}", 'danger')
 
-                else:  # receitas
+                elif tipo_banco == 'receitas':
                     resultado = importar_sqlite_receitas(temp_path, current_user.id, modo)
 
                     if resultado['sucesso']:
@@ -335,6 +472,18 @@ def importar_dados_antigos():
                             Receitas: {resultado.get('receitas', 0)}
                             Categorias criadas: {resultado.get('categorias', 0)}
                             Meios de Recebimento criados: {resultado.get('meios_recebimento', 0)}
+                            {f"Erros: {resultado.get('erros', 0)}" if resultado.get('erros', 0) > 0 else ""}
+                        """, 'success')
+                    else:
+                        flash(f"✗ Erro na importação: {resultado.get('erro', 'Erro desconhecido')}", 'danger')
+
+                else:  # fluxo_caixa
+                    resultado = importar_sqlite_fluxo_caixa(temp_path, current_user.id, modo)
+
+                    if resultado['sucesso']:
+                        flash(f"""✓ Importação de FLUXO DE CAIXA concluída!
+                            Balanços Mensais: {resultado.get('balancos', 0)}
+                            Eventos de Caixa: {resultado.get('eventos', 0)}
                             {f"Erros: {resultado.get('erros', 0)}" if resultado.get('erros', 0) > 0 else ""}
                         """, 'success')
                     else:
@@ -1127,4 +1276,91 @@ def exportar_sqlite_receitas():
 
     except Exception as e:
         flash(f'Erro ao exportar receitas: {str(e)}', 'danger')
+        return redirect(url_for('config.importar_dados_antigos'))
+
+@config_bp.route('/exportar-sqlite-fluxo-caixa')
+@login_required
+@admin_required
+def exportar_sqlite_fluxo_caixa():
+    """
+    Exporta fluxo de caixa do PostgreSQL para arquivo SQLite (fluxo_caixa.db)
+    para popular o sistema desktop
+    """
+    import tempfile
+    from flask import send_file
+
+    try:
+        # Criar banco SQLite temporário
+        temp_dir = tempfile.gettempdir()
+        sqlite_path = os.path.join(temp_dir, f'fluxo_caixa_export_{datetime.now().strftime("%Y%m%d%H%M%S")}.db')
+
+        # Conectar ao SQLite
+        sqlite_conn = sqlite3.connect(sqlite_path)
+        sqlite_cursor = sqlite_conn.cursor()
+
+        # Criar estrutura do banco desktop de fluxo de caixa
+        sqlite_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS balanco_mensal (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ano INTEGER NOT NULL,
+                mes INTEGER NOT NULL,
+                total_entradas REAL DEFAULT 0.0,
+                total_saidas REAL DEFAULT 0.0,
+                saldo_mes REAL DEFAULT 0.0,
+                observacoes TEXT
+            )
+        """)
+
+        sqlite_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS eventos_caixa_avulsos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                data TEXT NOT NULL,
+                descricao TEXT NOT NULL,
+                valor REAL NOT NULL
+            )
+        """)
+
+        # Buscar balanços mensais do usuário logado
+        balancos = BalancoMensal.query.filter_by(user_id=current_user.id).order_by(BalancoMensal.ano, BalancoMensal.mes).all()
+
+        for balanco in balancos:
+            sqlite_cursor.execute("""
+                INSERT INTO balanco_mensal (ano, mes, total_entradas, total_saidas, saldo_mes, observacoes)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                balanco.ano,
+                balanco.mes,
+                balanco.total_entradas,
+                balanco.total_saidas,
+                balanco.saldo_mes,
+                balanco.observacoes
+            ))
+
+        # Buscar eventos de caixa avulsos do usuário logado
+        eventos = EventoCaixaAvulso.query.filter_by(user_id=current_user.id).order_by(EventoCaixaAvulso.data).all()
+
+        for evento in eventos:
+            sqlite_cursor.execute("""
+                INSERT INTO eventos_caixa_avulsos (data, descricao, valor)
+                VALUES (?, ?, ?)
+            """, (
+                evento.data.strftime('%Y-%m-%d') if evento.data else None,
+                evento.descricao,
+                evento.valor
+            ))
+
+        # Commit e fechar
+        sqlite_conn.commit()
+        sqlite_conn.close()
+
+        # Enviar arquivo para download
+        return send_file(
+            sqlite_path,
+            as_attachment=True,
+            download_name='fluxo_caixa.db',
+            mimetype='application/x-sqlite3'
+        )
+
+    except Exception as e:
+        flash(f'Erro ao exportar fluxo de caixa: {str(e)}', 'danger')
         return redirect(url_for('config.importar_dados_antigos'))

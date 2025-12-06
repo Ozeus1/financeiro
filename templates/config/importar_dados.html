@@ -170,6 +170,86 @@
                     </div>
                 </div>
 
+                <!-- NOVO: Upload de Arquivo SQLite - FLUXO DE CAIXA -->
+                <div class="card mb-4 border-info">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-cloud-upload"></i> 📤 Fazer Upload do Fluxo de Caixa</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <strong>ℹ️ Fluxo de Caixa:</strong> Envie o arquivo <code>fluxo_caixa.db</code> do sistema desktop.
+                            <br><strong>Conteúdo:</strong> Balanços mensais e eventos de caixa avulsos
+                        </div>
+
+                        <form method="POST" enctype="multipart/form-data" id="formUploadFluxoCaixa">
+                            <input type="hidden" name="tipo_importacao" value="upload">
+                            <input type="hidden" name="tipo_banco" value="fluxo_caixa">
+
+                            <div class="mb-3">
+                                <label for="arquivo_sqlite_fluxo_caixa" class="form-label">
+                                    <strong>Selecione o arquivo do fluxo de caixa</strong>
+                                </label>
+                                <input
+                                    type="file"
+                                    class="form-control"
+                                    id="arquivo_sqlite_fluxo_caixa"
+                                    name="arquivo_sqlite_fluxo_caixa"
+                                    accept=".db,.sqlite,.sqlite3"
+                                    required
+                                >
+                                <small class="text-muted">
+                                    Arquivo: <code>fluxo_caixa.db</code> (localizado na pasta do sistema desktop)
+                                </small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label"><strong>Modo de Importação</strong></label>
+
+                                <div class="form-check">
+                                    <input
+                                        class="form-check-input"
+                                        type="radio"
+                                        name="modo_importacao"
+                                        id="modo_parcial_fluxo"
+                                        value="parcial"
+                                        checked
+                                    >
+                                    <label class="form-check-label" for="modo_parcial_fluxo">
+                                        <strong>Parcial (Adicionar/Atualizar)</strong>
+                                        <br>
+                                        <small class="text-muted">Adiciona novos balanços e eventos. Atualiza balanços existentes.</small>
+                                    </label>
+                                </div>
+
+                                <div class="form-check mt-2">
+                                    <input
+                                        class="form-check-input"
+                                        type="radio"
+                                        name="modo_importacao"
+                                        id="modo_total_fluxo"
+                                        value="total"
+                                    >
+                                    <label class="form-check-label" for="modo_total_fluxo">
+                                        <strong>Total (Substituir)</strong>
+                                        <br>
+                                        <small class="text-danger">⚠️ APAGA todo o seu FLUXO DE CAIXA no servidor e substitui pelos dados do arquivo</small>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-warning d-none" id="avisoTotalFluxo">
+                                <strong>⚠️ ATENÇÃO:</strong> O modo TOTAL irá apagar TODO o seu FLUXO DE CAIXA antes de importar. Use apenas se tiver certeza!
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-info btn-lg">
+                                    <i class="bi bi-cloud-upload"></i> 📤 Fazer Upload e Importar Fluxo de Caixa
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
                 <!-- NOVO: Download dos Bancos para Desktop -->
                 <div class="card mb-4 border-info">
                     <div class="card-header bg-info text-white">
@@ -182,7 +262,7 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <div class="card border-danger">
                                     <div class="card-body text-center">
                                         <h5 class="card-title text-danger">
@@ -198,7 +278,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <div class="card border-success">
                                     <div class="card-body text-center">
                                         <h5 class="card-title text-success">
@@ -209,6 +289,22 @@
                                         </p>
                                         <a href="{{ url_for('config.exportar_sqlite_receitas') }}" class="btn btn-success">
                                             <i class="bi bi-download"></i> Baixar financas_receita.db
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <div class="card border-info">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-info">
+                                            <i class="bi bi-cash-stack"></i> Fluxo de Caixa
+                                        </h5>
+                                        <p class="card-text">
+                                            <small class="text-muted">Baixar balanços mensais e eventos de caixa</small>
+                                        </p>
+                                        <a href="{{ url_for('config.exportar_sqlite_fluxo_caixa') }}" class="btn btn-info">
+                                            <i class="bi bi-download"></i> Baixar fluxo_caixa.db
                                         </a>
                                     </div>
                                 </div>
@@ -520,6 +616,36 @@
         formUploadReceitas.addEventListener('submit', function(e) {
             if (modoTotalReceitas.checked) {
                 if (!confirm('⚠️ ATENÇÃO: Isso irá APAGAR todas as suas RECEITAS atuais no servidor!\n\nTem certeza que deseja continuar?')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
+    }
+
+    // Aviso para modo total no upload - FLUXO DE CAIXA
+    const modoTotalFluxo = document.getElementById('modo_total_fluxo');
+    const modoParcialFluxo = document.getElementById('modo_parcial_fluxo');
+    const avisoTotalFluxo = document.getElementById('avisoTotalFluxo');
+    const formUploadFluxoCaixa = document.getElementById('formUploadFluxoCaixa');
+
+    if (modoTotalFluxo && avisoTotalFluxo) {
+        modoTotalFluxo.addEventListener('change', function() {
+            if (this.checked) {
+                avisoTotalFluxo.classList.remove('d-none');
+            }
+        });
+
+        modoParcialFluxo.addEventListener('change', function() {
+            if (this.checked) {
+                avisoTotalFluxo.classList.add('d-none');
+            }
+        });
+
+        // Confirmar antes de enviar no modo total
+        formUploadFluxoCaixa.addEventListener('submit', function(e) {
+            if (modoTotalFluxo.checked) {
+                if (!confirm('⚠️ ATENÇÃO: Isso irá APAGAR todo o seu FLUXO DE CAIXA atual no servidor!\n\nTem certeza que deseja continuar?')) {
                     e.preventDefault();
                     return false;
                 }

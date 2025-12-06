@@ -33,18 +33,44 @@ def importar_sqlite_receitas(sqlite_path, user_id, modo='parcial'):
         if not sqlite_cursor.fetchone():
             return {'sucesso': False, 'erro': 'Arquivo não é um banco de receitas válido (tabela receitas não encontrada)'}
 
+        # Descobrir quais colunas existem na tabela
+        sqlite_cursor.execute("PRAGMA table_info(receitas)")
+        colunas_info = sqlite_cursor.fetchall()
+        colunas_disponiveis = [col[1] for col in colunas_info]  # col[1] é o nome da coluna
+
+        # Determinar nome da coluna de categoria (pode variar)
+        coluna_categoria = None
+        for possivel_nome in ['categoria_receita', 'categoria', 'conta_receita']:
+            if possivel_nome in colunas_disponiveis:
+                coluna_categoria = possivel_nome
+                break
+
+        if not coluna_categoria:
+            return {'sucesso': False, 'erro': f'Coluna de categoria não encontrada. Colunas disponíveis: {", ".join(colunas_disponiveis)}'}
+
+        # Determinar nome da coluna de meio de recebimento (pode variar)
+        coluna_meio = None
+        for possivel_nome in ['meio_recebimento', 'meio', 'forma_recebimento']:
+            if possivel_nome in colunas_disponiveis:
+                coluna_meio = possivel_nome
+                break
+
+        if not coluna_meio:
+            return {'sucesso': False, 'erro': f'Coluna de meio de recebimento não encontrada. Colunas disponíveis: {", ".join(colunas_disponiveis)}'}
+
         # Se modo total, limpar dados do usuário
         if modo == 'total':
             Receita.query.filter_by(user_id=user_id).delete()
             db.session.commit()
 
-        # Importar receitas
-        sqlite_cursor.execute("""
-            SELECT descricao, meio_recebimento, categoria_receita, valor,
+        # Montar query dinamicamente com os nomes corretos das colunas
+        query = f"""
+            SELECT descricao, {coluna_meio}, {coluna_categoria}, valor,
                    num_parcelas, data_registro, data_recebimento
             FROM receitas
             ORDER BY data_registro
-        """)
+        """
+        sqlite_cursor.execute(query)
 
         receitas_importadas = 0
         categorias_criadas = 0

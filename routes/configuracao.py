@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from routes.auth import admin_required, gerente_required
-from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa
+from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa, Receita
 from utils.supabase_client import SupabaseClient
 import json
 from datetime import datetime
@@ -10,6 +10,103 @@ import sqlite3
 from datetime import datetime
 
 config_bp = Blueprint('config', __name__)
+
+def importar_sqlite_receitas(sqlite_path, user_id, modo='parcial'):
+    """
+    Importa dados de RECEITAS do SQLite desktop para PostgreSQL
+
+    Args:
+        sqlite_path: Caminho do arquivo SQLite (financas_receita.db)
+        user_id: ID do usuário para associar os dados
+        modo: 'parcial' (adicionar) ou 'total' (substituir)
+
+    Returns:
+        Dict com resultado da importação
+    """
+    try:
+        # Conectar ao SQLite
+        sqlite_conn = sqlite3.connect(sqlite_path)
+        sqlite_cursor = sqlite_conn.cursor()
+
+        # Verificar se é um banco válido
+        sqlite_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='receitas'")
+        if not sqlite_cursor.fetchone():
+            return {'sucesso': False, 'erro': 'Arquivo não é um banco de receitas válido (tabela receitas não encontrada)'}
+
+        # Se modo total, limpar dados do usuário
+        if modo == 'total':
+            Receita.query.filter_by(user_id=user_id).delete()
+            db.session.commit()
+
+        # Importar receitas
+        sqlite_cursor.execute("""
+            SELECT descricao, meio_recebimento, categoria_receita, valor,
+                   num_parcelas, data_registro, data_recebimento
+            FROM receitas
+            ORDER BY data_registro
+        """)
+
+        receitas_importadas = 0
+        categorias_criadas = 0
+        meios_criados = 0
+        erros = 0
+
+        for row in sqlite_cursor.fetchall():
+            try:
+                descricao, meio_recebimento_nome, categoria_nome, valor, num_parcelas, data_registro, data_recebimento = row
+
+                # Obter ou criar categoria
+                categoria = CategoriaReceita.query.filter_by(nome=categoria_nome).first()
+                if not categoria:
+                    categoria = CategoriaReceita(nome=categoria_nome, ativo=True)
+                    db.session.add(categoria)
+                    db.session.flush()
+                    categorias_criadas += 1
+
+                # Obter ou criar meio de recebimento
+                meio_recebimento = MeioRecebimento.query.filter_by(nome=meio_recebimento_nome).first()
+                if not meio_recebimento:
+                    meio_recebimento = MeioRecebimento(nome=meio_recebimento_nome, tipo='outros', ativo=True)
+                    db.session.add(meio_recebimento)
+                    db.session.flush()
+                    meios_criados += 1
+
+                # Criar receita
+                receita = Receita(
+                    descricao=descricao,
+                    valor=float(valor),
+                    num_parcelas=int(num_parcelas) if num_parcelas else 1,
+                    data_registro=datetime.strptime(data_registro, '%Y-%m-%d').date() if data_registro else datetime.now().date(),
+                    data_recebimento=datetime.strptime(data_recebimento, '%Y-%m-%d').date() if data_recebimento else None,
+                    user_id=user_id,
+                    categoria_id=categoria.id,
+                    meio_recebimento_id=meio_recebimento.id
+                )
+                db.session.add(receita)
+                receitas_importadas += 1
+
+            except Exception as e:
+                erros += 1
+                continue
+
+        # Commit final
+        db.session.commit()
+        sqlite_conn.close()
+
+        return {
+            'sucesso': True,
+            'receitas': receitas_importadas,
+            'categorias': categorias_criadas,
+            'meios_recebimento': meios_criados,
+            'erros': erros
+        }
+
+    except Exception as e:
+        db.session.rollback()
+        return {
+            'sucesso': False,
+            'erro': str(e)
+        }
 
 def importar_sqlite_desktop(sqlite_path, user_id, modo='parcial'):
     """
@@ -162,11 +259,15 @@ def importar_dados_antigos():
 
         if tipo_importacao == 'upload':
             # NOVO: Upload de arquivo SQLite do desktop
-            if 'arquivo_sqlite' not in request.files:
+            tipo_banco = request.form.get('tipo_banco', 'despesas')  # 'despesas' ou 'receitas'
+
+            campo_arquivo = 'arquivo_sqlite_despesas' if tipo_banco == 'despesas' else 'arquivo_sqlite_receitas'
+
+            if campo_arquivo not in request.files:
                 flash('Nenhum arquivo foi enviado!', 'warning')
                 return redirect(url_for('config.importar_dados_antigos'))
 
-            file = request.files['arquivo_sqlite']
+            file = request.files[campo_arquivo]
 
             if file.filename == '':
                 flash('Nenhum arquivo selecionado!', 'warning')
@@ -185,23 +286,39 @@ def importar_dados_antigos():
 
                 # Importar do arquivo SQLite
                 modo = request.form.get('modo_importacao', 'parcial')
-                resultado = importar_sqlite_desktop(temp_path, current_user.id, modo)
+
+                if tipo_banco == 'despesas':
+                    resultado = importar_sqlite_desktop(temp_path, current_user.id, modo)
+
+                    if resultado['sucesso']:
+                        flash(f"""✓ Importação de DESPESAS concluída!
+                            Despesas: {resultado.get('despesas', 0)}
+                            Orçamentos: {resultado.get('orcamentos', 0)}
+                            Categorias criadas: {resultado.get('categorias', 0)}
+                            Meios de Pagamento criados: {resultado.get('meios_pagamento', 0)}
+                            {f"Erros: {resultado.get('erros', 0)}" if resultado.get('erros', 0) > 0 else ""}
+                        """, 'success')
+                    else:
+                        flash(f"✗ Erro na importação: {resultado.get('erro', 'Erro desconhecido')}", 'danger')
+
+                else:  # receitas
+                    resultado = importar_sqlite_receitas(temp_path, current_user.id, modo)
+
+                    if resultado['sucesso']:
+                        flash(f"""✓ Importação de RECEITAS concluída!
+                            Receitas: {resultado.get('receitas', 0)}
+                            Categorias criadas: {resultado.get('categorias', 0)}
+                            Meios de Recebimento criados: {resultado.get('meios_recebimento', 0)}
+                            {f"Erros: {resultado.get('erros', 0)}" if resultado.get('erros', 0) > 0 else ""}
+                        """, 'success')
+                    else:
+                        flash(f"✗ Erro na importação: {resultado.get('erro', 'Erro desconhecido')}", 'danger')
 
                 # Remover arquivo temporário
                 os.remove(temp_path)
 
-                if resultado['sucesso']:
-                    flash(f"""✓ Importação concluída com sucesso!
-                        Despesas: {resultado.get('despesas', 0)}
-                        Orçamentos: {resultado.get('orcamentos', 0)}
-                        Categorias: {resultado.get('categorias', 0)}
-                        Meios de Pagamento: {resultado.get('meios_pagamento', 0)}
-                    """, 'success')
-                else:
-                    flash(f"✗ Erro na importação: {resultado.get('erro', 'Erro desconhecido')}", 'danger')
-
             except Exception as e:
-                if os.path.exists(temp_path):
+                if 'temp_path' in locals() and os.path.exists(temp_path):
                     os.remove(temp_path)
                 flash(f'Erro ao processar arquivo: {str(e)}', 'danger')
 
@@ -499,7 +616,57 @@ def usuarios():
     if request.method == 'POST':
         action = request.form.get('action')
         
-        if action == 'ativar_desativar':
+        if action == 'criar':
+            username = request.form.get('username')
+            email = request.form.get('email')
+            password = request.form.get('password')
+            nivel = request.form.get('nivel')
+            
+            if User.query.filter_by(username=username).first():
+                flash('Nome de usuário já existe!', 'warning')
+            elif User.query.filter_by(email=email).first():
+                flash('E-mail já cadastrado!', 'warning')
+            else:
+                novo_usuario = User(
+                    username=username,
+                    email=email,
+                    nivel_acesso=nivel,
+                    ativo=True
+                )
+                novo_usuario.set_password(password)
+                db.session.add(novo_usuario)
+                db.session.commit()
+                flash('Usuário criado com sucesso!', 'success')
+
+        elif action == 'editar':
+            id = int(request.form.get('id'))
+            username = request.form.get('username')
+            email = request.form.get('email')
+            
+            user = User.query.get(id)
+            if user:
+                # Verificar duplicidade apenas se mudou o valor
+                if user.username != username and User.query.filter_by(username=username).first():
+                    flash('Nome de usuário já existe!', 'warning')
+                elif user.email != email and User.query.filter_by(email=email).first():
+                    flash('E-mail já cadastrado!', 'warning')
+                else:
+                    user.username = username
+                    user.email = email
+                    db.session.commit()
+                    flash('Dados do usuário atualizados!', 'success')
+
+        elif action == 'alterar_senha':
+            id = int(request.form.get('id'))
+            password = request.form.get('password')
+            
+            user = User.query.get(id)
+            if user:
+                user.set_password(password)
+                db.session.commit()
+                flash('Senha alterada com sucesso!', 'success')
+
+        elif action == 'ativar_desativar':
             id = int(request.form.get('id'))
             user = User.query.get(id)
             if user and user.id != current_user.id:  # Não pode desativar a si mesmo
@@ -770,10 +937,168 @@ def excluir_item_supabase():
         data = request.get_json()
         id = data.get('id')
         config_data = data.get('config', {})
-        
+
         client = SupabaseClient(config_data.get('url'), config_data.get('key'))
         result = client.delete_record(config_data.get('table'), id)
-        
+
         return result
     except Exception as e:
         return {'success': False, 'message': str(e)}
+
+@config_bp.route('/exportar-sqlite-despesas')
+@login_required
+@admin_required
+def exportar_sqlite_despesas():
+    """
+    Exporta despesas do PostgreSQL para arquivo SQLite (financas.db)
+    para popular o sistema desktop
+    """
+    import tempfile
+    from flask import send_file
+
+    try:
+        # Criar banco SQLite temporário
+        temp_dir = tempfile.gettempdir()
+        sqlite_path = os.path.join(temp_dir, f'financas_export_{datetime.now().strftime("%Y%m%d%H%M%S")}.db')
+
+        # Conectar ao SQLite
+        sqlite_conn = sqlite3.connect(sqlite_path)
+        sqlite_cursor = sqlite_conn.cursor()
+
+        # Criar estrutura do banco desktop
+        sqlite_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS despesas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                descricao TEXT NOT NULL,
+                meio_pagamento TEXT NOT NULL,
+                conta_despesa TEXT NOT NULL,
+                valor REAL NOT NULL,
+                num_parcelas INTEGER DEFAULT 1,
+                data_registro TEXT,
+                data_pagamento TEXT
+            )
+        """)
+
+        sqlite_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS orcamento (
+                conta_despesa TEXT PRIMARY KEY,
+                valor_orcado REAL NOT NULL
+            )
+        """)
+
+        # Buscar despesas do usuário logado
+        despesas = Despesa.query.filter_by(user_id=current_user.id).all()
+
+        for despesa in despesas:
+            sqlite_cursor.execute("""
+                INSERT INTO despesas (descricao, meio_pagamento, conta_despesa, valor,
+                                    num_parcelas, data_registro, data_pagamento)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                despesa.descricao,
+                despesa.meio_pagamento.nome if despesa.meio_pagamento else 'Outros',
+                despesa.categoria.nome if despesa.categoria else 'Outros',
+                despesa.valor,
+                despesa.num_parcelas or 1,
+                despesa.data_registro.strftime('%Y-%m-%d') if despesa.data_registro else None,
+                despesa.data_pagamento.strftime('%Y-%m-%d') if despesa.data_pagamento else None
+            ))
+
+        # Buscar orçamentos do usuário logado
+        orcamentos = Orcamento.query.filter_by(user_id=current_user.id).all()
+
+        for orcamento in orcamentos:
+            try:
+                sqlite_cursor.execute("""
+                    INSERT OR REPLACE INTO orcamento (conta_despesa, valor_orcado)
+                    VALUES (?, ?)
+                """, (
+                    orcamento.categoria.nome if orcamento.categoria else 'Outros',
+                    orcamento.valor_orcado
+                ))
+            except:
+                continue
+
+        # Commit e fechar
+        sqlite_conn.commit()
+        sqlite_conn.close()
+
+        # Enviar arquivo para download
+        return send_file(
+            sqlite_path,
+            as_attachment=True,
+            download_name='financas.db',
+            mimetype='application/x-sqlite3'
+        )
+
+    except Exception as e:
+        flash(f'Erro ao exportar despesas: {str(e)}', 'danger')
+        return redirect(url_for('config.importar_dados_antigos'))
+
+@config_bp.route('/exportar-sqlite-receitas')
+@login_required
+@admin_required
+def exportar_sqlite_receitas():
+    """
+    Exporta receitas do PostgreSQL para arquivo SQLite (financas_receita.db)
+    para popular o sistema desktop
+    """
+    import tempfile
+    from flask import send_file
+
+    try:
+        # Criar banco SQLite temporário
+        temp_dir = tempfile.gettempdir()
+        sqlite_path = os.path.join(temp_dir, f'financas_receita_export_{datetime.now().strftime("%Y%m%d%H%M%S")}.db')
+
+        # Conectar ao SQLite
+        sqlite_conn = sqlite3.connect(sqlite_path)
+        sqlite_cursor = sqlite_conn.cursor()
+
+        # Criar estrutura do banco desktop de receitas
+        sqlite_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS receitas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                descricao TEXT NOT NULL,
+                meio_recebimento TEXT NOT NULL,
+                categoria_receita TEXT NOT NULL,
+                valor REAL NOT NULL,
+                num_parcelas INTEGER DEFAULT 1,
+                data_registro TEXT,
+                data_recebimento TEXT
+            )
+        """)
+
+        # Buscar receitas do usuário logado
+        receitas = Receita.query.filter_by(user_id=current_user.id).all()
+
+        for receita in receitas:
+            sqlite_cursor.execute("""
+                INSERT INTO receitas (descricao, meio_recebimento, categoria_receita, valor,
+                                    num_parcelas, data_registro, data_recebimento)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                receita.descricao,
+                receita.meio_recebimento.nome if receita.meio_recebimento else 'Outros',
+                receita.categoria.nome if receita.categoria else 'Outros',
+                receita.valor,
+                receita.num_parcelas or 1,
+                receita.data_registro.strftime('%Y-%m-%d') if receita.data_registro else None,
+                receita.data_recebimento.strftime('%Y-%m-%d') if receita.data_recebimento else None
+            ))
+
+        # Commit e fechar
+        sqlite_conn.commit()
+        sqlite_conn.close()
+
+        # Enviar arquivo para download
+        return send_file(
+            sqlite_path,
+            as_attachment=True,
+            download_name='financas_receita.db',
+            mimetype='application/x-sqlite3'
+        )
+
+    except Exception as e:
+        flash(f'Erro ao exportar receitas: {str(e)}', 'danger')
+        return redirect(url_for('config.importar_dados_antigos'))

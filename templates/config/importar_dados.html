@@ -10,29 +10,30 @@
                 <h4><i class="bi bi-download"></i> Importar Dados do Sistema Desktop</h4>
             </div>
             <div class="card-body">
-                <!-- NOVO: Upload de Arquivo SQLite -->
-                <div class="card mb-4 border-primary">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="bi bi-cloud-upload"></i> 📤 Fazer Upload do Banco Desktop</h5>
+                <!-- NOVO: Upload de Arquivo SQLite - DESPESAS -->
+                <div class="card mb-4 border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="bi bi-cloud-upload"></i> 📤 Fazer Upload do Banco de Despesas</h5>
                     </div>
                     <div class="card-body">
                         <div class="alert alert-success">
-                            <strong>✅ Recomendado:</strong> Envie o arquivo <code>financas.db</code> do sistema desktop para sincronizar os dados.
+                            <strong>✅ Recomendado:</strong> Envie o arquivo <code>financas.db</code> do sistema desktop para sincronizar as despesas.
                             <br><strong>Vantagem:</strong> Não precisa abrir porta do PostgreSQL!
                         </div>
 
-                        <form method="POST" enctype="multipart/form-data" id="formUpload">
+                        <form method="POST" enctype="multipart/form-data" id="formUploadDespesas">
                             <input type="hidden" name="tipo_importacao" value="upload">
+                            <input type="hidden" name="tipo_banco" value="despesas">
 
                             <div class="mb-3">
-                                <label for="arquivo_sqlite" class="form-label">
-                                    <strong>Selecione o arquivo do banco de dados</strong>
+                                <label for="arquivo_sqlite_despesas" class="form-label">
+                                    <strong>Selecione o arquivo do banco de despesas</strong>
                                 </label>
                                 <input
                                     type="file"
                                     class="form-control"
-                                    id="arquivo_sqlite"
-                                    name="arquivo_sqlite"
+                                    id="arquivo_sqlite_despesas"
+                                    name="arquivo_sqlite_despesas"
                                     accept=".db,.sqlite,.sqlite3"
                                     required
                                 >
@@ -49,11 +50,11 @@
                                         class="form-check-input"
                                         type="radio"
                                         name="modo_importacao"
-                                        id="modo_parcial"
+                                        id="modo_parcial_despesas"
                                         value="parcial"
                                         checked
                                     >
-                                    <label class="form-check-label" for="modo_parcial">
+                                    <label class="form-check-label" for="modo_parcial_despesas">
                                         <strong>Parcial (Adicionar)</strong>
                                         <br>
                                         <small class="text-muted">Adiciona os dados do arquivo aos dados existentes (recomendado)</small>
@@ -65,27 +66,154 @@
                                         class="form-check-input"
                                         type="radio"
                                         name="modo_importacao"
-                                        id="modo_total"
+                                        id="modo_total_despesas"
                                         value="total"
                                     >
-                                    <label class="form-check-label" for="modo_total">
+                                    <label class="form-check-label" for="modo_total_despesas">
                                         <strong>Total (Substituir)</strong>
                                         <br>
-                                        <small class="text-danger">⚠️ APAGA todos os seus dados no servidor e substitui pelos dados do arquivo</small>
+                                        <small class="text-danger">⚠️ APAGA todas as suas DESPESAS no servidor e substitui pelos dados do arquivo</small>
                                     </label>
                                 </div>
                             </div>
 
-                            <div class="alert alert-warning d-none" id="avisoTotal">
-                                <strong>⚠️ ATENÇÃO:</strong> O modo TOTAL irá apagar TODOS os seus dados antes de importar. Use apenas se tiver certeza!
+                            <div class="alert alert-warning d-none" id="avisoTotalDespesas">
+                                <strong>⚠️ ATENÇÃO:</strong> O modo TOTAL irá apagar TODAS as suas DESPESAS antes de importar. Use apenas se tiver certeza!
                             </div>
 
                             <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="bi bi-cloud-upload"></i> 📤 Fazer Upload e Importar
+                                <button type="submit" class="btn btn-danger btn-lg">
+                                    <i class="bi bi-cloud-upload"></i> 📤 Fazer Upload e Importar Despesas
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <!-- NOVO: Upload de Arquivo SQLite - RECEITAS -->
+                <div class="card mb-4 border-success">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-cloud-upload"></i> 📤 Fazer Upload do Banco de Receitas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-success">
+                            <strong>✅ Recomendado:</strong> Envie o arquivo <code>financas_receita.db</code> do sistema desktop para sincronizar as receitas.
+                            <br><strong>Vantagem:</strong> Não precisa abrir porta do PostgreSQL!
+                        </div>
+
+                        <form method="POST" enctype="multipart/form-data" id="formUploadReceitas">
+                            <input type="hidden" name="tipo_importacao" value="upload">
+                            <input type="hidden" name="tipo_banco" value="receitas">
+
+                            <div class="mb-3">
+                                <label for="arquivo_sqlite_receitas" class="form-label">
+                                    <strong>Selecione o arquivo do banco de receitas</strong>
+                                </label>
+                                <input
+                                    type="file"
+                                    class="form-control"
+                                    id="arquivo_sqlite_receitas"
+                                    name="arquivo_sqlite_receitas"
+                                    accept=".db,.sqlite,.sqlite3"
+                                    required
+                                >
+                                <small class="text-muted">
+                                    Arquivo: <code>financas_receita.db</code> (localizado na pasta do sistema desktop)
+                                </small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label"><strong>Modo de Importação</strong></label>
+
+                                <div class="form-check">
+                                    <input
+                                        class="form-check-input"
+                                        type="radio"
+                                        name="modo_importacao"
+                                        id="modo_parcial_receitas"
+                                        value="parcial"
+                                        checked
+                                    >
+                                    <label class="form-check-label" for="modo_parcial_receitas">
+                                        <strong>Parcial (Adicionar)</strong>
+                                        <br>
+                                        <small class="text-muted">Adiciona os dados do arquivo aos dados existentes (recomendado)</small>
+                                    </label>
+                                </div>
+
+                                <div class="form-check mt-2">
+                                    <input
+                                        class="form-check-input"
+                                        type="radio"
+                                        name="modo_importacao"
+                                        id="modo_total_receitas"
+                                        value="total"
+                                    >
+                                    <label class="form-check-label" for="modo_total_receitas">
+                                        <strong>Total (Substituir)</strong>
+                                        <br>
+                                        <small class="text-danger">⚠️ APAGA todas as suas RECEITAS no servidor e substitui pelos dados do arquivo</small>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-warning d-none" id="avisoTotalReceitas">
+                                <strong>⚠️ ATENÇÃO:</strong> O modo TOTAL irá apagar TODAS as suas RECEITAS antes de importar. Use apenas se tiver certeza!
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="bi bi-cloud-upload"></i> 📤 Fazer Upload e Importar Receitas
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- NOVO: Download dos Bancos para Desktop -->
+                <div class="card mb-4 border-info">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-cloud-download"></i> 📥 Baixar Bancos para Desktop</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <strong>ℹ️ Download:</strong> Baixe seus dados do servidor para popular o sistema desktop.
+                            <br><strong>Uso:</strong> Útil para sincronização inversa (Servidor → Desktop)
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="card border-danger">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-danger">
+                                            <i class="bi bi-wallet2"></i> Despesas
+                                        </h5>
+                                        <p class="card-text">
+                                            <small class="text-muted">Baixar todas as suas despesas em formato SQLite</small>
+                                        </p>
+                                        <a href="{{ url_for('config.exportar_sqlite_despesas') }}" class="btn btn-danger">
+                                            <i class="bi bi-download"></i> Baixar financas.db
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <div class="card border-success">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-success">
+                                            <i class="bi bi-cash-coin"></i> Receitas
+                                        </h5>
+                                        <p class="card-text">
+                                            <small class="text-muted">Baixar todas as suas receitas em formato SQLite</small>
+                                        </p>
+                                        <a href="{{ url_for('config.exportar_sqlite_receitas') }}" class="btn btn-success">
+                                            <i class="bi bi-download"></i> Baixar financas_receita.db
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -339,29 +467,59 @@
             `Deseja continuar?`);
     }
 
-    // Aviso para modo total no upload
-    const modoTotal = document.getElementById('modo_total');
-    const modoParcial = document.getElementById('modo_parcial');
-    const avisoTotal = document.getElementById('avisoTotal');
-    const formUpload = document.getElementById('formUpload');
+    // Aviso para modo total no upload - DESPESAS
+    const modoTotalDespesas = document.getElementById('modo_total_despesas');
+    const modoParcialDespesas = document.getElementById('modo_parcial_despesas');
+    const avisoTotalDespesas = document.getElementById('avisoTotalDespesas');
+    const formUploadDespesas = document.getElementById('formUploadDespesas');
 
-    if (modoTotal && avisoTotal) {
-        modoTotal.addEventListener('change', function() {
+    if (modoTotalDespesas && avisoTotalDespesas) {
+        modoTotalDespesas.addEventListener('change', function() {
             if (this.checked) {
-                avisoTotal.classList.remove('d-none');
+                avisoTotalDespesas.classList.remove('d-none');
             }
         });
 
-        modoParcial.addEventListener('change', function() {
+        modoParcialDespesas.addEventListener('change', function() {
             if (this.checked) {
-                avisoTotal.classList.add('d-none');
+                avisoTotalDespesas.classList.add('d-none');
             }
         });
 
         // Confirmar antes de enviar no modo total
-        formUpload.addEventListener('submit', function(e) {
-            if (modoTotal.checked) {
-                if (!confirm('⚠️ ATENÇÃO: Isso irá APAGAR todos os seus dados atuais no servidor!\n\nTem certeza que deseja continuar?')) {
+        formUploadDespesas.addEventListener('submit', function(e) {
+            if (modoTotalDespesas.checked) {
+                if (!confirm('⚠️ ATENÇÃO: Isso irá APAGAR todas as suas DESPESAS atuais no servidor!\n\nTem certeza que deseja continuar?')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
+    }
+
+    // Aviso para modo total no upload - RECEITAS
+    const modoTotalReceitas = document.getElementById('modo_total_receitas');
+    const modoParcialReceitas = document.getElementById('modo_parcial_receitas');
+    const avisoTotalReceitas = document.getElementById('avisoTotalReceitas');
+    const formUploadReceitas = document.getElementById('formUploadReceitas');
+
+    if (modoTotalReceitas && avisoTotalReceitas) {
+        modoTotalReceitas.addEventListener('change', function() {
+            if (this.checked) {
+                avisoTotalReceitas.classList.remove('d-none');
+            }
+        });
+
+        modoParcialReceitas.addEventListener('change', function() {
+            if (this.checked) {
+                avisoTotalReceitas.classList.add('d-none');
+            }
+        });
+
+        // Confirmar antes de enviar no modo total
+        formUploadReceitas.addEventListener('submit', function(e) {
+            if (modoTotalReceitas.checked) {
+                if (!confirm('⚠️ ATENÇÃO: Isso irá APAGAR todas as suas RECEITAS atuais no servidor!\n\nTem certeza que deseja continuar?')) {
                     e.preventDefault();
                     return false;
                 }

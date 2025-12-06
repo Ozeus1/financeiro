@@ -83,7 +83,7 @@ sudo apt install -y build-essential libpq-dev python3-dev
 ### 3.1 - Acessar PostgreSQL
 
 ```bash
-sudo -u postgres psql
+
 ```
 
 ### 3.2 - Criar banco e usuário

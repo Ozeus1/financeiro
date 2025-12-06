@@ -99,8 +99,22 @@ def register():
     
     return render_template('auth/register.html')
 
-@auth_bp.route('/profile')
+@auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
-    """Perfil do usuário"""
+    """Perfil do usuário e alteração de senha"""
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not current_user.check_password(current_password):
+            flash('Senha atual incorreta.', 'danger')
+        elif new_password != confirm_password:
+            flash('As novas senhas não conferem.', 'warning')
+        else:
+            current_user.set_password(new_password)
+            db.session.commit()
+            flash('Senha alterada com sucesso!', 'success')
+            
     return render_template('auth/profile.html')

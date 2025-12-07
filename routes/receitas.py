@@ -179,11 +179,8 @@ def exportar():
     import pandas as pd
     from io import BytesIO
     
-    # Query base
-    if current_user.is_gerente():
-        receitas = Receita.query.all()
-    else:
-        receitas = Receita.query.filter_by(user_id=current_user.id).all()
+    # Query base - todos os usuários veem apenas seus dados
+    receitas = Receita.query.filter_by(user_id=current_user.id).all()
     
     # Preparar dados
     dados = []

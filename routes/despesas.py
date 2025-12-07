@@ -180,11 +180,8 @@ def exportar():
     from io import BytesIO
     from flask import send_file
     
-    # Query base
-    if current_user.is_gerente():
-        despesas = Despesa.query.all()
-    else:
-        despesas = Despesa.query.filter_by(user_id=current_user.id).all()
+    # Query base - todos os usuários veem apenas seus dados
+    despesas = Despesa.query.filter_by(user_id=current_user.id).all()
     
     # Preparar dados
     dados = []

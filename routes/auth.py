@@ -90,11 +90,15 @@ def register():
             ativo=True
         )
         new_user.set_password(password)
-        
+
         db.session.add(new_user)
         db.session.commit()
-        
-        flash(f'Usuário {username} criado com sucesso!', 'success')
+
+        # Criar dados padrão para o novo usuário
+        from models import criar_dados_padrao_usuario
+        criar_dados_padrao_usuario(new_user)
+
+        flash(f'Usuário {username} criado com sucesso com dados padrão!', 'success')
         return redirect(url_for('config.usuarios'))
     
     return render_template('auth/register.html')

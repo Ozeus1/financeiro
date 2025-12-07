@@ -703,14 +703,15 @@ def despesas_entre_datas():
     chart_data = []
     
     if data_inicio and data_fim:
-        # Query
+        # Query - filtrar por usuário
         query = db.session.query(
             CategoriaDespesa.id.label('categoria_id'),
             CategoriaDespesa.nome.label('categoria'),
             func.sum(Despesa.valor).label('total'),
             func.count(Despesa.id).label('quantidade')
         ).join(CategoriaDespesa).filter(
-            Despesa.data_pagamento.between(data_inicio, data_fim)
+            Despesa.data_pagamento.between(data_inicio, data_fim),
+            Despesa.user_id == current_user.id
         )
         
         # Group and order
@@ -749,13 +750,14 @@ def despesas_mensais_periodo():
     chart_data = []
     
     if data_inicio and data_fim:
-        # Query
+        # Query - filtrar por usuário
         query = db.session.query(
             func.to_char(Despesa.data_pagamento, 'YYYY-MM').label('mes_ano'),
             func.sum(Despesa.valor).label('total'),
             func.count(Despesa.id).label('quantidade')
         ).filter(
-            Despesa.data_pagamento.between(data_inicio, data_fim)
+            Despesa.data_pagamento.between(data_inicio, data_fim),
+            Despesa.user_id == current_user.id
         )
         
         # Group and order

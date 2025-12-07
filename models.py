@@ -45,66 +45,86 @@ class User(UserMixin, db.Model):
 
 
 class CategoriaDespesa(db.Model):
-    """Categorias de despesas (configurável)"""
+    """Categorias de despesas (configurável por usuário)"""
     __tablename__ = 'categorias_despesa'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), unique=True, nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
-    
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
     # Relacionamentos
+    usuario = db.relationship('User', backref='categorias_despesa')
     despesas = db.relationship('Despesa', backref='categoria', lazy=True)
     orcamentos = db.relationship('Orcamento', backref='categoria', lazy=True)
-    
+
+    # Constraint único por usuário
+    __table_args__ = (db.UniqueConstraint('nome', 'user_id', name='_categoria_despesa_usuario_uc'),)
+
     def __repr__(self):
-        return f'<CategoriaDespesa {self.nome}>'
+        return f'<CategoriaDespesa {self.nome} (User: {self.user_id})>'
 
 
 class CategoriaReceita(db.Model):
-    """Categorias de receitas (configurável)"""
+    """Categorias de receitas (configurável por usuário)"""
     __tablename__ = 'categorias_receita'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), unique=True, nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
-    
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
     # Relacionamentos
+    usuario = db.relationship('User', backref='categorias_receita')
     receitas = db.relationship('Receita', backref='categoria', lazy=True)
-    
+
+    # Constraint único por usuário
+    __table_args__ = (db.UniqueConstraint('nome', 'user_id', name='_categoria_receita_usuario_uc'),)
+
     def __repr__(self):
-        return f'<CategoriaReceita {self.nome}>'
+        return f'<CategoriaReceita {self.nome} (User: {self.user_id})>'
 
 
 class MeioPagamento(db.Model):
-    """Meios de pagamento (configurável)"""
+    """Meios de pagamento (configurável por usuário)"""
     __tablename__ = 'meios_pagamento'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), unique=True, nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
     tipo = db.Column(db.String(50))  # cartao, transferencia, dinheiro, pix, boleto
     ativo = db.Column(db.Boolean, default=True, nullable=False)
-    
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
     # Relacionamentos
+    usuario = db.relationship('User', backref='meios_pagamento')
     despesas = db.relationship('Despesa', backref='meio_pagamento', lazy=True)
     fechamentos_cartao = db.relationship('FechamentoCartao', backref='meio_pagamento', lazy=True)
-    
+
+    # Constraint único por usuário
+    __table_args__ = (db.UniqueConstraint('nome', 'user_id', name='_meio_pagamento_usuario_uc'),)
+
     def __repr__(self):
-        return f'<MeioPagamento {self.nome}>'
+        return f'<MeioPagamento {self.nome} (User: {self.user_id})>'
 
 
 class MeioRecebimento(db.Model):
-    """Meios de recebimento (configurável)"""
+    """Meios de recebimento (configurável por usuário)"""
     __tablename__ = 'meios_recebimento'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), unique=True, nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
-    
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
     # Relacionamentos
+    usuario = db.relationship('User', backref='meios_recebimento')
     receitas = db.relationship('Receita', backref='meio_recebimento', lazy=True)
-    
+
+    # Constraint único por usuário
+    __table_args__ = (db.UniqueConstraint('nome', 'user_id', name='_meio_recebimento_usuario_uc'),)
+
     def __repr__(self):
-        return f'<MeioRecebimento {self.nome}>'
+        return f'<MeioRecebimento {self.nome} (User: {self.user_id})>'
 
 
 class Despesa(db.Model):
@@ -233,13 +253,62 @@ def init_db(app):
     """Inicializa a extensão do banco de dados"""
     db.init_app(app)
 
+def criar_dados_padrao_usuario(user):
+    """Cria categorias e meios de pagamento padrão para um novo usuário"""
+    # Categorias de despesa padrão
+    categorias_despesa_padrao = [
+        'Tel. e Internet', 'Gás', 'Mercado', 'Alimentação', 'Moradia',
+        'Transporte', 'Educação', 'Saúde', 'Lazer', 'Vestuário',
+        'Funcionários', 'Outros'
+    ]
+    for nome in categorias_despesa_padrao:
+        if not CategoriaDespesa.query.filter_by(nome=nome, user_id=user.id).first():
+            categoria = CategoriaDespesa(nome=nome, ativo=True, user_id=user.id)
+            db.session.add(categoria)
+
+    # Categorias de receita padrão
+    categorias_receita_padrao = [
+        'Salário', 'Vendas', 'Rendimentos', 'Freelance', 'Outras Receitas'
+    ]
+    for nome in categorias_receita_padrao:
+        if not CategoriaReceita.query.filter_by(nome=nome, user_id=user.id).first():
+            categoria = CategoriaReceita(nome=nome, ativo=True, user_id=user.id)
+            db.session.add(categoria)
+
+    # Meios de pagamento padrão
+    meios_pagamento_padrao = [
+        ('Dinheiro', 'dinheiro'),
+        ('Cartão de Crédito', 'cartao'),
+        ('Transferência', 'transferencia'),
+        ('PIX', 'pix'),
+        ('Boleto', 'boleto'),
+        ('Débito', 'debito')
+    ]
+    for nome, tipo in meios_pagamento_padrao:
+        if not MeioPagamento.query.filter_by(nome=nome, user_id=user.id).first():
+            meio = MeioPagamento(nome=nome, tipo=tipo, ativo=True, user_id=user.id)
+            db.session.add(meio)
+
+    # Meios de recebimento padrão
+    meios_recebimento_padrao = [
+        'Transferência Bancária', 'PIX', 'Dinheiro', 'Cheque'
+    ]
+    for nome in meios_recebimento_padrao:
+        if not MeioRecebimento.query.filter_by(nome=nome, user_id=user.id).first():
+            meio = MeioRecebimento(nome=nome, ativo=True, user_id=user.id)
+            db.session.add(meio)
+
+    db.session.commit()
+
+
 def populate_db(app):
     """Cria tabelas e popula com dados padrão"""
     with app.app_context():
         db.create_all()
-        
+
         # Criar usuário admin padrão se não existir
-        if not User.query.filter_by(username='admin').first():
+        admin = User.query.filter_by(username='admin').first()
+        if not admin:
             admin = User(
                 username='admin',
                 email='admin@financeiro.com',
@@ -248,51 +317,10 @@ def populate_db(app):
             )
             admin.set_password('admin123')
             db.session.add(admin)
-        
-        # Criar categorias de despesa padrão se não existirem
-        categorias_despesa_padrao = [
-            'Tel. e Internet', 'Gás', 'Mercado', 'Alimentação', 'Moradia',
-            'Transporte', 'Educação', 'Saúde', 'Lazer', 'Vestuário',
-            'Funcionários', 'Outros'
-        ]
-        for nome in categorias_despesa_padrao:
-            if not CategoriaDespesa.query.filter_by(nome=nome).first():
-                categoria = CategoriaDespesa(nome=nome, ativo=True)
-                db.session.add(categoria)
-        
-        # Criar categorias de receita padrão se não existirem
-        categorias_receita_padrao = [
-            'Salário', 'Vendas', 'Rendimentos', 'Freelance', 'Outras Receitas'
-        ]
-        for nome in categorias_receita_padrao:
-            if not CategoriaReceita.query.filter_by(nome=nome).first():
-                categoria = CategoriaReceita(nome=nome, ativo=True)
-                db.session.add(categoria)
-        
-        # Criar meios de pagamento padrão se não existirem
-        meios_pagamento_padrao = [
-            ('Dinheiro', 'dinheiro'),
-            ('Cartão Unlimited', 'cartao'),
-            ('Cartão C6', 'cartao'),
-            ('Cartão Nubank', 'cartao'),
-            ('Cartão BB', 'cartao'),
-            ('Transferência', 'transferencia'),
-            ('PIX', 'pix'),
-            ('Boleto', 'boleto')
-        ]
-        for nome, tipo in meios_pagamento_padrao:
-            if not MeioPagamento.query.filter_by(nome=nome).first():
-                meio = MeioPagamento(nome=nome, tipo=tipo, ativo=True)
-                db.session.add(meio)
-        
-        # Criar meios de recebimento padrão se não existirem
-        meios_recebimento_padrao = [
-            'Transferência Bancária', 'PIX', 'Dinheiro', 'Cheque'
-        ]
-        for nome in meios_recebimento_padrao:
-            if not MeioRecebimento.query.filter_by(nome=nome).first():
-                meio = MeioRecebimento(nome=nome, ativo=True)
-                db.session.add(meio)
-        
+            db.session.commit()
+
+            # Criar dados padrão para o admin
+            criar_dados_padrao_usuario(admin)
+
         db.session.commit()
         print("Banco de dados populado com sucesso!")

@@ -60,6 +60,7 @@ class GerenciadorSyncBancos:
         self.flask_db = os.path.join(self.base_dir, 'instance', 'financas.db')
         self.desktop_db = os.path.join(self.base_dir, 'financas.db')
         self.desktop_receitas_db = os.path.join(self.base_dir, 'financas_receitas.db')
+        self.desktop_fluxo_db = os.path.join(self.base_dir, 'fluxo_caixa.db')
         
         # ID do admin (padrão)
         self.admin_id = 1
@@ -126,6 +127,13 @@ class GerenciadorSyncBancos:
         ttk.Label(receitas_frame, text="Desktop - Receitas:", font=('Arial', 9, 'bold')).pack(side=tk.LEFT)
         self.lbl_receitas_status = ttk.Label(receitas_frame, text="Verificando...")
         self.lbl_receitas_status.pack(side=tk.LEFT, padx=10)
+
+        # Desktop DB (Fluxo de Caixa)
+        fluxo_frame = ttk.Frame(frame)
+        fluxo_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(fluxo_frame, text="Desktop - Fluxo Caixa:", font=('Arial', 9, 'bold')).pack(side=tk.LEFT)
+        self.lbl_fluxo_status = ttk.Label(fluxo_frame, text="Verificando...")
+        self.lbl_fluxo_status.pack(side=tk.LEFT, padx=10)
     
     def criar_frame_operacoes(self, parent):
         """Cria frame com botões de operações"""
@@ -166,7 +174,7 @@ class GerenciadorSyncBancos:
 
         ttk.Button(
             frame,
-            text="📦 Backup Desktop DBs",
+            text="📦 Backup Desktop DBs (3 arquivos)",
             command=self.backup_desktop,
             width=btn_width
         ).grid(row=4, column=1, padx=5, pady=2, sticky=tk.EW)
@@ -221,7 +229,7 @@ class GerenciadorSyncBancos:
 
         ttk.Button(
             frame,
-            text="📂 Restaurar Desktop DBs",
+            text="📂 Restaurar Desktop DBs (3 arquivos)",
             command=self.restaurar_desktop,
             width=btn_width
         ).grid(row=11, column=1, padx=5, pady=2, sticky=tk.EW)
@@ -476,8 +484,51 @@ class GerenciadorSyncBancos:
             def update_receitas_missing():
                 self.lbl_receitas_status.config(text="✗ Não encontrado", foreground='red')
                 self.log("Desktop DB (Receitas) não encontrado", 'warning')
-            
+
             self.root.after(0, update_receitas_missing)
+
+        # Desktop DB (Fluxo de Caixa)
+        if os.path.exists(self.desktop_fluxo_db):
+            try:
+                conn = sqlite3.connect(self.desktop_fluxo_db)
+                cursor = conn.cursor()
+                # Tentar contar balanços mensais
+                try:
+                    cursor.execute("SELECT COUNT(*) FROM balanco_mensal")
+                    count = cursor.fetchone()[0]
+                    tipo = "balanços"
+                except:
+                    # Se não tiver balanco_mensal, tentar eventos
+                    try:
+                        cursor.execute("SELECT COUNT(*) FROM eventos_caixa_avulsos")
+                        count = cursor.fetchone()[0]
+                        tipo = "eventos"
+                    except:
+                        count = 0
+                        tipo = "registros"
+                conn.close()
+
+                def update_fluxo_success(c=count, t=tipo):
+                    self.lbl_fluxo_status.config(
+                        text=f"✓ OK ({c} {t})",
+                        foreground='darkgreen'
+                    )
+                    self.log(f"Desktop DB (Fluxo Caixa): {c} {t}", 'success')
+
+                self.root.after(0, update_fluxo_success)
+
+            except Exception as e:
+                def update_fluxo_error(msg=str(e)):
+                    self.lbl_fluxo_status.config(text=f"⚠️ Erro: {msg}", foreground='red')
+                    self.log(f"Erro ao verificar Desktop Fluxo Caixa DB: {msg}", 'error')
+
+                self.root.after(0, update_fluxo_error)
+        else:
+            def update_fluxo_missing():
+                self.lbl_fluxo_status.config(text="✗ Não encontrado", foreground='red')
+                self.log("Desktop DB (Fluxo de Caixa) não encontrado", 'warning')
+
+            self.root.after(0, update_fluxo_missing)
 
     def importar_flask_para_desktop(self):
         """Importa dados do Flask para Desktop (somente admin)"""
@@ -1030,29 +1081,61 @@ class GerenciadorSyncBancos:
             messagebox.showerror("Erro", f"Erro ao preparar backup:\n{e}")
 
     def backup_desktop(self):
-        """Backup dos bancos Desktop (SQLite)"""
+        """Backup dos bancos Desktop (SQLite) - Gera 3 arquivos prontos para upload"""
         try:
-            # Criar pasta de backups se não existir
-            backup_dir = os.path.join(self.base_dir, 'backups')
-            os.makedirs(backup_dir, exist_ok=True)
-            
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            
-            # Backup Despesas
+            # Escolher diretório de destino
+            backup_dir = filedialog.askdirectory(
+                title="Escolha onde salvar os arquivos de backup",
+                initialdir=self.base_dir
+            )
+
+            if not backup_dir:
+                return  # Usuário cancelou
+
+            self.log("Iniciando backup dos bancos Desktop...", 'info')
+            self.progress.start()
+
+            arquivos_criados = []
+
+            # Backup Despesas -> financas.db
             if os.path.exists(self.desktop_db):
-                dest = os.path.join(backup_dir, f'financas_backup_{timestamp}.db')
+                dest = os.path.join(backup_dir, 'financas.db')
                 shutil.copy2(self.desktop_db, dest)
-                self.log(f"Backup Despesas criado: {os.path.basename(dest)}", 'success')
-            
-            # Backup Receitas
+                arquivos_criados.append('✓ financas.db (Despesas)')
+                self.log(f"✓ Backup Despesas criado: financas.db", 'success')
+            else:
+                self.log("⚠ Banco de Despesas não encontrado", 'warning')
+
+            # Backup Receitas -> financas_receitas.db
             if os.path.exists(self.desktop_receitas_db):
-                dest = os.path.join(backup_dir, f'financas_receitas_backup_{timestamp}.db')
+                dest = os.path.join(backup_dir, 'financas_receitas.db')
                 shutil.copy2(self.desktop_receitas_db, dest)
-                self.log(f"Backup Receitas criado: {os.path.basename(dest)}", 'success')
-                
-            messagebox.showinfo("Sucesso", f"Backups criados na pasta:\n{backup_dir}")
-            
+                arquivos_criados.append('✓ financas_receitas.db (Receitas)')
+                self.log(f"✓ Backup Receitas criado: financas_receitas.db", 'success')
+            else:
+                self.log("⚠ Banco de Receitas não encontrado", 'warning')
+
+            # Backup Fluxo de Caixa -> fluxo_caixa.db
+            if os.path.exists(self.desktop_fluxo_db):
+                dest = os.path.join(backup_dir, 'fluxo_caixa.db')
+                shutil.copy2(self.desktop_fluxo_db, dest)
+                arquivos_criados.append('✓ fluxo_caixa.db (Fluxo de Caixa)')
+                self.log(f"✓ Backup Fluxo de Caixa criado: fluxo_caixa.db", 'success')
+            else:
+                self.log("⚠ Banco de Fluxo de Caixa não encontrado", 'warning')
+
+            self.progress.stop()
+
+            if arquivos_criados:
+                msg = f"✓ Backup concluído!\n\nArquivos criados em:\n{backup_dir}\n\n"
+                msg += "\n".join(arquivos_criados)
+                msg += "\n\n💡 Agora você pode fazer upload destes arquivos via web!"
+                messagebox.showinfo("Sucesso", msg)
+            else:
+                messagebox.showwarning("Aviso", "Nenhum banco de dados foi encontrado para backup!")
+
         except Exception as e:
+            self.progress.stop()
             self.log(f"Erro ao criar backup: {e}", 'error')
             messagebox.showerror("Erro", f"Erro ao criar backup:\n{e}")
 
@@ -1227,66 +1310,91 @@ class GerenciadorSyncBancos:
             messagebox.showerror("Erro", f"Erro ao preparar restauração:\n{e}")
     
     def restaurar_desktop(self):
-        """Restaura bancos Desktop de backups"""
+        """Restaura bancos Desktop de backups (3 arquivos)"""
         messagebox.showinfo(
             "Restaurar Desktop DBs",
-            "Selecione os arquivos de backup:\n\n"
-            "1. Backup de Despesas (financas.db)\n"
-            "2. Backup de Receitas (financas_receitas.db) - OPCIONAL"
+            "Selecione a PASTA contendo os arquivos de backup:\n\n"
+            "• financas.db (Despesas)\n"
+            "• financas_receitas.db (Receitas)\n"
+            "• fluxo_caixa.db (Fluxo de Caixa)\n\n"
+            "Os arquivos que existirem na pasta serão restaurados."
         )
-        
-        # Restaurar Despesas
-        despesas_backup = filedialog.askopenfilename(
-            title="Selecione o backup de DESPESAS",
-            filetypes=[("SQLite Database", "*.db")]
+
+        # Selecionar pasta de backup
+        backup_dir = filedialog.askdirectory(
+            title="Selecione a pasta com os backups",
+            initialdir=self.base_dir
         )
-        
-        if not despesas_backup:
+
+        if not backup_dir:
             return
-        
-        # Perguntar sobre Receitas
-        restaurar_receitas = messagebox.askyesno(
-            "Receitas",
-            "Deseja restaurar também o banco de RECEITAS?"
-        )
-        
-        receitas_backup = None
-        if restaurar_receitas:
-            receitas_backup = filedialog.askopenfilename(
-                title="Selecione o backup de RECEITAS",
-                filetypes=[("SQLite Database", "*.db")]
+
+        # Verificar quais arquivos existem
+        despesas_backup = os.path.join(backup_dir, 'financas.db')
+        receitas_backup = os.path.join(backup_dir, 'financas_receitas.db')
+        fluxo_backup = os.path.join(backup_dir, 'fluxo_caixa.db')
+
+        encontrados = []
+        if os.path.exists(despesas_backup):
+            encontrados.append("✓ financas.db (Despesas)")
+        if os.path.exists(receitas_backup):
+            encontrados.append("✓ financas_receitas.db (Receitas)")
+        if os.path.exists(fluxo_backup):
+            encontrados.append("✓ fluxo_caixa.db (Fluxo de Caixa)")
+
+        if not encontrados:
+            messagebox.showerror(
+                "Erro",
+                "Nenhum arquivo de backup encontrado na pasta!\n\n"
+                "Arquivos esperados:\n"
+                "• financas.db\n"
+                "• financas_receitas.db\n"
+                "• fluxo_caixa.db"
             )
-        
-        # Confirmar
+            return
+
+        # Confirmar restauração
         msg_confirm = "⚠️ ATENÇÃO: Isso irá SUBSTITUIR os bancos Desktop atuais!\n\n"
-        msg_confirm += "- Despesas: SIM\n"
-        msg_confirm += f"- Receitas: {'SIM' if receitas_backup else 'NÃO'}\n\n"
-        msg_confirm += "Todos os dados atuais serão perdidos.\n\nDeseja continuar?"
-        
+        msg_confirm += "Arquivos que serão restaurados:\n"
+        msg_confirm += "\n".join(encontrados)
+        msg_confirm += "\n\nTodos os dados atuais destes bancos serão perdidos.\n\nDeseja continuar?"
+
         resposta = messagebox.askyesno("Confirmar Restauração", msg_confirm)
-        
+
         if not resposta:
             return
-        
+
         try:
             self.progress.start()
-            
+            restaurados = []
+
             # Restaurar Despesas
-            self.log("Restaurando Desktop DB (Despesas)...")
-            shutil.copy2(despesas_backup, self.desktop_db)
-            self.log("✓ Despesas restauradas!", 'success')
-            
-            # Restaurar Receitas se selecionado
-            if receitas_backup:
+            if os.path.exists(despesas_backup):
+                self.log("Restaurando Desktop DB (Despesas)...")
+                shutil.copy2(despesas_backup, self.desktop_db)
+                self.log("✓ Despesas restauradas!", 'success')
+                restaurados.append("✓ Despesas")
+
+            # Restaurar Receitas
+            if os.path.exists(receitas_backup):
                 self.log("Restaurando Desktop DB (Receitas)...")
                 shutil.copy2(receitas_backup, self.desktop_receitas_db)
                 self.log("✓ Receitas restauradas!", 'success')
-            
+                restaurados.append("✓ Receitas")
+
+            # Restaurar Fluxo de Caixa
+            if os.path.exists(fluxo_backup):
+                self.log("Restaurando Desktop DB (Fluxo de Caixa)...")
+                shutil.copy2(fluxo_backup, self.desktop_fluxo_db)
+                self.log("✓ Fluxo de Caixa restaurado!", 'success')
+                restaurados.append("✓ Fluxo de Caixa")
+
             self.progress.stop()
             self.verificar_bancos()
-            
-            messagebox.showinfo("Sucesso", "Bancos Desktop restaurados com sucesso!")
-            
+
+            msg_sucesso = "✓ Restauração concluída!\n\nBancos restaurados:\n" + "\n".join(restaurados)
+            messagebox.showinfo("Sucesso", msg_sucesso)
+
         except Exception as e:
             self.progress.stop()
             self.log(f"✗ Erro na restauração: {e}", 'error')

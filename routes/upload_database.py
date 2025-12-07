@@ -120,16 +120,16 @@ def importar_sqlite_para_postgres(sqlite_path, user_id, modo='parcial'):
                 descricao, meio_pagamento_nome, categoria_nome, valor, num_parcelas, data_registro, data_pagamento = row
 
                 # Obter ou criar categoria
-                categoria = CategoriaDespesa.query.filter_by(nome=categoria_nome).first()
+                categoria = CategoriaDespesa.query.filter_by(nome=categoria_nome, user_id=user_id).first()
                 if not categoria:
-                    categoria = CategoriaDespesa(nome=categoria_nome, ativo=True)
+                    categoria = CategoriaDespesa(nome=categoria_nome, ativo=True, user_id=user_id)
                     db.session.add(categoria)
                     db.session.flush()
 
                 # Obter ou criar meio de pagamento
-                meio_pagamento = MeioPagamento.query.filter_by(nome=meio_pagamento_nome).first()
+                meio_pagamento = MeioPagamento.query.filter_by(nome=meio_pagamento_nome, user_id=user_id).first()
                 if not meio_pagamento:
-                    meio_pagamento = MeioPagamento(nome=meio_pagamento_nome, tipo='outros', ativo=True)
+                    meio_pagamento = MeioPagamento(nome=meio_pagamento_nome, tipo='outros', ativo=True, user_id=user_id)
                     db.session.add(meio_pagamento)
                     db.session.flush()
 
@@ -160,9 +160,9 @@ def importar_sqlite_para_postgres(sqlite_path, user_id, modo='parcial'):
             orcamentos_importados = 0
             for categoria_nome, valor_orcado in orcamentos:
                 # Obter ou criar categoria
-                categoria = CategoriaDespesa.query.filter_by(nome=categoria_nome).first()
+                categoria = CategoriaDespesa.query.filter_by(nome=categoria_nome, user_id=user_id).first()
                 if not categoria:
-                    categoria = CategoriaDespesa(nome=categoria_nome, ativo=True)
+                    categoria = CategoriaDespesa(nome=categoria_nome, ativo=True, user_id=user_id)
                     db.session.add(categoria)
                     db.session.flush()
 

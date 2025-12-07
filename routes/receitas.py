@@ -61,8 +61,8 @@ def lista():
     )
     
     # Carregar opções para filtros
-    categorias = CategoriaReceita.query.filter_by(ativo=True).order_by(CategoriaReceita.nome).all()
-    meios_recebimento = MeioRecebimento.query.filter_by(ativo=True).order_by(MeioRecebimento.nome).all()
+    categorias = CategoriaReceita.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaReceita.nome).all()
+    meios_recebimento = MeioRecebimento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioRecebimento.nome).all()
     
     # Args para paginação (excluindo page)
     filtros_url = {k: v for k, v in request.args.items() if k != 'page'}

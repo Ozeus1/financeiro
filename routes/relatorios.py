@@ -247,7 +247,7 @@ def orcado_vs_gasto():
 def previsao_cartoes():
     """Previsão de faturas de cartões de crédito (Histórico Completo)"""
     # Buscar todos os meios de pagamento do tipo cartão
-    cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True).all()
+    cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True, user_id=current_user.id).all()
     
     # Determinar intervalo de datas
     min_db_date = db.session.query(func.min(Despesa.data_pagamento)).scalar()
@@ -576,7 +576,7 @@ def despesas_por_categoria_evolucao():
     resultados = query.all()
     
     # Get all categories for the filter dropdown
-    categorias = CategoriaDespesa.query.order_by(CategoriaDespesa.nome).all()
+    categorias = CategoriaDespesa.query.filter_by(user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
     
     # Prepare data for chart
     chart_labels = []
@@ -642,7 +642,7 @@ def despesas_por_pagamento():
     resultados = query.all()
     
     # Get all payment methods for the filter dropdown
-    meios_pagamento = [m.nome for m in MeioPagamento.query.order_by(MeioPagamento.nome).all()]
+    meios_pagamento = [m.nome for m in MeioPagamento.query.filter_by(user_id=current_user.id).order_by(MeioPagamento.nome).all()]
     
     # Prepare data for chart
     chart_labels = []
@@ -651,7 +651,7 @@ def despesas_por_pagamento():
     # Get payment method ID if selected
     meio_pagamento_id = None
     if meio_pagamento:
-        mp = MeioPagamento.query.filter_by(nome=meio_pagamento).first()
+        mp = MeioPagamento.query.filter_by(nome=meio_pagamento, user_id=current_user.id).first()
         if mp:
             meio_pagamento_id = mp.id
 

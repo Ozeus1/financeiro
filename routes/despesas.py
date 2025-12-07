@@ -61,8 +61,8 @@ def lista():
     )
     
     # Carregar opções para filtros
-    categorias = CategoriaDespesa.query.filter_by(ativo=True).order_by(CategoriaDespesa.nome).all()
-    meios_pagamento = MeioPagamento.query.filter_by(ativo=True).order_by(MeioPagamento.nome).all()
+    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
+    meios_pagamento = MeioPagamento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
     
     # Args para paginação (excluindo page)
     filtros_url = {k: v for k, v in request.args.items() if k != 'page'}

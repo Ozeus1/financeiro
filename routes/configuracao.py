@@ -82,17 +82,17 @@ def importar_sqlite_receitas(sqlite_path, user_id, modo='parcial'):
                 descricao, meio_recebimento_nome, categoria_nome, valor, num_parcelas, data_registro, data_recebimento = row
 
                 # Obter ou criar categoria
-                categoria = CategoriaReceita.query.filter_by(nome=categoria_nome).first()
+                categoria = CategoriaReceita.query.filter_by(nome=categoria_nome, user_id=user_id).first()
                 if not categoria:
-                    categoria = CategoriaReceita(nome=categoria_nome, ativo=True)
+                    categoria = CategoriaReceita(nome=categoria_nome, ativo=True, user_id=user_id)
                     db.session.add(categoria)
                     db.session.flush()
                     categorias_criadas += 1
 
                 # Obter ou criar meio de recebimento
-                meio_recebimento = MeioRecebimento.query.filter_by(nome=meio_recebimento_nome).first()
+                meio_recebimento = MeioRecebimento.query.filter_by(nome=meio_recebimento_nome, user_id=user_id).first()
                 if not meio_recebimento:
-                    meio_recebimento = MeioRecebimento(nome=meio_recebimento_nome, tipo='outros', ativo=True)
+                    meio_recebimento = MeioRecebimento(nome=meio_recebimento_nome, tipo='outros', ativo=True, user_id=user_id)
                     db.session.add(meio_recebimento)
                     db.session.flush()
                     meios_criados += 1
@@ -312,17 +312,17 @@ def importar_sqlite_desktop(sqlite_path, user_id, modo='parcial'):
                 descricao, meio_pagamento_nome, categoria_nome, valor, num_parcelas, data_registro, data_pagamento = row
 
                 # Obter ou criar categoria
-                categoria = CategoriaDespesa.query.filter_by(nome=categoria_nome).first()
+                categoria = CategoriaDespesa.query.filter_by(nome=categoria_nome, user_id=user_id).first()
                 if not categoria:
-                    categoria = CategoriaDespesa(nome=categoria_nome, ativo=True)
+                    categoria = CategoriaDespesa(nome=categoria_nome, ativo=True, user_id=user_id)
                     db.session.add(categoria)
                     db.session.flush()
                     categorias_criadas += 1
 
                 # Obter ou criar meio de pagamento
-                meio_pagamento = MeioPagamento.query.filter_by(nome=meio_pagamento_nome).first()
+                meio_pagamento = MeioPagamento.query.filter_by(nome=meio_pagamento_nome, user_id=user_id).first()
                 if not meio_pagamento:
-                    meio_pagamento = MeioPagamento(nome=meio_pagamento_nome, tipo='outros', ativo=True)
+                    meio_pagamento = MeioPagamento(nome=meio_pagamento_nome, tipo='outros', ativo=True, user_id=user_id)
                     db.session.add(meio_pagamento)
                     db.session.flush()
                     meios_criados += 1
@@ -353,9 +353,9 @@ def importar_sqlite_desktop(sqlite_path, user_id, modo='parcial'):
 
             for categoria_nome, valor_orcado in orcamentos:
                 # Obter ou criar categoria
-                categoria = CategoriaDespesa.query.filter_by(nome=categoria_nome).first()
+                categoria = CategoriaDespesa.query.filter_by(nome=categoria_nome, user_id=user_id).first()
                 if not categoria:
-                    categoria = CategoriaDespesa(nome=categoria_nome, ativo=True)
+                    categoria = CategoriaDespesa(nome=categoria_nome, ativo=True, user_id=user_id)
                     db.session.add(categoria)
                     db.session.flush()
                     categorias_criadas += 1
@@ -626,10 +626,10 @@ def categorias_despesa():
         
         if action == 'criar':
             nome = request.form.get('nome')
-            if CategoriaDespesa.query.filter_by(nome=nome).first():
+            if CategoriaDespesa.query.filter_by(nome=nome, user_id=current_user.id).first():
                 flash('Categoria já existe.', 'warning')
             else:
-                nova_categoria = CategoriaDespesa(nome=nome, ativo=True)
+                nova_categoria = CategoriaDespesa(nome=nome, ativo=True, user_id=current_user.id)
                 db.session.add(nova_categoria)
                 db.session.commit()
                 flash('Categoria criada com sucesso!', 'success')
@@ -637,7 +637,7 @@ def categorias_despesa():
         elif action == 'editar':
             id = int(request.form.get('id'))
             nome = request.form.get('nome')
-            categoria = CategoriaDespesa.query.get(id)
+            categoria = CategoriaDespesa.query.filter_by(id=id, user_id=current_user.id).first()
             if categoria:
                 categoria.nome = nome
                 db.session.commit()
@@ -645,16 +645,16 @@ def categorias_despesa():
         
         elif action == 'ativar_desativar':
             id = int(request.form.get('id'))
-            categoria = CategoriaDespesa.query.get(id)
+            categoria = CategoriaDespesa.query.filter_by(id=id, user_id=current_user.id).first()
             if categoria:
                 categoria.ativo = not categoria.ativo
                 db.session.commit()
                 status = 'ativada' if categoria.ativo else 'desativada'
                 flash(f'Categoria {status}!', 'success')
-        
+
         return redirect(url_for('config.categorias_despesa'))
-    
-    categorias = CategoriaDespesa.query.order_by(CategoriaDespesa.nome).all()
+
+    categorias = CategoriaDespesa.query.filter_by(user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
     return render_template('config/categorias_despesa.html', categorias=categorias)
 
 @config_bp.route('/categorias-receita', methods=['GET', 'POST'])
@@ -667,10 +667,10 @@ def categorias_receita():
         
         if action == 'criar':
             nome = request.form.get('nome')
-            if CategoriaReceita.query.filter_by(nome=nome).first():
+            if CategoriaReceita.query.filter_by(nome=nome, user_id=current_user.id).first():
                 flash('Categoria já existe.', 'warning')
             else:
-                nova_categoria = CategoriaReceita(nome=nome, ativo=True)
+                nova_categoria = CategoriaReceita(nome=nome, ativo=True, user_id=current_user.id)
                 db.session.add(nova_categoria)
                 db.session.commit()
                 flash('Categoria criada com sucesso!', 'success')
@@ -678,7 +678,7 @@ def categorias_receita():
         elif action == 'editar':
             id = int(request.form.get('id'))
             nome = request.form.get('nome')
-            categoria = CategoriaReceita.query.get(id)
+            categoria = CategoriaReceita.query.filter_by(id=id, user_id=current_user.id).first()
             if categoria:
                 categoria.nome = nome
                 db.session.commit()
@@ -686,16 +686,16 @@ def categorias_receita():
         
         elif action == 'ativar_desativar':
             id = int(request.form.get('id'))
-            categoria = CategoriaReceita.query.get(id)
+            categoria = CategoriaReceita.query.filter_by(id=id, user_id=current_user.id).first()
             if categoria:
                 categoria.ativo = not categoria.ativo
                 db.session.commit()
                 status = 'ativada' if categoria.ativo else 'desativada'
                 flash(f'Categoria {status}!', 'success')
-        
+
         return redirect(url_for('config.categorias_receita'))
-    
-    categorias = CategoriaReceita.query.order_by(CategoriaReceita.nome).all()
+
+    categorias = CategoriaReceita.query.filter_by(user_id=current_user.id).order_by(CategoriaReceita.nome).all()
     return render_template('config/categorias_receita.html', categorias=categorias)
 
 @config_bp.route('/meios-pagamento', methods=['GET', 'POST'])
@@ -709,10 +709,10 @@ def meios_pagamento():
         if action == 'criar':
             nome = request.form.get('nome')
             tipo = request.form.get('tipo')
-            if MeioPagamento.query.filter_by(nome=nome).first():
+            if MeioPagamento.query.filter_by(nome=nome, user_id=current_user.id).first():
                 flash('Meio de pagamento já existe.', 'warning')
             else:
-                novo_meio = MeioPagamento(nome=nome, tipo=tipo, ativo=True)
+                novo_meio = MeioPagamento(nome=nome, tipo=tipo, ativo=True, user_id=current_user.id)
                 db.session.add(novo_meio)
                 db.session.commit()
                 flash('Meio de pagamento criado com sucesso!', 'success')
@@ -721,7 +721,7 @@ def meios_pagamento():
             id = int(request.form.get('id'))
             nome = request.form.get('nome')
             tipo = request.form.get('tipo')
-            meio = MeioPagamento.query.get(id)
+            meio = MeioPagamento.query.filter_by(id=id, user_id=current_user.id).first()
             if meio:
                 meio.nome = nome
                 meio.tipo = tipo
@@ -730,16 +730,16 @@ def meios_pagamento():
         
         elif action == 'ativar_desativar':
             id = int(request.form.get('id'))
-            meio = MeioPagamento.query.get(id)
+            meio = MeioPagamento.query.filter_by(id=id, user_id=current_user.id).first()
             if meio:
                 meio.ativo = not meio.ativo
                 db.session.commit()
                 status = 'ativado' if meio.ativo else 'desativado'
                 flash(f'Meio de pagamento {status}!', 'success')
-        
+
         return redirect(url_for('config.meios_pagamento'))
-    
-    meios = MeioPagamento.query.order_by(MeioPagamento.nome).all()
+
+    meios = MeioPagamento.query.filter_by(user_id=current_user.id).order_by(MeioPagamento.nome).all()
     return render_template('config/meios_pagamento.html', meios=meios)
 
 @config_bp.route('/meios-recebimento', methods=['GET', 'POST'])
@@ -752,10 +752,10 @@ def meios_recebimento():
         
         if action == 'criar':
             nome = request.form.get('nome')
-            if MeioRecebimento.query.filter_by(nome=nome).first():
+            if MeioRecebimento.query.filter_by(nome=nome, user_id=current_user.id).first():
                 flash('Meio de recebimento já existe.', 'warning')
             else:
-                novo_meio = MeioRecebimento(nome=nome, ativo=True)
+                novo_meio = MeioRecebimento(nome=nome, ativo=True, user_id=current_user.id)
                 db.session.add(novo_meio)
                 db.session.commit()
                 flash('Meio de recebimento criado com sucesso!', 'success')
@@ -763,7 +763,7 @@ def meios_recebimento():
         elif action == 'editar':
             id = int(request.form.get('id'))
             nome = request.form.get('nome')
-            meio = MeioRecebimento.query.get(id)
+            meio = MeioRecebimento.query.filter_by(id=id, user_id=current_user.id).first()
             if meio:
                 meio.nome = nome
                 db.session.commit()
@@ -771,16 +771,16 @@ def meios_recebimento():
         
         elif action == 'ativar_desativar':
             id = int(request.form.get('id'))
-            meio = MeioRecebimento.query.get(id)
+            meio = MeioRecebimento.query.filter_by(id=id, user_id=current_user.id).first()
             if meio:
                 meio.ativo = not meio.ativo
                 db.session.commit()
                 status = 'ativado' if meio.ativo else 'desativado'
                 flash(f'Meio de recebimento {status}!', 'success')
-        
+
         return redirect(url_for('config.meios_recebimento'))
-    
-    meios = MeioRecebimento.query.order_by(MeioRecebimento.nome).all()
+
+    meios = MeioRecebimento.query.filter_by(user_id=current_user.id).order_by(MeioRecebimento.nome).all()
     return render_template('config/meios_recebimento.html', meios=meios)
 
 @config_bp.route('/usuarios', methods=['GET', 'POST'])
@@ -907,11 +907,11 @@ def orcamento():
         db.session.commit()
         return redirect(url_for('config.orcamento'))
     
-    categorias = CategoriaDespesa.query.filter_by(ativo=True).order_by(CategoriaDespesa.nome).all()
+    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
     orcamentos = Orcamento.query.filter_by(user_id=current_user.id).all()
-    
-    return render_template('config/orcamento.html', 
-                          categorias=categorias, 
+
+    return render_template('config/orcamento.html',
+                          categorias=categorias,
                           orcamentos=orcamentos)
 
 @config_bp.route('/cartoes', methods=['GET', 'POST'])
@@ -944,9 +944,9 @@ def cartoes():
         return redirect(url_for('config.cartoes'))
     
     # Buscar apenas meios de pagamento do tipo cartão
-    cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True).order_by(MeioPagamento.nome).all()
+    cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
     configuracoes = FechamentoCartao.query.all()
-    
+
     return render_template('config/cartoes.html', cartoes=cartoes, configuracoes=configuracoes)
 
 
@@ -1041,17 +1041,17 @@ def importar_dados_supabase():
             try:
                 # Verificar/Criar Categoria
                 cat_nome = item.get('categoria', 'Outros')
-                categoria = CategoriaDespesa.query.filter_by(nome=cat_nome).first()
+                categoria = CategoriaDespesa.query.filter_by(nome=cat_nome, user_id=current_user.id).first()
                 if not categoria:
-                    categoria = CategoriaDespesa(nome=cat_nome, ativo=True)
+                    categoria = CategoriaDespesa(nome=cat_nome, ativo=True, user_id=current_user.id)
                     db.session.add(categoria)
                     db.session.commit()
                 
                 # Verificar/Criar Meio de Pagamento
                 mp_nome = item.get('meio_pagamento', 'Outros')
-                meio_pagamento = MeioPagamento.query.filter_by(nome=mp_nome).first()
+                meio_pagamento = MeioPagamento.query.filter_by(nome=mp_nome, user_id=current_user.id).first()
                 if not meio_pagamento:
-                    meio_pagamento = MeioPagamento(nome=mp_nome, tipo='outros', ativo=True)
+                    meio_pagamento = MeioPagamento(nome=mp_nome, tipo='outros', ativo=True, user_id=current_user.id)
                     db.session.add(meio_pagamento)
                     db.session.commit()
                 

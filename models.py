@@ -13,9 +13,10 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    nivel_acesso = db.Column(db.String(20), nullable=False, default='usuario')  # admin, gerente, usuario
+    nivel_acesso = db.Column(db.String(20), nullable=False, default='usuario')  # admin, usuario
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    data_validade = db.Column(db.Date, nullable=True)  # Data de validade do acesso (apenas para usuários normais)
     
     # Relacionamentos
     despesas = db.relationship('Despesa', backref='usuario', lazy=True, cascade='all, delete-orphan')
@@ -39,7 +40,27 @@ class User(UserMixin, db.Model):
     def is_gerente(self):
         """Verifica se o usuário é gerente ou superior"""
         return self.nivel_acesso in ['admin', 'gerente']
-    
+
+    def esta_valido(self):
+        """Verifica se o acesso do usuário ainda está válido"""
+        # Admin não tem data de validade
+        if self.is_admin():
+            return True
+        # Se não tem data de validade definida, está válido
+        if not self.data_validade:
+            return True
+        # Verifica se ainda não expirou
+        from datetime import date
+        return date.today() <= self.data_validade
+
+    def dias_restantes(self):
+        """Retorna quantos dias restam até expirar (None se sem validade ou admin)"""
+        if self.is_admin() or not self.data_validade:
+            return None
+        from datetime import date
+        delta = self.data_validade - date.today()
+        return delta.days
+
     def __repr__(self):
         return f'<User {self.username}>'
 

@@ -42,10 +42,15 @@ def login():
             if not user.ativo:
                 flash('Sua conta está inativa. Entre em contato com o administrador.', 'warning')
                 return redirect(url_for('auth.login'))
-            
+
+            # Verificar se o acesso está válido
+            if not user.esta_valido():
+                flash('Seu acesso expirou. Entre em contato com o administrador.', 'danger')
+                return redirect(url_for('auth.login'))
+
             login_user(user, remember=remember)
             flash(f'Bem-vindo, {user.username}!', 'success')
-            
+
             # Redirecionar para a página solicitada ou dashboard
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('main.dashboard'))

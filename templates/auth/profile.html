@@ -23,6 +23,29 @@
                             <span class="badge bg-secondary">Usuário</span>
                             {% endif %}
                         </p>
+
+                        {% if not current_user.is_admin() %}
+                        <p><strong>Validade do Acesso:</strong>
+                            {% if current_user.data_validade %}
+                                {{ current_user.data_validade.strftime('%d/%m/%Y') }}
+                                {% if current_user.dias_restantes() is not none %}
+                                    {% if current_user.dias_restantes() < 0 %}
+                                    <br><span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> Expirado há {{ -current_user.dias_restantes() }} dias</span>
+                                    {% elif current_user.dias_restantes() == 0 %}
+                                    <br><span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Expira hoje!</span>
+                                    {% elif current_user.dias_restantes() <= 7 %}
+                                    <br><span class="badge bg-warning text-dark"><i class="bi bi-clock"></i> Restam {{ current_user.dias_restantes() }} dias</span>
+                                    {% elif current_user.dias_restantes() <= 30 %}
+                                    <br><span class="badge bg-info"><i class="bi bi-info-circle"></i> Restam {{ current_user.dias_restantes() }} dias</span>
+                                    {% else %}
+                                    <br><span class="badge bg-success"><i class="bi bi-check-circle"></i> Restam {{ current_user.dias_restantes() }} dias</span>
+                                    {% endif %}
+                                {% endif %}
+                            {% else %}
+                            <span class="text-success"><i class="bi bi-infinity"></i> Sem prazo de validade</span>
+                            {% endif %}
+                        </p>
+                        {% endif %}
                     </div>
                 </div>
 

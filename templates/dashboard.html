@@ -3,6 +3,38 @@
 {% block title %}Dashboard - Sistema Financeiro{% endblock %}
 
 {% block content %}
+<!-- Alerta de Validade do Acesso -->
+{% if not current_user.is_admin() and current_user.data_validade %}
+    {% set dias = current_user.dias_restantes() %}
+    {% if dias is not none %}
+        {% if dias < 0 %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Acesso Expirado!</strong> Seu acesso expirou há {{ -dias }} dias. Entre em contato com o administrador.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% elif dias == 0 %}
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Atenção!</strong> Seu acesso expira hoje ({{ current_user.data_validade.strftime('%d/%m/%Y') }}).
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% elif dias <= 7 %}
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="bi bi-clock-fill"></i>
+            <strong>Atenção!</strong> Seu acesso expira em {{ dias }} dias ({{ current_user.data_validade.strftime('%d/%m/%Y') }}).
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% elif dias <= 30 %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="bi bi-info-circle-fill"></i>
+            Seu acesso expira em {{ dias }} dias ({{ current_user.data_validade.strftime('%d/%m/%Y') }}).
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endif %}
+    {% endif %}
+{% endif %}
+
 <div class="row mt-4">
     <div class="col-12 d-flex justify-content-between align-items-center">
         <h2><i class="bi bi-speedometer2"></i> Dashboard - {{ mes_atual }}/{{ ano_atual }}</h2>

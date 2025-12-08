@@ -792,21 +792,34 @@ def usuarios():
             email = request.form.get('email')
             password = request.form.get('password')
             nivel = request.form.get('nivel')
-            
+            data_validade_str = request.form.get('data_validade')
+
             if User.query.filter_by(username=username).first():
                 flash('Nome de usuário já existe!', 'warning')
             elif User.query.filter_by(email=email).first():
                 flash('E-mail já cadastrado!', 'warning')
             else:
+                # Processar data de validade (apenas para usuários normais)
+                data_validade = None
+                if nivel != 'admin' and data_validade_str:
+                    from datetime import datetime
+                    data_validade = datetime.strptime(data_validade_str, '%Y-%m-%d').date()
+
                 novo_usuario = User(
                     username=username,
                     email=email,
                     nivel_acesso=nivel,
-                    ativo=True
+                    ativo=True,
+                    data_validade=data_validade
                 )
                 novo_usuario.set_password(password)
                 db.session.add(novo_usuario)
                 db.session.commit()
+
+                # Criar dados padrão
+                from models import criar_dados_padrao_usuario
+                criar_dados_padrao_usuario(novo_usuario)
+
                 flash('Usuário criado com sucesso!', 'success')
 
         elif action == 'editar':
@@ -854,9 +867,33 @@ def usuarios():
             user = User.query.get(id)
             if user and user.id != current_user.id:
                 user.nivel_acesso = nivel
+                # Se mudou para admin, remover data de validade
+                if nivel == 'admin':
+                    user.data_validade = None
                 db.session.commit()
                 flash('Nível de acesso alterado!', 'success')
-        
+
+        elif action == 'definir_validade':
+            id = int(request.form.get('id'))
+            data_validade_str = request.form.get('data_validade')
+            user = User.query.get(id)
+
+            if user and user.nivel_acesso != 'admin':
+                # Se forneceu data, converter; senão, deixar None (sem limite)
+                if data_validade_str:
+                    from datetime import datetime
+                    user.data_validade = datetime.strptime(data_validade_str, '%Y-%m-%d').date()
+                else:
+                    user.data_validade = None
+                db.session.commit()
+
+                if user.data_validade:
+                    flash(f'Data de validade definida para {user.data_validade.strftime("%d/%m/%Y")}!', 'success')
+                else:
+                    flash('Prazo de validade removido (acesso ilimitado)!', 'success')
+            elif user and user.nivel_acesso == 'admin':
+                flash('Admin não pode ter data de validade!', 'warning')
+
         return redirect(url_for('config.usuarios'))
     
     usuarios = User.query.order_by(User.username).all()

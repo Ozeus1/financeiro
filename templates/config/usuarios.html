@@ -47,10 +47,15 @@
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Nível de Acesso</label>
-                                        <select class="form-select" name="nivel" required>
+                                        <select class="form-select" name="nivel" id="nivel_novo" required>
                                             <option value="usuario">Usuário</option>
                                             <option value="admin">Admin</option>
                                         </select>
+                                    </div>
+                                    <div class="mb-3" id="validade_novo_container">
+                                        <label class="form-label">Data de Validade <small class="text-muted">(opcional - apenas para usuários normais)</small></label>
+                                        <input type="date" class="form-control" name="data_validade" id="validade_novo">
+                                        <small class="form-text text-muted">Deixe em branco para acesso sem prazo de validade</small>
                                     </div>
                                 </div>
                                 <div class="modal-footer">
@@ -72,6 +77,7 @@
                                 <th>E-mail</th>
                                 <th class="text-center">Nível</th>
                                 <th class="text-center">Status</th>
+                                <th class="text-center">Validade</th>
                                 <th class="text-center">Ações</th>
                             </tr>
                         </thead>
@@ -96,6 +102,22 @@
                                     <span class="badge bg-success">Ativo</span>
                                     {% else %}
                                     <span class="badge bg-secondary">Inativo</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if usuario.nivel_acesso == 'admin' %}
+                                    <span class="text-muted">-</span>
+                                    {% elif usuario.data_validade %}
+                                    {{ usuario.data_validade.strftime('%d/%m/%Y') }}
+                                    {% if usuario.dias_restantes() is not none %}
+                                        {% if usuario.dias_restantes() < 0 %}
+                                        <br><span class="badge bg-danger">Expirado</span>
+                                        {% elif usuario.dias_restantes() <= 7 %}
+                                        <br><span class="badge bg-warning text-dark">{{ usuario.dias_restantes() }} dias</span>
+                                        {% endif %}
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="text-muted">Sem limite</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
@@ -125,9 +147,17 @@
 
                                     <!-- Alterar Nível -->
                                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                        data-bs-target="#nivelModal{{ usuario.id }}">
+                                        data-bs-target="#nivelModal{{ usuario.id }}" title="Alterar Nível">
                                         <i class="bi bi-shield-check"></i>
                                     </button>
+
+                                    <!-- Definir Validade (apenas para usuários normais) -->
+                                    {% if usuario.nivel_acesso != 'admin' %}
+                                    <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal"
+                                        data-bs-target="#validadeModal{{ usuario.id }}" title="Definir Validade">
+                                        <i class="bi bi-calendar-check"></i>
+                                    </button>
+                                    {% endif %}
 
                                     <!-- Modal Alterar Nível -->
                                     <div class="modal fade" id="nivelModal{{ usuario.id }}" tabindex="-1">
@@ -230,6 +260,56 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <!-- Modal Definir Validade -->
+                                    {% if usuario.nivel_acesso != 'admin' %}
+                                    <div class="modal fade" id="validadeModal{{ usuario.id }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <form method="POST">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Definir Data de Validade</h5>
+                                                        <button type="button" class="btn-close"
+                                                            data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <input type="hidden" name="action" value="definir_validade">
+                                                        <input type="hidden" name="id" value="{{ usuario.id }}">
+                                                        <p><strong>Usuário:</strong> {{ usuario.username }}</p>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Data de Validade</label>
+                                                            <input type="date" class="form-control" name="data_validade"
+                                                                value="{% if usuario.data_validade %}{{ usuario.data_validade.strftime('%Y-%m-%d') }}{% endif %}">
+                                                            <small class="form-text text-muted">
+                                                                Deixe em branco para remover o prazo de validade (acesso ilimitado)
+                                                            </small>
+                                                        </div>
+                                                        {% if usuario.data_validade %}
+                                                        <div class="alert alert-info">
+                                                            <i class="bi bi-info-circle"></i>
+                                                            Validade atual: <strong>{{ usuario.data_validade.strftime('%d/%m/%Y') }}</strong>
+                                                            {% if usuario.dias_restantes() is not none %}
+                                                                {% if usuario.dias_restantes() < 0 %}
+                                                                <br><span class="text-danger">⚠️ Acesso expirado há {{ -usuario.dias_restantes() }} dias</span>
+                                                                {% elif usuario.dias_restantes() == 0 %}
+                                                                <br><span class="text-warning">⚠️ Expira hoje</span>
+                                                                {% else %}
+                                                                <br>Restam {{ usuario.dias_restantes() }} dias
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary"
+                                                            data-bs-dismiss="modal">Cancelar</button>
+                                                        <button type="submit" class="btn btn-warning">Salvar</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                     {% else %}
                                     <span class="text-muted">-</span>
                                     {% endif %}

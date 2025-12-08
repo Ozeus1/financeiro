@@ -103,10 +103,10 @@ def criar():
         
         flash('Receita cadastrada com sucesso!', 'success')
         return redirect(url_for('receitas.lista'))
-    
-    categorias = CategoriaReceita.query.filter_by(ativo=True).order_by(CategoriaReceita.nome).all()
-    meios_recebimento = MeioRecebimento.query.filter_by(ativo=True).order_by(MeioRecebimento.nome).all()
-    
+
+    categorias = CategoriaReceita.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaReceita.nome).all()
+    meios_recebimento = MeioRecebimento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioRecebimento.nome).all()
+
     return render_template('receitas/form.html',
                          categorias=categorias,
                          meios_recebimento=meios_recebimento,
@@ -145,10 +145,10 @@ def editar(id):
         
         flash('Receita atualizada com sucesso!', 'success')
         return redirect(url_for('receitas.lista', **filtros_redirect))
-    
-    categorias = CategoriaReceita.query.filter_by(ativo=True).order_by(CategoriaReceita.nome).all()
-    meios_recebimento = MeioRecebimento.query.filter_by(ativo=True).order_by(MeioRecebimento.nome).all()
-    
+
+    categorias = CategoriaReceita.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaReceita.nome).all()
+    meios_recebimento = MeioRecebimento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioRecebimento.nome).all()
+
     return render_template('receitas/form.html',
                          receita=receita,
                          categorias=categorias,

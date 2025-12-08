@@ -104,9 +104,9 @@ def criar():
         flash('Despesa cadastrada com sucesso!', 'success')
         return redirect(url_for('despesas.lista'))
     
-    categorias = CategoriaDespesa.query.filter_by(ativo=True).order_by(CategoriaDespesa.nome).all()
-    meios_pagamento = MeioPagamento.query.filter_by(ativo=True).order_by(MeioPagamento.nome).all()
-    
+    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
+    meios_pagamento = MeioPagamento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
+
     return render_template('despesas/form.html',
                          categorias=categorias,
                          meios_pagamento=meios_pagamento,
@@ -145,10 +145,10 @@ def editar(id):
         
         flash('Despesa atualizada com sucesso!', 'success')
         return redirect(url_for('despesas.lista', **filtros_redirect))
-    
-    categorias = CategoriaDespesa.query.filter_by(ativo=True).order_by(CategoriaDespesa.nome).all()
-    meios_pagamento = MeioPagamento.query.filter_by(ativo=True).order_by(MeioPagamento.nome).all()
-    
+
+    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
+    meios_pagamento = MeioPagamento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
+
     return render_template('despesas/form.html',
                          despesa=despesa,
                          categorias=categorias,

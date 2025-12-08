@@ -1207,6 +1207,16 @@ def exportar_sqlite_despesas():
             )
         """)
 
+        sqlite_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS fechamento_cartoes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                meio_pagamento TEXT NOT NULL UNIQUE,
+                data_fechamento INTEGER NOT NULL,
+                FOREIGN KEY (meio_pagamento) REFERENCES meios_pagamento(nome)
+                    ON DELETE CASCADE ON UPDATE CASCADE
+            )
+        """)
+
         # Popular tabelas auxiliares do usuário
         categorias_despesa = CategoriaDespesa.query.filter_by(user_id=current_user.id).all()
         for categoria in categorias_despesa:
@@ -1215,6 +1225,20 @@ def exportar_sqlite_despesas():
         meios_pagamento = MeioPagamento.query.filter_by(user_id=current_user.id).all()
         for meio in meios_pagamento:
             sqlite_cursor.execute("INSERT OR IGNORE INTO meios_pagamento (nome) VALUES (?)", (meio.nome,))
+
+        # Popular fechamento de cartões
+        fechamentos = FechamentoCartao.query.join(MeioPagamento).filter(MeioPagamento.user_id == current_user.id).all()
+        for fechamento in fechamentos:
+            try:
+                sqlite_cursor.execute("""
+                    INSERT INTO fechamento_cartoes (meio_pagamento, data_fechamento)
+                    VALUES (?, ?)
+                """, (
+                    fechamento.meio_pagamento.nome,
+                    fechamento.dia_fechamento
+                ))
+            except:
+                continue
 
         # Buscar despesas do usuário logado
         despesas = Despesa.query.filter_by(user_id=current_user.id).all()

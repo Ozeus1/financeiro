@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Evolução Temporal dos Gastos{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <h2><i class="bi bi-graph-up"></i> Evolução Temporal dos Gastos</h2>
+        <hr>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Período</label>
+                        <select name="periodo" id="periodo" class="form-select">
+                            <option value="mes_atual" {% if periodo=='mes_atual' %}selected{% endif %}>Mês Atual</option>
+                            <option value="ultimos_3_meses" {% if periodo=='ultimos_3_meses' %}selected{% endif %}>Últimos 3 Meses</option>
+                            <option value="ultimos_6_meses" {% if periodo=='ultimos_6_meses' %}selected{% endif %}>Últimos 6 Meses</option>
+                            <option value="ultimo_ano" {% if periodo=='ultimo_ano' %}selected{% endif %}>Último Ano</option>
+                            <option value="personalizado" {% if periodo=='personalizado' %}selected{% endif %}>Personalizado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3" id="div_data_inicio" style="display: {% if periodo=='personalizado' %}block{% else %}none{% endif %}">
+                        <label class="form-label">Data Início</label>
+                        <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
+                    </div>
+                    <div class="col-md-3" id="div_data_fim" style="display: {% if periodo=='personalizado' %}block{% else %}none{% endif %}">
+                        <label class="form-label">Data Fim</label>
+                        <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i> Filtrar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cards de Estatísticas -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Total Período</h5>
+                <h3>R$ {{ "{:,.2f}".format(total_periodo).replace(",", "X").replace(".", ",").replace("X", ".") }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Dias com Gastos</h5>
+                <h3>{{ dias_com_gastos }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Média Diária</h5>
+                <h3>R$ {{ "{:,.2f}".format(media_diaria).replace(",", "X").replace(".", ",").replace("X", ".") }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-danger mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Maior Gasto/Dia</h5>
+                <h3>R$ {{ "{:,.2f}".format(maior_gasto_dia).replace(",", "X").replace(".", ",").replace("X", ".") }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Evolução dos Gastos Diários</h5>
+                <canvas id="chartEvolucao" height="60"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Mostrar/ocultar campos de data personalizada
+document.getElementById('periodo').addEventListener('change', function() {
+    const divInicio = document.getElementById('div_data_inicio');
+    const divFim = document.getElementById('div_data_fim');
+    if (this.value === 'personalizado') {
+        divInicio.style.display = 'block';
+        divFim.style.display = 'block';
+    } else {
+        divInicio.style.display = 'none';
+        divFim.style.display = 'none';
+    }
+});
+
+// Gráfico de Linha
+const ctx = document.getElementById('chartEvolucao').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ chart_labels | tojson }},
+        datasets: [{
+            label: 'Gastos Diários (R$)',
+            data: {{ chart_data | tojson }},
+            borderColor: '#3498db',
+            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointHoverRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        interaction: {
+            intersect: false,
+            mode: 'index'
+        },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return 'R$ ' + context.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return 'R$ ' + value.toLocaleString('pt-BR');
+                    }
+                }
+            },
+            x: {
+                ticks: {
+                    maxTicksLimit: 20,
+                    maxRotation: 45,
+                    minRotation: 0
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

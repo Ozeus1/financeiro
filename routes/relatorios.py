@@ -747,3 +747,222 @@ def despesas_mensais_periodo():
         chart_labels=chart_labels,
         chart_data=chart_data
     )
+
+@relatorios_bp.route('/top-10-despesas')
+@login_required
+def top_10_despesas():
+    """Top 10 Maiores Despesas"""
+    # Filtros de período
+    periodo = request.args.get('periodo', 'mes_atual')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+
+    # Determinar datas baseado no período
+    hoje = datetime.now()
+    if periodo == 'mes_atual':
+        data_inicio = date(hoje.year, hoje.month, 1)
+        ultimo_dia = calendar.monthrange(hoje.year, hoje.month)[1]
+        data_fim = date(hoje.year, hoje.month, ultimo_dia)
+    elif periodo == 'ultimos_3_meses':
+        data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        data_inicio = (data_fim - timedelta(days=90))
+    elif periodo == 'ultimos_6_meses':
+        data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        data_inicio = (data_fim - timedelta(days=180))
+    elif periodo == 'ultimo_ano':
+        data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        data_inicio = (data_fim - timedelta(days=365))
+    elif periodo == 'personalizado' and data_inicio and data_fim:
+        data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+        data_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+    else:
+        # Padrão: mês atual
+        data_inicio = date(hoje.year, hoje.month, 1)
+        ultimo_dia = calendar.monthrange(hoje.year, hoje.month)[1]
+        data_fim = date(hoje.year, hoje.month, ultimo_dia)
+
+    # Buscar top 10 despesas
+    top_despesas = Despesa.query.filter(
+        Despesa.user_id == current_user.id,
+        Despesa.data_pagamento >= data_inicio,
+        Despesa.data_pagamento <= data_fim
+    ).order_by(Despesa.valor.desc()).limit(10).all()
+
+    # Calcular estatísticas
+    total_top10 = sum([d.valor for d in top_despesas])
+
+    total_periodo = db.session.query(func.sum(Despesa.valor)).filter(
+        Despesa.user_id == current_user.id,
+        Despesa.data_pagamento >= data_inicio,
+        Despesa.data_pagamento <= data_fim
+    ).scalar() or 0
+
+    quantidade_total = db.session.query(func.count(Despesa.id)).filter(
+        Despesa.user_id == current_user.id,
+        Despesa.data_pagamento >= data_inicio,
+        Despesa.data_pagamento <= data_fim
+    ).scalar() or 0
+
+    media_despesa = total_periodo / quantidade_total if quantidade_total > 0 else 0
+
+    # Dados para o gráfico
+    chart_labels = [f"{d.descricao[:30]}..." if len(d.descricao) > 30 else d.descricao for d in top_despesas]
+    chart_data = [float(d.valor) for d in top_despesas]
+
+    return render_template(
+        'relatorios/top_10_despesas.html',
+        top_despesas=top_despesas,
+        periodo=periodo,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        total_top10=total_top10,
+        total_periodo=total_periodo,
+        quantidade_total=quantidade_total,
+        media_despesa=media_despesa,
+        chart_labels=chart_labels,
+        chart_data=chart_data
+    )
+
+@relatorios_bp.route('/evolucao-temporal')
+@login_required
+def evolucao_temporal():
+    """Evolução Temporal dos Gastos (Diários)"""
+    # Filtros de período
+    periodo = request.args.get('periodo', 'mes_atual')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+
+    # Determinar datas baseado no período
+    hoje = datetime.now()
+    if periodo == 'mes_atual':
+        data_inicio = date(hoje.year, hoje.month, 1)
+        ultimo_dia = calendar.monthrange(hoje.year, hoje.month)[1]
+        data_fim = date(hoje.year, hoje.month, ultimo_dia)
+    elif periodo == 'ultimos_3_meses':
+        data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        data_inicio = (data_fim - timedelta(days=90))
+    elif periodo == 'ultimos_6_meses':
+        data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        data_inicio = (data_fim - timedelta(days=180))
+    elif periodo == 'ultimo_ano':
+        data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        data_inicio = (data_fim - timedelta(days=365))
+    elif periodo == 'personalizado' and data_inicio and data_fim:
+        data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+        data_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+    else:
+        # Padrão: mês atual
+        data_inicio = date(hoje.year, hoje.month, 1)
+        ultimo_dia = calendar.monthrange(hoje.year, hoje.month)[1]
+        data_fim = date(hoje.year, hoje.month, ultimo_dia)
+
+    # Buscar despesas agrupadas por dia
+    gastos_diarios = db.session.query(
+        Despesa.data_pagamento,
+        func.sum(Despesa.valor).label('total')
+    ).filter(
+        Despesa.user_id == current_user.id,
+        Despesa.data_pagamento >= data_inicio,
+        Despesa.data_pagamento <= data_fim
+    ).group_by(Despesa.data_pagamento).order_by(Despesa.data_pagamento).all()
+
+    # Criar série temporal completa (incluindo dias sem gastos)
+    delta = data_fim - data_inicio
+    todos_dias = {}
+    for i in range(delta.days + 1):
+        dia = data_inicio + timedelta(days=i)
+        todos_dias[dia] = 0.0
+
+    # Preencher com gastos reais
+    for gasto in gastos_diarios:
+        todos_dias[gasto.data_pagamento] = float(gasto.total)
+
+    # Preparar dados para o gráfico
+    chart_labels = [dia.strftime('%d/%m') for dia in sorted(todos_dias.keys())]
+    chart_data = [todos_dias[dia] for dia in sorted(todos_dias.keys())]
+
+    # Estatísticas
+    total_periodo = sum(chart_data)
+    dias_com_gastos = len([v for v in chart_data if v > 0])
+    media_diaria = total_periodo / len(chart_data) if len(chart_data) > 0 else 0
+    maior_gasto_dia = max(chart_data) if chart_data else 0
+
+    return render_template(
+        'relatorios/evolucao_temporal.html',
+        periodo=periodo,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        total_periodo=total_periodo,
+        dias_com_gastos=dias_com_gastos,
+        media_diaria=media_diaria,
+        maior_gasto_dia=maior_gasto_dia,
+        chart_labels=chart_labels,
+        chart_data=chart_data
+    )
+
+@relatorios_bp.route('/comparativo-anual')
+@login_required
+def comparativo_anual():
+    """Comparativo de Gastos Mensais por Ano"""
+    # Buscar todos os anos disponíveis para o usuário
+    anos_disponiveis = db.session.query(
+        extract('year', Despesa.data_pagamento).label('ano')
+    ).filter(
+        Despesa.user_id == current_user.id
+    ).distinct().order_by('ano').all()
+
+    anos = [int(a.ano) for a in anos_disponiveis]
+
+    # Se não há anos, mostrar vazio
+    if not anos:
+        return render_template(
+            'relatorios/comparativo_anual.html',
+            anos=[],
+            meses_pt=['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+            chart_labels=[],
+            datasets=[]
+        )
+
+    # Buscar gastos mensais por ano
+    gastos = db.session.query(
+        extract('year', Despesa.data_pagamento).label('ano'),
+        extract('month', Despesa.data_pagamento).label('mes'),
+        func.sum(Despesa.valor).label('total')
+    ).filter(
+        Despesa.user_id == current_user.id
+    ).group_by('ano', 'mes').order_by('ano', 'mes').all()
+
+    # Organizar dados por ano e mês
+    dados_por_ano = {}
+    for ano in anos:
+        dados_por_ano[ano] = {m: 0.0 for m in range(1, 13)}
+
+    for gasto in gastos:
+        ano = int(gasto.ano)
+        mes = int(gasto.mes)
+        dados_por_ano[ano][mes] = float(gasto.total)
+
+    # Preparar datasets para Chart.js
+    meses_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    cores = [
+        '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
+        '#1abc9c', '#34495e', '#e67e22', '#95a5a6', '#d35400'
+    ]
+
+    datasets = []
+    for idx, ano in enumerate(anos):
+        datasets.append({
+            'label': str(ano),
+            'data': [dados_por_ano[ano][m] for m in range(1, 13)],
+            'backgroundColor': cores[idx % len(cores)],
+            'borderColor': cores[idx % len(cores)],
+            'borderWidth': 2
+        })
+
+    return render_template(
+        'relatorios/comparativo_anual.html',
+        anos=anos,
+        meses_pt=meses_pt,
+        chart_labels=meses_pt,
+        datasets=datasets
+    )

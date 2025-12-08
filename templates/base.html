@@ -89,6 +89,16 @@
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
+                            <li class="dropdown-header">Relatórios Avançados</li>
+                            <li><a class="dropdown-item" href="{{ url_for('relatorios.top_10_despesas') }}">
+                                <i class="bi bi-trophy"></i> Top 10 Maiores Despesas</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('relatorios.evolucao_temporal') }}">
+                                <i class="bi bi-graph-up"></i> Evolução Temporal</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('relatorios.comparativo_anual') }}">
+                                <i class="bi bi-calendar-range"></i> Comparativo Anual</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
                             <li><a class="dropdown-item" href="{{ url_for('relatorios.orcado_vs_gasto') }}">Orçado vs
                                     Gasto</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('relatorios.previsao_cartoes') }}">Previsão

@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Top 10 Maiores Despesas{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <h2><i class="bi bi-trophy"></i> Top 10 Maiores Despesas</h2>
+        <hr>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Período</label>
+                        <select name="periodo" id="periodo" class="form-select">
+                            <option value="mes_atual" {% if periodo=='mes_atual' %}selected{% endif %}>Mês Atual</option>
+                            <option value="ultimos_3_meses" {% if periodo=='ultimos_3_meses' %}selected{% endif %}>Últimos 3 Meses</option>
+                            <option value="ultimos_6_meses" {% if periodo=='ultimos_6_meses' %}selected{% endif %}>Últimos 6 Meses</option>
+                            <option value="ultimo_ano" {% if periodo=='ultimo_ano' %}selected{% endif %}>Último Ano</option>
+                            <option value="personalizado" {% if periodo=='personalizado' %}selected{% endif %}>Personalizado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3" id="div_data_inicio" style="display: {% if periodo=='personalizado' %}block{% else %}none{% endif %}">
+                        <label class="form-label">Data Início</label>
+                        <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
+                    </div>
+                    <div class="col-md-3" id="div_data_fim" style="display: {% if periodo=='personalizado' %}block{% else %}none{% endif %}">
+                        <label class="form-label">Data Fim</label>
+                        <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i> Filtrar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cards de Estatísticas -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="card text-white bg-danger mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Total Top 10</h5>
+                <h3>R$ {{ "{:,.2f}".format(total_top10).replace(",", "X").replace(".", ",").replace("X", ".") }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Total Período</h5>
+                <h3>R$ {{ "{:,.2f}".format(total_periodo).replace(",", "X").replace(".", ",").replace("X", ".") }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Média</h5>
+                <h3>R$ {{ "{:,.2f}".format(media_despesa).replace(",", "X").replace(".", ",").replace("X", ".") }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-secondary mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Total Transações</h5>
+                <h3>{{ quantidade_total }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Top 10 Maiores Despesas</h5>
+                <canvas id="chartTop10" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela Detalhada -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Detalhamento</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Posição</th>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Meio de Pagamento</th>
+                                <th class="text-end">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for despesa in top_despesas %}
+                            <tr>
+                                <td><span class="badge bg-primary">{{ loop.index }}º</span></td>
+                                <td>{{ despesa.data_pagamento.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ despesa.descricao }}</td>
+                                <td>{{ despesa.categoria.nome }}</td>
+                                <td>{{ despesa.meio_pagamento.nome }}</td>
+                                <td class="text-end">R$ {{ "{:,.2f}".format(despesa.valor).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Mostrar/ocultar campos de data personalizada
+document.getElementById('periodo').addEventListener('change', function() {
+    const divInicio = document.getElementById('div_data_inicio');
+    const divFim = document.getElementById('div_data_fim');
+    if (this.value === 'personalizado') {
+        divInicio.style.display = 'block';
+        divFim.style.display = 'block';
+    } else {
+        divInicio.style.display = 'none';
+        divFim.style.display = 'none';
+    }
+});
+
+// Gráfico de Barras Horizontais
+const ctx = document.getElementById('chartTop10').getContext('2d');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: {{ chart_labels | tojson }},
+        datasets: [{
+            label: 'Valor (R$)',
+            data: {{ chart_data | tojson }},
+            backgroundColor: [
+                '#e74c3c', '#e67e22', '#f39c12', '#f1c40f', '#2ecc71',
+                '#1abc9c', '#3498db', '#9b59b6', '#34495e', '#95a5a6'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return 'R$ ' + context.parsed.x.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return 'R$ ' + value.toLocaleString('pt-BR');
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

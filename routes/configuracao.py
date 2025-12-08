@@ -1192,6 +1192,30 @@ def exportar_sqlite_despesas():
             )
         """)
 
+        # Criar tabelas auxiliares
+        sqlite_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS categorias (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL UNIQUE
+            )
+        """)
+
+        sqlite_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS meios_pagamento (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL UNIQUE
+            )
+        """)
+
+        # Popular tabelas auxiliares do usuário
+        categorias_despesa = CategoriaDespesa.query.filter_by(user_id=current_user.id).all()
+        for categoria in categorias_despesa:
+            sqlite_cursor.execute("INSERT OR IGNORE INTO categorias (nome) VALUES (?)", (categoria.nome,))
+
+        meios_pagamento = MeioPagamento.query.filter_by(user_id=current_user.id).all()
+        for meio in meios_pagamento:
+            sqlite_cursor.execute("INSERT OR IGNORE INTO meios_pagamento (nome) VALUES (?)", (meio.nome,))
+
         # Buscar despesas do usuário logado
         despesas = Despesa.query.filter_by(user_id=current_user.id).all()
 
@@ -1267,7 +1291,7 @@ def exportar_sqlite_receitas():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 descricao TEXT NOT NULL,
                 meio_recebimento TEXT NOT NULL,
-                categoria_receita TEXT NOT NULL,
+                conta_receita TEXT NOT NULL,
                 valor REAL NOT NULL,
                 num_parcelas INTEGER DEFAULT 1,
                 data_registro TEXT,
@@ -1275,12 +1299,36 @@ def exportar_sqlite_receitas():
             )
         """)
 
+        # Criar tabelas auxiliares
+        sqlite_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS categorias_receita (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL UNIQUE
+            )
+        """)
+
+        sqlite_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS meios_recebimento (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL UNIQUE
+            )
+        """)
+
+        # Popular tabelas auxiliares do usuário
+        categorias_receita = CategoriaReceita.query.filter_by(user_id=current_user.id).all()
+        for categoria in categorias_receita:
+            sqlite_cursor.execute("INSERT OR IGNORE INTO categorias_receita (nome) VALUES (?)", (categoria.nome,))
+
+        meios_recebimento = MeioRecebimento.query.filter_by(user_id=current_user.id).all()
+        for meio in meios_recebimento:
+            sqlite_cursor.execute("INSERT OR IGNORE INTO meios_recebimento (nome) VALUES (?)", (meio.nome,))
+
         # Buscar receitas do usuário logado
         receitas = Receita.query.filter_by(user_id=current_user.id).all()
 
         for receita in receitas:
             sqlite_cursor.execute("""
-                INSERT INTO receitas (descricao, meio_recebimento, categoria_receita, valor,
+                INSERT INTO receitas (descricao, meio_recebimento, conta_receita, valor,
                                     num_parcelas, data_registro, data_recebimento)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
@@ -1301,7 +1349,7 @@ def exportar_sqlite_receitas():
         return send_file(
             sqlite_path,
             as_attachment=True,
-            download_name='financas_receita.db',
+            download_name='financas_receitas.db',
             mimetype='application/x-sqlite3'
         )
 

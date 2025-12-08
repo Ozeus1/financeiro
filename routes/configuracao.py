@@ -1181,7 +1181,8 @@ def exportar_sqlite_despesas():
                 valor REAL NOT NULL,
                 num_parcelas INTEGER DEFAULT 1,
                 data_registro TEXT,
-                data_pagamento TEXT
+                data_pagamento TEXT,
+                user_id INTEGER
             )
         """)
 
@@ -1246,8 +1247,8 @@ def exportar_sqlite_despesas():
         for despesa in despesas:
             sqlite_cursor.execute("""
                 INSERT INTO despesas (descricao, meio_pagamento, conta_despesa, valor,
-                                    num_parcelas, data_registro, data_pagamento)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                                    num_parcelas, data_registro, data_pagamento, user_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 despesa.descricao,
                 despesa.meio_pagamento.nome if despesa.meio_pagamento else 'Outros',
@@ -1255,7 +1256,8 @@ def exportar_sqlite_despesas():
                 despesa.valor,
                 despesa.num_parcelas or 1,
                 despesa.data_registro.strftime('%Y-%m-%d') if despesa.data_registro else None,
-                despesa.data_pagamento.strftime('%Y-%m-%d') if despesa.data_pagamento else None
+                despesa.data_pagamento.strftime('%Y-%m-%d') if despesa.data_pagamento else None,
+                despesa.user_id
             ))
 
         # Buscar orçamentos do usuário logado
@@ -1272,6 +1274,22 @@ def exportar_sqlite_despesas():
                 ))
             except:
                 continue
+
+        # Criar view de compatibilidade (usada pelos relatórios avançados do desktop)
+        sqlite_cursor.execute("""
+            CREATE VIEW IF NOT EXISTS v_despesas_compat AS
+            SELECT
+                id,
+                descricao,
+                valor,
+                num_parcelas,
+                data_pagamento,
+                data_registro,
+                conta_despesa,
+                meio_pagamento,
+                user_id
+            FROM despesas
+        """)
 
         # Commit e fechar
         sqlite_conn.commit()

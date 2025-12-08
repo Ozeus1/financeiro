@@ -1228,7 +1228,9 @@ def exportar_sqlite_despesas():
             sqlite_cursor.execute("INSERT OR IGNORE INTO meios_pagamento (nome) VALUES (?)", (meio.nome,))
 
         # Popular fechamento de cartões
-        fechamentos = FechamentoCartao.query.join(MeioPagamento).filter(MeioPagamento.user_id == current_user.id).all()
+        # Buscar todos os fechamentos cujos meios de pagamento pertencem ao usuário
+        meios_ids = [m.id for m in meios_pagamento]
+        fechamentos = FechamentoCartao.query.filter(FechamentoCartao.meio_pagamento_id.in_(meios_ids)).all()
         for fechamento in fechamentos:
             try:
                 sqlite_cursor.execute("""
@@ -1238,7 +1240,8 @@ def exportar_sqlite_despesas():
                     fechamento.meio_pagamento.nome,
                     fechamento.dia_fechamento
                 ))
-            except:
+            except Exception as e:
+                # Log do erro para debug (opcional)
                 continue
 
         # Buscar despesas do usuário logado

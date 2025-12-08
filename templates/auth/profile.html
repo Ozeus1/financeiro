@@ -19,8 +19,6 @@
                         <p><strong>Nível de Acesso:</strong>
                             {% if current_user.is_admin() %}
                             <span class="badge bg-danger">Administrador</span>
-                            {% elif current_user.is_gerente() %}
-                            <span class="badge bg-warning text-dark">Gerente</span>
                             {% else %}
                             <span class="badge bg-secondary">Usuário</span>
                             {% endif %}

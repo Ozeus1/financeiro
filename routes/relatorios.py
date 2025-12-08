@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
-from routes.auth import gerente_required
 from models import db, Despesa, Receita, CategoriaDespesa, Orcamento, MeioPagamento, FechamentoCartao
 from sqlalchemy import func, extract, desc
 from datetime import datetime, timedelta, date
@@ -15,40 +14,25 @@ def balanco():
     """Relatório de balanço mensal (receitas vs despesas)"""
     # Obter período do filtro ou usar últimos 12 meses
     meses = request.args.get('meses', 12, type=int)
-    
-    # Query base
-    if current_user.is_gerente():
-        despesas_query = Despesa.query
-        receitas_query = Receita.query
-    else:
-        despesas_query = Despesa.query.filter_by(user_id=current_user.id)
-        receitas_query = Receita.query.filter_by(user_id=current_user.id)
-    
-    # Agrupar por mês
+
+    # Agrupar por mês - sempre filtrar por usuário
     despesas_mensais = db.session.query(
         extract('year', Despesa.data_pagamento).label('ano'),
         extract('month', Despesa.data_pagamento).label('mes'),
         func.sum(Despesa.valor).label('total')
     ).join(Despesa.categoria).filter(
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    ).group_by('ano', 'mes').order_by('ano', 'mes')
-    
-    if not current_user.is_gerente():
-        despesas_mensais = despesas_mensais.filter(Despesa.user_id == current_user.id)
-    
-    despesas_mensais = despesas_mensais.all()
-    
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).group_by('ano', 'mes').order_by('ano', 'mes').all()
+
     receitas_mensais = db.session.query(
         extract('year', Receita.data_recebimento).label('ano'),
         extract('month', Receita.data_recebimento).label('mes'),
         func.sum(Receita.valor).label('total')
-    ).group_by('ano', 'mes').order_by('ano', 'mes')
-    
-    if not current_user.is_gerente():
-        receitas_mensais = receitas_mensais.filter(Receita.user_id == current_user.id)
-    
-    receitas_mensais = receitas_mensais.all()
-    
+    ).filter(
+        Receita.user_id == current_user.id
+    ).group_by('ano', 'mes').order_by('ano', 'mes').all()
+
     return render_template('relatorios/balanco.html',
                          despesas_mensais=despesas_mensais,
                          receitas_mensais=receitas_mensais)
@@ -59,9 +43,9 @@ def despesas_mensal():
     """Relatório mensal de despesas"""
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
-    
-    # Query por categoria
-    query = db.session.query(
+
+    # Query por categoria - sempre filtrar por usuário
+    despesas_por_categoria = db.session.query(
         CategoriaDespesa.id,
         CategoriaDespesa.nome,
         func.sum(Despesa.valor).label('total'),
@@ -69,17 +53,13 @@ def despesas_mensal():
     ).join(Despesa).filter(
         extract('month', Despesa.data_pagamento) == mes,
         extract('year', Despesa.data_pagamento) == ano,
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    )
-    
-    if not current_user.is_gerente():
-        query = query.filter(Despesa.user_id == current_user.id)
-    
-    despesas_por_categoria = query.group_by(CategoriaDespesa.id, CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).all()
-    
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).group_by(CategoriaDespesa.id, CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).all()
+
     total_mes = sum([d[2] for d in despesas_por_categoria])
     nome_mes = calendar.month_name[mes]
-    
+
     return render_template('relatorios/despesas_mensal.html',
                          despesas_por_categoria=despesas_por_categoria,
                          total_mes=total_mes,
@@ -93,26 +73,22 @@ def receitas_mensal():
     """Relatório mensal de receitas"""
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
-    
+
     from models import CategoriaReceita
-    
-    # Query por categoria
-    query = db.session.query(
+
+    # Query por categoria - sempre filtrar por usuário
+    receitas_por_categoria = db.session.query(
         CategoriaReceita.nome,
         func.sum(Receita.valor).label('total')
     ).join(Receita).filter(
         extract('month', Receita.data_recebimento) == mes,
-        extract('year', Receita.data_recebimento) == ano
-    )
-    
-    if not current_user.is_gerente():
-        query = query.filter(Receita.user_id == current_user.id)
-    
-    receitas_por_categoria = query.group_by(CategoriaReceita.nome).order_by(func.sum(Receita.valor).desc()).all()
-    
+        extract('year', Receita.data_recebimento) == ano,
+        Receita.user_id == current_user.id
+    ).group_by(CategoriaReceita.nome).order_by(func.sum(Receita.valor).desc()).all()
+
     total_mes = sum([r[1] for r in receitas_por_categoria])
     nome_mes = calendar.month_name[mes]
-    
+
     return render_template('relatorios/receitas_mensal.html',
                          receitas_por_categoria=receitas_por_categoria,
                          total_mes=total_mes,
@@ -126,37 +102,29 @@ def top_contas():
     """Top 10 contas de despesa"""
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
-    
-    # Query top 10
-    query = db.session.query(
+
+    # Query top 10 - sempre filtrar por usuário
+    top_contas = db.session.query(
         CategoriaDespesa.nome,
         func.sum(Despesa.valor).label('total'),
         func.count(Despesa.id).label('quantidade')
     ).join(Despesa).filter(
         extract('month', Despesa.data_pagamento) == mes,
         extract('year', Despesa.data_pagamento) == ano,
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    )
-    
-    if not current_user.is_gerente():
-        query = query.filter(Despesa.user_id == current_user.id)
-    
-    top_contas = query.group_by(CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).limit(10).all()
-    
-    # Total do mês
-    total_mes_query = db.session.query(func.sum(Despesa.valor)).join(Despesa.categoria).filter(
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).group_by(CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).limit(10).all()
+
+    # Total do mês - sempre filtrar por usuário
+    total_mes = db.session.query(func.sum(Despesa.valor)).join(Despesa.categoria).filter(
         extract('month', Despesa.data_pagamento) == mes,
         extract('year', Despesa.data_pagamento) == ano,
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    )
-    
-    if not current_user.is_gerente():
-        total_mes_query = total_mes_query.filter(Despesa.user_id == current_user.id)
-    
-    total_mes = total_mes_query.scalar() or 0
-    
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).scalar() or 0
+
     nome_mes = calendar.month_name[mes]
-    
+
     return render_template('relatorios/top_contas.html',
                          top_contas=top_contas,
                          total_mes=total_mes,
@@ -171,29 +139,23 @@ def detalhes_despesas():
     categoria_nome = request.args.get('categoria')
     mes = request.args.get('mes', type=int)
     ano = request.args.get('ano', type=int)
-    
+
     if not categoria_nome or not mes or not ano:
         return "Parâmetros inválidos", 400
-    
-    # Construir query para despesas filtradas
-    query = Despesa.query.join(CategoriaDespesa).filter(
+
+    # Construir query para despesas filtradas - sempre filtrar por usuário
+    despesas = Despesa.query.join(CategoriaDespesa).filter(
         CategoriaDespesa.nome == categoria_nome,
         extract('month', Despesa.data_pagamento) == mes,
-        extract('year', Despesa.data_pagamento) == ano
-    )
-    
-    # Filtrar por usuário se não for gerente
-    if not current_user.is_gerente():
-        query = query.filter(Despesa.user_id == current_user.id)
-    
-    # Ordenar por data
-    despesas = query.order_by(Despesa.data_pagamento.desc()).all()
-    
+        extract('year', Despesa.data_pagamento) == ano,
+        Despesa.user_id == current_user.id
+    ).order_by(Despesa.data_pagamento.desc()).all()
+
     # Calcular total
     total = sum(d.valor for d in despesas)
-    
+
     nome_mes = calendar.month_name[mes]
-    
+
     return render_template('relatorios/detalhes_despesas.html',
                          despesas=despesas,
                          categoria_nome=categoria_nome,
@@ -204,15 +166,14 @@ def detalhes_despesas():
 
 @relatorios_bp.route('/orcado-vs-gasto')
 @login_required
-@gerente_required
 def orcado_vs_gasto():
     """Relatório de orçado vs gasto"""
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
-    
-    # Buscar orçamentos do usuário (orçamento é geral, não mensal)
+
+    # Buscar orçamentos do usuário - sempre filtrar por usuário
     orcamentos = Orcamento.query.filter_by(user_id=current_user.id).all()
-    
+
     # Para cada orçamento, calcular o gasto
     comparativo = []
     for orc in orcamentos:
@@ -222,10 +183,10 @@ def orcado_vs_gasto():
             extract('year', Despesa.data_pagamento) == ano,
             Despesa.user_id == current_user.id
         ).scalar() or 0
-        
+
         diferenca = orc.valor_orcado - gasto
         percentual = (gasto / orc.valor_orcado * 100) if orc.valor_orcado > 0 else 0
-        
+
         comparativo.append({
             'categoria': orc.categoria.nome,
             'orcado': orc.valor_orcado,
@@ -233,9 +194,9 @@ def orcado_vs_gasto():
             'diferenca': diferenca,
             'percentual': percentual
         })
-    
+
     nome_mes = calendar.month_name[mes]
-    
+
     return render_template('relatorios/orcado_vs_gasto.html',
                          comparativo=comparativo,
                          mes=mes,
@@ -265,16 +226,11 @@ def previsao_cartoes():
     # Buscar despesas parceladas para calcular a data final real
     max_parcela_date = max_db_date
     
-    # Query para buscar a maior data final de parcelamento
-    query_parcelas = db.session.query(Despesa.data_pagamento, Despesa.num_parcelas).filter(
-        Despesa.num_parcelas > 1
-    )
-    
-    # Filtrar por usuário se não for gerente
-    if not current_user.is_gerente():
-        query_parcelas = query_parcelas.filter(Despesa.user_id == current_user.id)
-        
-    despesas_parceladas = query_parcelas.all()
+    # Query para buscar a maior data final de parcelamento - sempre filtrar por usuário
+    despesas_parceladas = db.session.query(Despesa.data_pagamento, Despesa.num_parcelas).filter(
+        Despesa.num_parcelas > 1,
+        Despesa.user_id == current_user.id
+    ).all()
     
     # Debug logging (print to console which shows in terminal)
     print(f"DEBUG: Found {len(despesas_parceladas)} parcel expenses for user {current_user.id}")
@@ -322,12 +278,11 @@ def previsao_cartoes():
         dia_vencimento = config.dia_vencimento if config else 10
         dia_fechamento = config.dia_fechamento if config else 31 # Se não tem fechamento, considera fim do mês
         
-        # Buscar TODAS as despesas deste cartão
-        query_despesas = Despesa.query.filter_by(meio_pagamento_id=cartao.id)
-        if not current_user.is_gerente():
-            query_despesas = query_despesas.filter_by(user_id=current_user.id)
-        
-        despesas = query_despesas.all()
+        # Buscar TODAS as despesas deste cartão - sempre filtrar por usuário
+        despesas = Despesa.query.filter_by(
+            meio_pagamento_id=cartao.id,
+            user_id=current_user.id
+        ).all()
         
         # Dicionário para acumular totais por mês (ano, mes) -> valor
         totais_por_mes = {}
@@ -435,13 +390,11 @@ def previsao_cartoes():
 def api_fatura_detalhes(cartao_id, mes, ano):
     """API para retornar detalhes da fatura (transações)"""
     try:
-        # Buscar TODAS as despesas deste cartão
-        query = Despesa.query.filter_by(meio_pagamento_id=cartao_id)
-        
-        if not current_user.is_gerente():
-            query = query.filter_by(user_id=current_user.id)
-            
-        despesas = query.order_by(Despesa.data_pagamento, Despesa.id).all()
+        # Buscar TODAS as despesas deste cartão - sempre filtrar por usuário
+        despesas = Despesa.query.filter_by(
+            meio_pagamento_id=cartao_id,
+            user_id=current_user.id
+        ).order_by(Despesa.data_pagamento, Despesa.id).all()
         
         # Verificar configuração de fechamento para este cartão
         config = FechamentoCartao.query.filter_by(meio_pagamento_id=cartao_id).first()
@@ -488,21 +441,18 @@ def api_despesas_categoria():
     """API JSON para gráfico de despesas por categoria"""
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
-    
-    query = db.session.query(
+
+    # Query - sempre filtrar por usuário
+    dados = db.session.query(
         CategoriaDespesa.nome,
         func.sum(Despesa.valor).label('total')
     ).join(Despesa).filter(
         extract('month', Despesa.data_pagamento) == mes,
         extract('year', Despesa.data_pagamento) == ano,
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    )
-    
-    if not current_user.is_gerente():
-        query = query.filter(Despesa.user_id == current_user.id)
-    
-    dados = query.group_by(CategoriaDespesa.nome).all()
-    
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).group_by(CategoriaDespesa.nome).all()
+
     return jsonify({
         'labels': [d[0] for d in dados],
         'values': [float(d[1]) for d in dados]
@@ -512,33 +462,26 @@ def api_despesas_categoria():
 @login_required
 def api_balanco_mensal():
     """API JSON para gráfico de balanço mensal"""
-    # Últimos 12 meses
+    # Últimos 12 meses - sempre filtrar por usuário
     despesas = db.session.query(
         extract('year', Despesa.data_pagamento).label('ano'),
         extract('month', Despesa.data_pagamento).label('mes'),
         func.sum(Despesa.valor).label('total')
     ).join(Despesa.categoria).filter(
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    ).group_by('ano', 'mes').order_by('ano', 'mes').limit(12)
-    
-    if not current_user.is_gerente():
-        despesas = despesas.filter(Despesa.user_id == current_user.id)
-    
-    despesas = despesas.all()
-    
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).group_by('ano', 'mes').order_by('ano', 'mes').limit(12).all()
+
     receitas = db.session.query(
         extract('year', Receita.data_recebimento).label('ano'),
         extract('month', Receita.data_recebimento).label('mes'),
         func.sum(Receita.valor).label('total')
-    ).group_by('ano', 'mes').order_by('ano', 'mes').limit(12)
-    
-    if not current_user.is_gerente():
-        receitas = receitas.filter(Receita.user_id == current_user.id)
-    
-    receitas = receitas.all()
-    
+    ).filter(
+        Receita.user_id == current_user.id
+    ).group_by('ano', 'mes').order_by('ano', 'mes').limit(12).all()
+
     labels = [f"{int(d.mes):02d}/{int(d.ano)}" for d in despesas]
-    
+
     return jsonify({
         'labels': labels,
         'despesas': [float(d.total) for d in despesas],
@@ -552,29 +495,31 @@ def despesas_por_categoria_evolucao():
     categoria_id = request.args.get('categoria_id')
     mes_inicio = request.args.get('mes_inicio')
     mes_fim = request.args.get('mes_fim')
-    
-    # Base query
+
+    # Base query - sempre filtrar por usuário
     query = db.session.query(
         func.to_char(Despesa.data_pagamento, 'YYYY-MM').label('mes_ano'),
         func.sum(Despesa.valor).label('total'),
         func.count(Despesa.id).label('quantidade')
-    ).join(CategoriaDespesa)
-    
+    ).join(CategoriaDespesa).filter(
+        Despesa.user_id == current_user.id
+    )
+
     # Apply filters
     if categoria_id:
         query = query.filter(Despesa.categoria_id == categoria_id)
-        
+
     if mes_inicio:
         query = query.filter(func.to_char(Despesa.data_pagamento, 'YYYY-MM') >= mes_inicio)
-        
+
     if mes_fim:
         query = query.filter(func.to_char(Despesa.data_pagamento, 'YYYY-MM') <= mes_fim)
-        
+
     # Group and order
     query = query.group_by('mes_ano').order_by(desc('mes_ano'))
-    
+
     resultados = query.all()
-    
+
     # Get all categories for the filter dropdown
     categorias = CategoriaDespesa.query.filter_by(user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
     
@@ -624,23 +569,25 @@ def despesas_por_categoria_evolucao():
 def despesas_por_pagamento():
     # Get filter parameters
     meio_pagamento = request.args.get('meio_pagamento')
-    
-    # Base query
+
+    # Base query - sempre filtrar por usuário
     query = db.session.query(
         func.to_char(Despesa.data_pagamento, 'YYYY-MM').label('mes_ano'),
         func.sum(Despesa.valor).label('total'),
         func.count(Despesa.id).label('quantidade')
-    ).join(MeioPagamento)
-    
+    ).join(MeioPagamento).filter(
+        Despesa.user_id == current_user.id
+    )
+
     # Apply filters
     if meio_pagamento:
         query = query.filter(MeioPagamento.nome == meio_pagamento)
-        
+
     # Group and order
     query = query.group_by('mes_ano').order_by(desc('mes_ano'))
-    
+
     resultados = query.all()
-    
+
     # Get all payment methods for the filter dropdown
     meios_pagamento = [m.nome for m in MeioPagamento.query.filter_by(user_id=current_user.id).order_by(MeioPagamento.nome).all()]
     

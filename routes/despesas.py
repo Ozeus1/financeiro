@@ -35,11 +35,8 @@ def lista():
         data_fim = None
     # Se personalizado, usa os valores de data_inicio e data_fim recebidos
     
-    # Query base
-    if current_user.is_gerente():
-        query = Despesa.query
-    else:
-        query = Despesa.query.filter_by(user_id=current_user.id)
+    # Query base - todos veem apenas seus próprios dados
+    query = Despesa.query.filter_by(user_id=current_user.id)
     
     # Aplicar filtros
     if categoria_id:
@@ -121,8 +118,8 @@ def editar(id):
     # Capturar filtros da URL para persistência
     filtros = {k: v for k, v in request.args.items()}
     
-    # Verificar permissão
-    if not current_user.is_gerente() and despesa.user_id != current_user.id:
+    # Verificar permissão - usuário só pode editar suas próprias despesas
+    if despesa.user_id != current_user.id:
         flash('Você não tem permissão para editar esta despesa.', 'danger')
         return redirect(url_for('despesas.lista', **filtros))
     
@@ -161,8 +158,8 @@ def excluir(id):
     """Excluir despesa"""
     despesa = Despesa.query.get_or_404(id)
     
-    # Verificar permissão
-    if not current_user.is_gerente() and despesa.user_id != current_user.id:
+    # Verificar permissão - usuário só pode excluir suas próprias despesas
+    if despesa.user_id != current_user.id:
         flash('Você não tem permissão para excluir esta despesa.', 'danger')
         return redirect(url_for('despesas.lista'))
     

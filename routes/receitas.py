@@ -35,11 +35,8 @@ def lista():
         data_fim = None
     # Se personalizado, usa os valores de data_inicio e data_fim recebidos
     
-    # Query base
-    if current_user.is_gerente():
-        query = Receita.query
-    else:
-        query = Receita.query.filter_by(user_id=current_user.id)
+    # Query base - todos veem apenas seus próprios dados
+    query = Receita.query.filter_by(user_id=current_user.id)
     
     # Aplicar filtros
     if categoria_id:
@@ -121,8 +118,8 @@ def editar(id):
     # Capturar filtros da URL para persistência
     filtros = {k: v for k, v in request.args.items()}
     
-    # Verificar permissão
-    if not current_user.is_gerente() and receita.user_id != current_user.id:
+    # Verificar permissão - usuário só pode editar suas próprias receitas
+    if receita.user_id != current_user.id:
         flash('Você não tem permissão para editar esta receita.', 'danger')
         return redirect(url_for('receitas.lista', **filtros))
     
@@ -161,8 +158,8 @@ def excluir(id):
     """Excluir receita"""
     receita = Receita.query.get_or_404(id)
     
-    # Verificar permissão
-    if not current_user.is_gerente() and receita.user_id != current_user.id:
+    # Verificar permissão - usuário só pode excluir suas próprias receitas
+    if receita.user_id != current_user.id:
         flash('Você não tem permissão para excluir esta receita.', 'danger')
         return redirect(url_for('receitas.lista'))
     

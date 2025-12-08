@@ -86,7 +86,6 @@
                             <li><a class="dropdown-item"
                                     href="{{ url_for('relatorios.despesas_mensais_periodo') }}">Mensal por Período</a>
                             </li>
-                            {% if current_user.is_gerente() %}
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
@@ -94,7 +93,6 @@
                                     Gasto</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('relatorios.previsao_cartoes') }}">Previsão
                                     Cartões</a></li>
-                            {% endif %}
                         </ul>
                     </li>
                     <!-- Menu Configurações - Disponível para TODOS os usuários -->

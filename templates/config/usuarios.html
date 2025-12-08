@@ -49,7 +49,6 @@
                                         <label class="form-label">Nível de Acesso</label>
                                         <select class="form-select" name="nivel" required>
                                             <option value="usuario">Usuário</option>
-                                            <option value="gerente">Gerente</option>
                                             <option value="admin">Admin</option>
                                         </select>
                                     </div>
@@ -88,8 +87,6 @@
                                 <td class="text-center">
                                     {% if usuario.nivel_acesso == 'admin' %}
                                     <span class="badge bg-danger">Admin</span>
-                                    {% elif usuario.nivel_acesso == 'gerente' %}
-                                    <span class="badge bg-warning text-dark">Gerente</span>
                                     {% else %}
                                     <span class="badge bg-secondary">Usuário</span>
                                     {% endif %}
@@ -152,9 +149,6 @@
                                                                 <option value="usuario" {% if
                                                                     usuario.nivel_acesso=='usuario' %}selected{% endif
                                                                     %}>Usuário</option>
-                                                                <option value="gerente" {% if
-                                                                    usuario.nivel_acesso=='gerente' %}selected{% endif
-                                                                    %}>Gerente</option>
                                                                 <option value="admin" {% if
                                                                     usuario.nivel_acesso=='admin' %}selected{% endif %}>
                                                                     Admin</option>

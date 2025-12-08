@@ -22,34 +22,24 @@ def dashboard():
     mes_atual = hoje.month
     ano_atual = hoje.year
     
-    # Query base baseada no nível de acesso
-    if current_user.is_gerente():
-        # Gerente e admin veem todos os dados
-        despesas_query = Despesa.query
-        receitas_query = Receita.query
-    else:
-        # Usuário comum vê apenas seus próprios dados
-        despesas_query = Despesa.query.filter_by(user_id=current_user.id)
-        receitas_query = Receita.query.filter_by(user_id=current_user.id)
+    # Todos os usuários (incluindo admin) veem apenas seus próprios dados
+    despesas_query = Despesa.query.filter_by(user_id=current_user.id)
+    receitas_query = Receita.query.filter_by(user_id=current_user.id)
     
     # Total de despesas do mês (Excluindo 'Pagamentos')
     total_despesas_mes = db.session.query(func.sum(Despesa.valor)).join(CategoriaDespesa).filter(
         extract('month', Despesa.data_pagamento) == mes_atual,
         extract('year', Despesa.data_pagamento) == ano_atual,
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    )
-    if not current_user.is_gerente():
-        total_despesas_mes = total_despesas_mes.filter(Despesa.user_id == current_user.id)
-    total_despesas_mes = total_despesas_mes.scalar() or 0
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).scalar() or 0
     
     # Total de receitas do mês
     total_receitas_mes = db.session.query(func.sum(Receita.valor)).filter(
         extract('month', Receita.data_recebimento) == mes_atual,
-        extract('year', Receita.data_recebimento) == ano_atual
-    )
-    if not current_user.is_gerente():
-        total_receitas_mes = total_receitas_mes.filter(Receita.user_id == current_user.id)
-    total_receitas_mes = total_receitas_mes.scalar() or 0
+        extract('year', Receita.data_recebimento) == ano_atual,
+        Receita.user_id == current_user.id
+    ).scalar() or 0
     
     # Saldo do mês (Geral)
     saldo_mes = total_receitas_mes - total_despesas_mes
@@ -61,7 +51,7 @@ def dashboard():
     MEIOS_PAGAMENTO_CAIXA = ['Boleto', 'Dinheiro', 'PIX', 'Transferência', 'Débito em Conta']
     
     # Saídas de Caixa (Despesas em dinheiro/pix/etc OU Categoria 'Pagamentos')
-    saidas_caixa_query = db.session.query(func.sum(Despesa.valor)).join(
+    saidas_caixa = db.session.query(func.sum(Despesa.valor)).join(
         Despesa.meio_pagamento
     ).join(
         Despesa.categoria
@@ -71,22 +61,16 @@ def dashboard():
         or_(
             func.lower(MeioPagamento.nome).in_([m.lower() for m in MEIOS_PAGAMENTO_CAIXA]),
             func.lower(CategoriaDespesa.nome) == 'pagamentos'
-        )
-    )
-    if not current_user.is_gerente():
-        saidas_caixa_query = saidas_caixa_query.filter(Despesa.user_id == current_user.id)
-    
-    saidas_caixa = saidas_caixa_query.scalar() or 0.0
+        ),
+        Despesa.user_id == current_user.id
+    ).scalar() or 0.0
     
     # Eventos Avulsos (Saídas)
-    eventos_caixa_query = db.session.query(func.sum(EventoCaixaAvulso.valor)).filter(
+    eventos_caixa = db.session.query(func.sum(EventoCaixaAvulso.valor)).filter(
         extract('month', EventoCaixaAvulso.data) == mes_atual,
-        extract('year', EventoCaixaAvulso.data) == ano_atual
-    )
-    if not current_user.is_gerente():
-        eventos_caixa_query = eventos_caixa_query.filter(EventoCaixaAvulso.user_id == current_user.id)
-        
-    eventos_caixa = eventos_caixa_query.scalar() or 0.0
+        extract('year', EventoCaixaAvulso.data) == ano_atual,
+        EventoCaixaAvulso.user_id == current_user.id
+    ).scalar() or 0.0
     
     fluxo_saidas = saidas_caixa + eventos_caixa
     fluxo_entradas = total_receitas_mes # Receitas são entradas de caixa

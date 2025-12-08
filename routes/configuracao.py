@@ -1230,19 +1230,24 @@ def exportar_sqlite_despesas():
         # Popular fechamento de cartões
         # Buscar todos os fechamentos cujos meios de pagamento pertencem ao usuário
         meios_ids = [m.id for m in meios_pagamento]
-        fechamentos = FechamentoCartao.query.filter(FechamentoCartao.meio_pagamento_id.in_(meios_ids)).all()
-        for fechamento in fechamentos:
-            try:
-                sqlite_cursor.execute("""
-                    INSERT INTO fechamento_cartoes (meio_pagamento, data_fechamento)
-                    VALUES (?, ?)
-                """, (
-                    fechamento.meio_pagamento.nome,
-                    fechamento.dia_fechamento
-                ))
-            except Exception as e:
-                # Log do erro para debug (opcional)
-                continue
+        if meios_ids:
+            fechamentos = FechamentoCartao.query.filter(FechamentoCartao.meio_pagamento_id.in_(meios_ids)).all()
+            print(f"[DEBUG] Meios de pagamento IDs: {meios_ids}")
+            print(f"[DEBUG] Fechamentos encontrados: {len(fechamentos)}")
+            for fechamento in fechamentos:
+                try:
+                    meio_nome = fechamento.meio_pagamento.nome if fechamento.meio_pagamento else 'Desconhecido'
+                    print(f"[DEBUG] Inserindo: {meio_nome} - Dia {fechamento.dia_fechamento}")
+                    sqlite_cursor.execute("""
+                        INSERT INTO fechamento_cartoes (meio_pagamento, data_fechamento)
+                        VALUES (?, ?)
+                    """, (
+                        meio_nome,
+                        fechamento.dia_fechamento
+                    ))
+                except Exception as e:
+                    print(f"[DEBUG ERRO] Falha ao inserir fechamento: {str(e)}")
+                    continue
 
         # Buscar despesas do usuário logado
         despesas = Despesa.query.filter_by(user_id=current_user.id).all()

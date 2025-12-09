@@ -1213,6 +1213,7 @@ def exportar_sqlite_despesas():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 meio_pagamento TEXT NOT NULL UNIQUE,
                 data_fechamento INTEGER NOT NULL,
+                data_vencimento INTEGER,
                 FOREIGN KEY (meio_pagamento) REFERENCES meios_pagamento(nome)
                     ON DELETE CASCADE ON UPDATE CASCADE
             )
@@ -1237,13 +1238,14 @@ def exportar_sqlite_despesas():
             for fechamento in fechamentos:
                 try:
                     meio_nome = fechamento.meio_pagamento.nome if fechamento.meio_pagamento else 'Desconhecido'
-                    print(f"[DEBUG] Inserindo: {meio_nome} - Dia {fechamento.dia_fechamento}")
+                    print(f"[DEBUG] Inserindo: {meio_nome} - Fechamento: {fechamento.dia_fechamento}, Vencimento: {fechamento.dia_vencimento}")
                     sqlite_cursor.execute("""
-                        INSERT INTO fechamento_cartoes (meio_pagamento, data_fechamento)
-                        VALUES (?, ?)
+                        INSERT INTO fechamento_cartoes (meio_pagamento, data_fechamento, data_vencimento)
+                        VALUES (?, ?, ?)
                     """, (
                         meio_nome,
-                        fechamento.dia_fechamento
+                        fechamento.dia_fechamento,
+                        fechamento.dia_vencimento
                     ))
                 except Exception as e:
                     print(f"[DEBUG ERRO] Falha ao inserir fechamento: {str(e)}")

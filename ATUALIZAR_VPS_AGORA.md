@@ -4,7 +4,7 @@
 
 O arquivo `financas.db` que você baixou está **INCOMPLETO** e por isso o relatório avançado não funciona.
 
-## ✅ O Que Foi Corrigido (5 commits enviados)
+## ✅ O Que Foi Corrigido (6 commits enviados)
 
 ### Commit 7854ab0 - Compatibilidade básica:
 - ✅ Renomeada coluna `categoria_receita` → `conta_receita` em receitas
@@ -29,6 +29,12 @@ O arquivo `financas.db` que você baixou está **INCOMPLETO** e por isso o relat
 - ✅ Adicionados logs de debug detalhados
 - ✅ Monitora IDs, quantidade e dados dos fechamentos
 - ✅ Facilita diagnóstico de problemas na exportação
+
+### Commit 38edefb - Coluna data_vencimento (CRÍTICO):
+- ✅ **Adicionar coluna `data_vencimento` na tabela fechamento_cartoes** ← CORRIGE ERRO!
+- ✅ PostgreSQL tem dia_fechamento E dia_vencimento
+- ✅ Exportação estava ignorando dia_vencimento
+- ✅ Agora exporta ambas as informações
 
 ---
 
@@ -113,12 +119,13 @@ Fast-forward
  1 file changed, 97 insertions(+)
 ```
 
-**Você deve ver os 5 commits:**
+**Você deve ver os 6 commits:**
 - `7854ab0` Corrigir exportação SQLite para compatibilidade
 - `98d3ab6` Adicionar tabela fechamento_cartoes
 - `c93cbfc` Adicionar coluna user_id e view v_despesas_compat
 - `efc3f2c` Corrigir query de exportação de fechamento_cartoes
 - `f8cf3f1` Adicionar debug na exportação de fechamento_cartoes
+- `38edefb` Adicionar coluna data_vencimento à exportação
 
 ### 6. Ajustar permissões
 ```bash
@@ -184,6 +191,36 @@ Estrutura do banco exportado:
   TABLE: orcamento
   TABLE: sqlite_sequence
   VIEW: v_despesas_compat             ← DEVE ESTAR PRESENTE!
+```
+
+### 3.1 Verificar estrutura de fechamento_cartoes:
+
+```python
+import sqlite3
+conn = sqlite3.connect(r'C:\Users\orlei\Downloads\financas.db')
+cursor = conn.cursor()
+cursor.execute("PRAGMA table_info(fechamento_cartoes)")
+print("Colunas da tabela fechamento_cartoes:")
+for col in cursor.fetchall():
+    print(f'  {col[1]} ({col[2]})')
+cursor.execute("SELECT * FROM fechamento_cartoes")
+print("\nDados de fechamento_cartoes:")
+for row in cursor.fetchall():
+    print(f'  {row}')
+conn.close()
+```
+
+**Saída CORRETA esperada:**
+```
+Colunas da tabela fechamento_cartoes:
+  id (INTEGER)
+  meio_pagamento (TEXT)
+  data_fechamento (INTEGER)
+  data_vencimento (INTEGER)          ← DEVE ESTAR PRESENTE!
+
+Dados de fechamento_cartoes:
+  (1, 'Cartão Nubank', 15, 25)       ← Exemplo com seus dados
+  (2, 'Cartão C6', 5, 15)            ← Exemplo com seus dados
 ```
 
 ### 4. Testar o relatório avançado no desktop
@@ -259,6 +296,12 @@ sudo systemctl start financeiro
 - Monitorar IDs e quantidade de fechamentos
 - Facilitar diagnóstico de problemas
 
+### 38edefb - Coluna data_vencimento (CRÍTICO):
+- **Adicionar coluna data_vencimento**
+- Corrigir exportação incompleta
+- PostgreSQL tinha 2 colunas, SQLite exportava só 1
+- Agora exporta dia_fechamento E dia_vencimento
+
 ---
 
 ## 🎯 RESUMO - O QUE FAZER
@@ -287,7 +330,9 @@ O arquivo que você baixou foi **ANTES** de atualizar a VPS.
 
 ---
 
-**Data:** 2025-12-08
-**Commits:** 7854ab0, 98d3ab6, c93cbfc, efc3f2c, f8cf3f1
+**Data:** 2025-12-08 (atualizado)
+**Commits:** 7854ab0, 98d3ab6, c93cbfc, efc3f2c, f8cf3f1, 38edefb
 **Correção:** Exportação SQLite completa e compatível
-**Soluciona:** Erro "v_despesas_compat não foi encontrada" e exportação de fechamento_cartoes
+**Soluciona:**
+- Erro "v_despesas_compat não foi encontrada"
+- Exportação incompleta de fechamento_cartoes (faltava dia_vencimento)

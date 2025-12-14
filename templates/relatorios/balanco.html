@@ -42,7 +42,8 @@
                         </thead>
                         <tbody>
                             {% for desp in despesas_mensais %}
-                            <tr>
+                            <tr style="cursor: pointer;"
+                                onclick="window.location.href='{{ url_for('relatorios.despesas_mensal', mes=desp.mes, ano=desp.ano) }}'">
                                 <td>{{ "%02d"|format(desp.mes|int) }}/{{ desp.ano|int }}</td>
                                 <td class="text-end">R$ {{ "%.2f"|format(desp.total)|replace('.', ',') }}</td>
                             </tr>
@@ -70,7 +71,8 @@
                         </thead>
                         <tbody>
                             {% for rec in receitas_mensais %}
-                            <tr>
+                            <tr style="cursor: pointer;"
+                                onclick="window.location.href='{{ url_for('relatorios.receitas_mensal', mes=rec.mes, ano=rec.ano) }}'">
                                 <td>{{ "%02d"|format(rec.mes|int) }}/{{ rec.ano|int }}</td>
                                 <td class="text-end">R$ {{ "%.2f"|format(rec.total)|replace('.', ',') }}</td>
                             </tr>

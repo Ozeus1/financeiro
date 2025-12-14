@@ -76,11 +76,23 @@ def dashboard():
     fluxo_entradas = total_receitas_mes # Receitas são entradas de caixa
     fluxo_saldo = fluxo_entradas - fluxo_saidas
     
-    # Últimas despesas
-    ultimas_despesas = despesas_query.order_by(Despesa.data_registro.desc()).limit(5).all()
+    # Últimas despesas (Por Registro)
+    ultimas_despesas_registro = despesas_query.order_by(Despesa.data_registro.desc()).limit(5).all()
     
-    # Últimas receitas
-    ultimas_receitas = receitas_query.order_by(Receita.data_registro.desc()).limit(5).all()
+    # Últimas despesas (Por Data - Mês Atual)
+    ultimas_despesas_data = despesas_query.filter(
+        extract('month', Despesa.data_pagamento) == mes_atual,
+        extract('year', Despesa.data_pagamento) == ano_atual
+    ).order_by(Despesa.data_pagamento.desc()).limit(5).all()
+    
+    # Últimas receitas (Por Registro)
+    ultimas_receitas_registro = receitas_query.order_by(Receita.data_registro.desc()).limit(5).all()
+    
+    # Últimas receitas (Por Data - Mês Atual)
+    ultimas_receitas_data = receitas_query.filter(
+        extract('month', Receita.data_recebimento) == mes_atual,
+        extract('year', Receita.data_recebimento) == ano_atual
+    ).order_by(Receita.data_recebimento.desc()).limit(5).all()
     
     # Nome do mês em português
     meses_pt = {
@@ -97,7 +109,9 @@ def dashboard():
                          fluxo_entradas=fluxo_entradas,
                          fluxo_saidas=fluxo_saidas,
                          fluxo_saldo=fluxo_saldo,
-                         ultimas_despesas=ultimas_despesas,
-                         ultimas_receitas=ultimas_receitas,
+                         ultimas_despesas_registro=ultimas_despesas_registro,
+                         ultimas_despesas_data=ultimas_despesas_data,
+                         ultimas_receitas_registro=ultimas_receitas_registro,
+                         ultimas_receitas_data=ultimas_receitas_data,
                          mes_atual=nome_mes,
                          ano_atual=ano_atual)

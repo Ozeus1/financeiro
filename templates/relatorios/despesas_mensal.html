@@ -131,6 +131,34 @@
 {% if despesas_por_categoria %}
 <script>
     const ctx = document.getElementById('graficoDespesas');
+
+    // Paleta de cores variada
+    const baseColors = [
+        'rgba(255, 99, 132, 0.7)',   // Vermelho
+        'rgba(54, 162, 235, 0.7)',   // Azul
+        'rgba(255, 206, 86, 0.7)',   // Amarelo
+        'rgba(75, 192, 192, 0.7)',   // Verde Água
+        'rgba(153, 102, 255, 0.7)',  // Roxo
+        'rgba(255, 159, 64, 0.7)',   // Laranja
+        'rgba(23, 162, 184, 0.7)',   // Ciano
+        'rgba(102, 16, 242, 0.7)',   // Índigo
+        'rgba(40, 167, 69, 0.7)',    // Verde
+        'rgba(220, 53, 69, 0.7)',    // Vermelho Escuro
+        'rgba(253, 126, 20, 0.7)',   // Laranja Escuro
+        'rgba(52, 58, 64, 0.7)'      // Cinza Escuro
+    ];
+
+    // Gerar arrays de cores
+    const dataCount = {{ despesas_por_categoria| length }};
+    const backgroundColors = [];
+    const borderColors = [];
+
+    for (let i = 0; i < dataCount; i++) {
+        const color = baseColors[i % baseColors.length];
+        backgroundColors.push(color);
+        borderColors.push(color.replace('0.7', '1.0'));
+    }
+
     new Chart(ctx, {
         type: 'bar',
         data: {
@@ -138,8 +166,8 @@
     datasets: [{
         label: 'Valor Total (R$)',
         data: [{% for id, cat, val, qtd in despesas_por_categoria %}{{ val }}{% if not loop.last %}, {% endif %} {% endfor %}],
-    backgroundColor: 'rgba(255, 99, 132, 0.7)',
-        borderColor: 'rgba(255, 99, 132, 1)',
+    backgroundColor: backgroundColors,
+        borderColor: borderColors,
             borderWidth: 1
             }]
         },

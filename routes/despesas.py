@@ -129,7 +129,7 @@ def editar(id):
         despesa.categoria_id = int(request.form.get('categoria_id'))
         despesa.meio_pagamento_id = int(request.form.get('meio_pagamento_id'))
         despesa.num_parcelas = int(request.form.get('num_parcelas', 1))
-        data_pagamento = datetime.strptime(request.form.get('data_pagamento'), '%Y-%m-%d').date()
+        despesa.data_pagamento = datetime.strptime(request.form.get('data_pagamento'), '%Y-%m-%d').date()
         
         db.session.commit()
         

@@ -104,10 +104,17 @@
         <div class="card h-100 shadow-sm card-fatura">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-card-heading"></i> {{ cartao.cartao }}</h5>
-                <button class="btn btn-sm btn-outline-light" onclick="toggleCard({{ loop.index }})"
-                    id="toggle-btn-{{ loop.index }}" title="Mostrar/Ocultar">
-                    <i class="bi bi-chevron-up" id="toggle-icon-{{ loop.index }}"></i>
-                </button>
+                <div>
+                    <button class="btn btn-sm btn-outline-light me-1"
+                        onclick="verGrafico('{{ cartao.cartao | replace("'", "") }}' , {{ cartao.labels_grafico | tojson
+                        }}, {{ cartao.dados_grafico | tojson }})" title="Ver Gráfico">
+                        <i class="bi bi-bar-chart-fill"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-light" onclick="toggleCard({{ loop.index }})"
+                        id="toggle-btn-{{ loop.index }}" title="Mostrar/Ocultar">
+                        <i class="bi bi-chevron-up" id="toggle-icon-{{ loop.index }}"></i>
+                    </button>
+                </div>
             </div>
             <div class="collapse show" id="card-body-{{ loop.index }}">
                 <div class="card-body p-0">
@@ -207,6 +214,23 @@
     </div>
 </div>
 
+<!-- Modal de Gráfico -->
+<div class="modal fade" id="modalGrafico" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalGraficoTitulo">Evolução Mensal</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div style="height: 400px;">
+                    <canvas id="canvasGraficoCartao"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endif %}
 {% endblock %}
 
@@ -301,6 +325,58 @@
                 document.getElementById('loadingDetalhes').innerHTML =
                     '<div class="alert alert-danger">Erro ao carregar detalhes. Tente novamente.</div>';
             });
+    }
+
+    // Variável global para destruir gráfico anterior
+    let chartInstance = null;
+
+    function verGrafico(nomeCartao, labels, values) {
+        document.getElementById('modalGraficoTitulo').textContent = `Previsão Mensal - ${nomeCartao}`;
+        const modal = new bootstrap.Modal(document.getElementById('modalGrafico'));
+        modal.show();
+
+        const ctx = document.getElementById('canvasGraficoCartao').getContext('2d');
+
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Valor da Fatura (R$)',
+                    data: values,
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function (value) {
+                                return 'R$ ' + value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return 'R$ ' + context.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 </script>
 {% endif %}

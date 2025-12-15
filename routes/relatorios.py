@@ -256,14 +256,14 @@ def previsao_cartoes():
     print(f"DEBUG: End Date calculated: {end_date}")
     print(f"DEBUG: Max DB: {max_db_date}, Max Parcela: {max_parcela_date}, Futuro 12m: {futuro_12m}")
         
-    # Ajustar para o primeiro dia do mês
-    start_date = start_date.replace(day=1)
-    end_date = end_date.replace(day=1)
+    # MODIFICADO: Definir intervalo fixo de visualização [-6 meses, +6 meses]
+    start_date = (hoje - relativedelta(months=6)).replace(day=1)
+    end_date_disp = (hoje + relativedelta(months=6)).replace(day=1)
     
-    # Gerar lista de meses para projeção (Todo o intervalo)
+    # Gerar lista de meses para EXIBIÇÃO
     meses_projecao = []
     curr_date = start_date
-    while curr_date <= end_date:
+    while curr_date <= end_date_disp:
         meses_projecao.append(curr_date)
         curr_date += relativedelta(months=1)
             
@@ -327,12 +327,9 @@ def previsao_cartoes():
             # Status e cálculo de restante
             is_futuro = False
             if date.today() > vencimento:
-                status = 'Fechada'
-            else:
                 status = 'Previsto'
                 is_futuro = True
-                # Acumular no total restante apenas faturas futuras
-                total_restante += total
+                # Nota: total_restante agora é calculado separadamente abaixo
             
             # Adicionar fatura à lista
             faturas.append({
@@ -344,13 +341,35 @@ def previsao_cartoes():
                 'status': status,
                 'is_futuro': is_futuro
             })
+
+        # MODIFICADO: Calcular Total Restante REAL (soma de TUDO o que é futuro, mesmo fora da lista)
+        total_restante = 0
+        hoje_dt = date.today()
+        # Verificar todas as chaves do dicionário
+        for (ano_t, mes_t), valor_t in totais_por_mes.items():
+             # Estimar vencimento simples (dia 10 ou config)
+             # Não precisa ser exato, só saber se é futuro
+             venc_t = date(ano_t, mes_t, dia_vencimento)
+             if venc_t >= hoje_dt:
+                 total_restante += valor_t
             
         # Adicionar cartão (se tiver faturas ou for ativo)
         previsoes.append({
             'cartao': cartao.nome,
             'cartao_id': cartao.id,
             'faturas': faturas,
-            'total_restante': total_restante
+        # Preparar dados para o gráfico (apenas o que está na tela)
+        labels_grafico = [f['mes_referencia'] for f in faturas]
+        dados_grafico = [f['total'] for f in faturas]
+
+        # Adicionar cartão (se tiver faturas ou for ativo)
+        previsoes.append({
+            'cartao': cartao.nome,
+            'cartao_id': cartao.id,
+            'faturas': faturas,
+            'total_restante': total_restante,
+            'labels_grafico': labels_grafico,
+            'dados_grafico': dados_grafico
         })
     
     # Gerar labels para o cabeçalho (não mais usado no layout vertical, mas mantido por compatibilidade se precisar)

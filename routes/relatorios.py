@@ -292,14 +292,18 @@ def previsao_cartoes():
             data_base = despesa.data_pagamento
             
             # Ajustar data inicial baseado no fechamento
-            # Se a compra foi feita DEPOIS do fechamento, a primeira parcela cai no mês seguinte (ou próximo vencimento)
-            # Simplificação: Se dia > dia_fechamento, pula 1 mês no início
+            # MODIFICADO: Lógica alinhada com sistema_financeiro_v15.py
+            # Normalizar para o dia 1 do mês de referência da fatura
             if data_base.day > dia_fechamento:
-                data_base = data_base + relativedelta(months=1)
+                # Se comprou depois do fechamento, vai para o mês seguinte
+                primeira_fatura = (data_base + relativedelta(months=1)).replace(day=1)
+            else:
+                # Se comprou antes, é no mês atual
+                primeira_fatura = data_base.replace(day=1)
                 
             # Distribuir parcelas
             for i in range(despesa.num_parcelas):
-                data_parcela = data_base + relativedelta(months=i)
+                data_parcela = primeira_fatura + relativedelta(months=i)
                 chave = (data_parcela.year, data_parcela.month)
                 
                 if chave not in totais_por_mes:
@@ -407,12 +411,15 @@ def api_fatura_detalhes(cartao_id, mes, ano):
             data_base = d.data_pagamento
             
             # Ajustar data inicial baseado no fechamento
+            # MODIFICADO: Lógica alinhada com sistema_financeiro_v15.py
             if data_base.day > dia_fechamento:
-                data_base = data_base + relativedelta(months=1)
+                primeira_fatura = (data_base + relativedelta(months=1)).replace(day=1)
+            else:
+                primeira_fatura = data_base.replace(day=1)
                 
             # Verificar se alguma parcela cai no mês/ano solicitado
             for i in range(d.num_parcelas):
-                data_parcela = data_base + relativedelta(months=i)
+                data_parcela = primeira_fatura + relativedelta(months=i)
                 
                 if data_parcela.month == mes and data_parcela.year == ano:
                     # Encontrou! Adicionar aos detalhes

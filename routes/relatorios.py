@@ -292,14 +292,14 @@ def previsao_cartoes():
             data_base = despesa.data_pagamento
             
             # Ajustar data inicial baseado no fechamento
-            # MODIFICADO: Lógica alinhada com sistema_financeiro_v15.py
+            # MODIFICADO: Lógica alinhada com regra "Mês posterior"
             # Normalizar para o dia 1 do mês de referência da fatura
             if data_base.day > dia_fechamento:
-                # Se comprou depois do fechamento, vai para o mês seguinte
-                primeira_fatura = (data_base + relativedelta(months=1)).replace(day=1)
+                # Se comprou depois do fechamento, pula este mês e o próximo (Mês+2)
+                primeira_fatura = (data_base + relativedelta(months=2)).replace(day=1)
             else:
-                # Se comprou antes, é no mês atual
-                primeira_fatura = data_base.replace(day=1)
+                # Se comprou antes, pula para o próximo mês (Mês+1)
+                primeira_fatura = (data_base + relativedelta(months=1)).replace(day=1)
                 
             # Distribuir parcelas
             for i in range(despesa.num_parcelas):
@@ -411,11 +411,11 @@ def api_fatura_detalhes(cartao_id, mes, ano):
             data_base = d.data_pagamento
             
             # Ajustar data inicial baseado no fechamento
-            # MODIFICADO: Lógica alinhada com sistema_financeiro_v15.py
+            # MODIFICADO: Lógica alinhada com regra "Mês posterior"
             if data_base.day > dia_fechamento:
-                primeira_fatura = (data_base + relativedelta(months=1)).replace(day=1)
+                primeira_fatura = (data_base + relativedelta(months=2)).replace(day=1)
             else:
-                primeira_fatura = data_base.replace(day=1)
+                primeira_fatura = (data_base + relativedelta(months=1)).replace(day=1)
                 
             # Verificar se alguma parcela cai no mês/ano solicitado
             for i in range(d.num_parcelas):

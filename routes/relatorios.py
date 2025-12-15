@@ -349,15 +349,14 @@ def previsao_cartoes():
         for (ano_t, mes_t), valor_t in totais_por_mes.items():
              # Estimar vencimento simples (dia 10 ou config)
              # Não precisa ser exato, só saber se é futuro
-             venc_t = date(ano_t, mes_t, dia_vencimento)
+             # Usar o último dia do mês se o dia de vencimento exceder (ex: dia 30 em Fev)
+             last_day_of_month = calendar.monthrange(ano_t, mes_t)[1]
+             effective_day = min(dia_vencimento, last_day_of_month)
+             
+             venc_t = date(ano_t, mes_t, effective_day)
              if venc_t >= hoje_dt:
                  total_restante += valor_t
             
-        # Adicionar cartão (se tiver faturas ou for ativo)
-        previsoes.append({
-            'cartao': cartao.nome,
-            'cartao_id': cartao.id,
-            'faturas': faturas,
         # Preparar dados para o gráfico (apenas o que está na tela)
         labels_grafico = [f['mes_referencia'] for f in faturas]
         dados_grafico = [f['total'] for f in faturas]

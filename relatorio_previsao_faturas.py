@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, simpledialog
 import sqlite3
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -90,26 +90,36 @@ class RelatorioPrevisaoFaturas:
             self.despesas_originais = pd.read_sql_query(query_despesas, self.db_conn)
             if not self.despesas_originais.empty:
                 self.despesas_originais['data_pagamento'] = pd.to_datetime(self.despesas_originais['data_pagamento'])
+                
+                # ADIÇÃO: Incluir meios de pagamento das despesas que não estão na tabela de fechamento
+                # Isso permite que o sistema pergunte a data para eles
+                meios_usados = self.despesas_originais['meio_pagamento'].unique()
+                for meio in meios_usados:
+                    if meio and meio not in self.cartoes_com_fechamento:
+                        self.cartoes_com_fechamento[meio] = None
 
         except Exception as e:
             messagebox.showerror("Erro ao Carregar Dados", f"Falha ao carregar dados iniciais: {e}", parent=self.root)
             self.despesas_originais = pd.DataFrame()
 
     def calcular_mes_fatura(self, data_compra, dia_fechamento_cartao):
+        # NOVA REGRA:
+        # Se compra feita DEPOIS do fechamento: Fatura do mês subsequente ao próximo (Mês+2)
+        # Se compra feita ANTES/NO dia do fechamento: Fatura do próximo mês (Mês+1)
         if data_compra.day > dia_fechamento_cartao:
-            return (data_compra + relativedelta(months=1)).replace(day=1)
+            return (data_compra + relativedelta(months=2)).replace(day=1)
         else:
-            return data_compra.replace(day=1)
+            return (data_compra + relativedelta(months=1)).replace(day=1)
 
     def processar_previsao_para_cartao(self, nome_cartao):
         if nome_cartao in self.previsao_faturas:
             return
 
         self.previsao_faturas[nome_cartao] = {}
-        if nome_cartao not in self.cartoes_com_fechamento or self.despesas_originais.empty:
+        if self.despesas_originais.empty:
             return
 
-        dia_fechamento = self.cartoes_com_fechamento[nome_cartao]
+        dia_fechamento = self.cartoes_com_fechamento.get(nome_cartao)
         despesas_do_cartao = self.despesas_originais[self.despesas_originais['meio_pagamento'] == nome_cartao]
 
         for _, despesa in despesas_do_cartao.iterrows():
@@ -117,6 +127,24 @@ class RelatorioPrevisaoFaturas:
             valor_total = float(despesa['valor'])
             num_parcelas_total = int(despesa['num_parcelas'])
             valor_parcela = valor_total / num_parcelas_total if num_parcelas_total > 0 else 0
+
+            # Se não tiver dia de fechamento, perguntar (cacheando a resposta)
+            if dia_fechamento is None:
+                if nome_cartao not in self.cartoes_com_fechamento: # Double check
+                     dia_f = simpledialog.askinteger("Configuração Faltante", 
+                                                     f"Informe o dia do FECHAMENTO para o cartão '{nome_cartao}':",
+                                                     parent=self.root, minvalue=1, maxvalue=31)
+                     if dia_f:
+                         self.cartoes_com_fechamento[nome_cartao] = dia_f
+                         dia_fechamento = dia_f
+                     else:
+                         return # Pula se cancelar
+
+                     # Também pede o vencimento conforme solicitado
+                     dia_v = simpledialog.askinteger("Configuração Faltante", 
+                                                     f"Informe o dia do VENCIMENTO para o cartão '{nome_cartao}':",
+                                                     parent=self.root, minvalue=1, maxvalue=31)
+                     # (Apenas armazena ou usa se necessário futuramente)
 
             primeiro_mes_fatura_dt = self.calcular_mes_fatura(data_compra_dt, dia_fechamento)
 

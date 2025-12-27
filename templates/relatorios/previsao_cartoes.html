@@ -105,11 +105,6 @@
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-card-heading"></i> {{ cartao.cartao }}</h5>
                 <div>
-                    <button class="btn btn-sm btn-outline-light me-1"
-                        onclick="verGrafico('{{ cartao.cartao | replace("'", "") }}' , {{ cartao.labels_grafico | tojson
-                        }}, {{ cartao.dados_grafico | tojson }})" title="Ver Gráfico">
-                        <i class="bi bi-bar-chart-fill"></i>
-                    </button>
                     <button class="btn btn-sm btn-outline-light" onclick="toggleCard({{ loop.index }})"
                         id="toggle-btn-{{ loop.index }}" title="Mostrar/Ocultar">
                         <i class="bi bi-chevron-up" id="toggle-icon-{{ loop.index }}"></i>
@@ -153,18 +148,26 @@
                         </table>
                     </div>
                 </div>
-                <div class="card-footer bg-light">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <small class="text-muted">Restante (Próx. Mês+):</small>
-                        <span class="fw-bold text-primary fs-5">R$ {{ "%.2f"|format(cartao.total_restante)|replace('.',
-                            ',')
-                            }}</span>
-                    </div>
+            </div>
+            <!-- Área do Gráfico -->
+            <div class="p-3 border-top bg-white">
+                <h6 class="text-muted small mb-2"><i class="bi bi-graph-up"></i> Evolução Mensal</h6>
+                <div style="height: 200px;">
+                    <canvas id="chart-{{ loop.index }}"></canvas>
                 </div>
-            </div> <!-- Fim do collapse -->
-        </div>
+            </div>
+            <div class="card-footer bg-light">
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">Restante (Próx. Mês+):</small>
+                    <span class="fw-bold text-primary fs-5">R$ {{ "%.2f"|format(cartao.total_restante)|replace('.',
+                        ',')
+                        }}</span>
+                </div>
+            </div>
+        </div> <!-- Fim do collapse -->
     </div>
-    {% endfor %}
+</div>
+{% endfor %}
 </div>
 
 <!-- Modal de Detalhes -->
@@ -214,28 +217,88 @@
     </div>
 </div>
 
-<!-- Modal de Gráfico -->
-<div class="modal fade" id="modalGrafico" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="modalGraficoTitulo">Evolução Mensal</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div style="height: 400px;">
-                    <canvas id="canvasGraficoCartao"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 {% endif %}
 {% endblock %}
 
 {% block extra_js %}
 {% if previsoes %}
+<!-- Carregar Chart.js (caso ainda não esteja carregado no base) -->
+<!-- Garantido no base.html -->
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Inicializar gráficos para cada cartão
+        {% for cartao in previsoes %}
+        (function () {
+            const ctx = document.getElementById('chart-{{ loop.index }}').getContext('2d');
+            const labels = {{ cartao.labels_grafico | tojson
+        }};
+    const data = {{ cartao.dados_grafico | tojson }};
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Valor (R$)',
+                data: data,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return 'R$ ' + context.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        display: true,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 10
+                        },
+                        callback: function (value) {
+                            if (value >= 1000) return 'R$ ' + (value / 1000).toFixed(0) + 'k';
+                            return value;
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 10
+                        },
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+        }) ();
+    {% endfor %}
+    });
+</script>
 <script>
     // Função para togglear visibilidade de card individual
     function toggleCard(index) {
@@ -325,58 +388,6 @@
                 document.getElementById('loadingDetalhes').innerHTML =
                     '<div class="alert alert-danger">Erro ao carregar detalhes. Tente novamente.</div>';
             });
-    }
-
-    // Variável global para destruir gráfico anterior
-    let chartInstance = null;
-
-    function verGrafico(nomeCartao, labels, values) {
-        document.getElementById('modalGraficoTitulo').textContent = `Previsão Mensal - ${nomeCartao}`;
-        const modal = new bootstrap.Modal(document.getElementById('modalGrafico'));
-        modal.show();
-
-        const ctx = document.getElementById('canvasGraficoCartao').getContext('2d');
-
-        if (chartInstance) {
-            chartInstance.destroy();
-        }
-
-        chartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Valor da Fatura (R$)',
-                    data: values,
-                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function (value) {
-                                return 'R$ ' + value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-                            }
-                        }
-                    }
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                return 'R$ ' + context.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-                            }
-                        }
-                    }
-                }
-            }
-        });
     }
 </script>
 {% endif %}

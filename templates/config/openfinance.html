@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}OpenFinance (Pluggy) - Sistema Financeiro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2><i class="bi bi-bank"></i> Importação OpenFinance (Pluggy)</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 offset-md-3">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Conectar e Importar</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Conecte suas contas bancárias para importar transações automaticamente.
+                </p>
+
+                <!-- Formulário para iniciar importação -->
+                <form action="{{ url_for('config.openfinance_import') }}" method="POST">
+
+                    <div class="mb-3">
+                        <label for="item_id" class="form-label">ID da Conexão (Item ID)</label>
+                        <input type="text" class="form-control" id="item_id" name="item_id" placeholder="Ex: d472..."
+                            required value="{{ item_id if item_id else '' }}">
+                        <div class="form-text">
+                            Insira o ID da conexão fornecido pela Pluggy se já possuir, ou deixe gerar um novo.
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="sync_all" name="sync_all" checked>
+                        <label class="form-check-label" for="sync_all">Sincronizar todas as contas desta conexão</label>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-cloud-download"></i> Iniciar Importação
+                        </button>
+                    </div>
+                </form>
+
+                <hr>
+
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-info-circle"></i> Como funciona:</h6>
+                    <ol class="mb-0">
+                        <li>Informe o ID da conexão (Item ID).</li>
+                        <li>O sistema buscará as transações dos últimos 30 dias.</li>
+                        <li>Transações serão categorizadas automaticamente pelo nome.</li>
+                        <li>Novas despesas serão adicionadas ao seu painel.</li>
+                    </ol>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

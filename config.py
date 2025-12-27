@@ -18,6 +18,10 @@ class Config:
     # Configurações de locale para formatação de moeda
     LOCALE = 'pt_BR.UTF-8'
     CURRENCY_SYMBOL = 'R$'
+    
+    # Pluggy OpenFinance Configuration
+    PLUGGY_CLIENT_ID = os.environ.get('PLUGGY_CLIENT_ID')
+    PLUGGY_CLIENT_SECRET = os.environ.get('PLUGGY_CLIENT_SECRET')
 
 class DevelopmentConfig(Config):
     """Configurações para ambiente de desenvolvimento"""

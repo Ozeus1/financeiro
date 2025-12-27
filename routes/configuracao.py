@@ -8,6 +8,8 @@ from datetime import datetime
 import os
 import sqlite3
 from datetime import datetime
+from utils.pluggy_client import PluggyClient
+
 
 config_bp = Blueprint('config', __name__)
 
@@ -1495,3 +1497,178 @@ def exportar_sqlite_fluxo_caixa():
     except Exception as e:
         flash(f'Erro ao exportar fluxo de caixa: {str(e)}', 'danger')
         return redirect(url_for('config.importar_dados_antigos'))
+
+@config_bp.route('/openfinance', methods=['GET'])
+@login_required
+def openfinance():
+    """Página principal do OpenFinance"""
+    return render_template('config/openfinance.html')
+
+@config_bp.route('/openfinance/import', methods=['POST'])
+@login_required
+def openfinance_import():
+    """Processa a importação de dados da Pluggy"""
+    from flask import current_app
+    
+    item_id = request.form.get('item_id')
+    sync_all = request.form.get('sync_all') == 'on'
+    
+    if not item_id:
+        flash('Item ID é obrigatório!', 'warning')
+        return redirect(url_for('config.openfinance'))
+        
+    client_id = current_app.config.get('PLUGGY_CLIENT_ID')
+    client_secret = current_app.config.get('PLUGGY_CLIENT_SECRET')
+    
+    if not client_id or not client_secret:
+        flash('Credenciais da Pluggy não configuradas no servidor.', 'danger')
+        return redirect(url_for('config.openfinance'))
+        
+    try:
+        client = PluggyClient(client_id, client_secret)
+        
+        # 1. Buscar contas
+        accounts = client.get_accounts(item_id)
+        if not accounts:
+            flash('Nenhuma conta encontrada para este Item ID.', 'warning')
+            return redirect(url_for('config.openfinance'))
+            
+        total_importado = 0
+        erros = 0
+        
+        # Carregar categorias para matching
+        cats_despesa = CategoriaDespesa.query.filter_by(user_id=current_user.id).all()
+        cats_receita = CategoriaReceita.query.filter_by(user_id=current_user.id).all()
+        
+        cat_outros_despesa = next((c for c in cats_despesa if c.nome.lower() == 'outros'), None)
+        cat_outros_receita = next((c for c in cats_receita if c.nome.lower() == 'outros'), None)
+        
+        # Se não tiver 'Outros', pega a primeira ou cria
+        if not cat_outros_despesa and cats_despesa:
+            cat_outros_despesa = cats_despesa[0]
+        if not cat_outros_receita and cats_receita:
+            cat_outros_receita = cats_receita[0]
+            
+        meio_cartao = MeioPagamento.query.filter_by(user_id=current_user.id, tipo='cartao').first()
+        meio_debito = MeioPagamento.query.filter_by(user_id=current_user.id, tipo='debito').first()
+        meio_rec_transf = MeioRecebimento.query.filter_by(user_id=current_user.id).first() # Fallback
+            
+        for account in accounts:
+            # Identificar meio de pagamento
+            meio_pagamento = None
+            if account.get('type') == 'CREDIT':
+                meio_pagamento = meio_cartao
+            else:
+                meio_pagamento = meio_debito
+                
+            if not meio_pagamento:
+                # Tentar encontrar um genérico
+                meio_pagamento = MeioPagamento.query.filter_by(user_id=current_user.id).first()
+            
+            # 2. Buscar transações
+            transactions = client.get_transactions(account['id'])
+            
+            for tr in transactions:
+                try:
+                    amount = tr.get('amount')
+                    description = tr.get('description')
+                    date_str = tr.get('date').split('T')[0] # 2023-10-27T...
+                    date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    
+                    # Ignorar transações zeradas
+                    if amount == 0:
+                        continue
+                        
+                    # Verificar duplicidade (simples)
+                    # Se for negativa (despesa)
+                    if amount < 0:
+                        exists = Despesa.query.filter_by(
+                            user_id=current_user.id,
+                            valor=abs(amount),
+                            data_pagamento=date_obj,
+                            descricao=description
+                        ).first()
+                        
+                        if exists:
+                            continue
+                            
+                        # Categorizar
+                        categoria_id = cat_outros_despesa.id if cat_outros_despesa else None
+                        
+                        # Tentar match por nome
+                        for cat in cats_despesa:
+                            if cat.nome.lower() in description.lower():
+                                categoria_id = cat.id
+                                break
+                                
+                        if not categoria_id:
+                            # Se não encontrou e não tem 'Outros', pular ou erro?
+                            # Vamos assumir que sempre tem alguma categoria se o sistema foi iniciado corretamente
+                            if cats_despesa:
+                                categoria_id = cats_despesa[0].id
+                            else:
+                                continue # Sem categorias cadastradas
+                        
+                        nova_despesa = Despesa(
+                            descricao=description,
+                            valor=abs(amount),
+                            data_pagamento=date_obj,
+                            data_registro=datetime.now(), # Data que foi importado
+                            user_id=current_user.id,
+                            categoria_id=categoria_id,
+                            meio_pagamento_id=meio_pagamento.id if meio_pagamento else None
+                        )
+                        db.session.add(nova_despesa)
+                        total_importado += 1
+                        
+                    else:
+                        # Receita
+                        exists = Receita.query.filter_by(
+                            user_id=current_user.id,
+                            valor=amount,
+                            data_recebimento=date_obj,
+                            descricao=description
+                        ).first()
+                        
+                        if exists:
+                            continue
+                            
+                        # Categorizar
+                        categoria_id = cat_outros_receita.id if cat_outros_receita else None
+                         # Tentar match por nome
+                        for cat in cats_receita:
+                            if cat.nome.lower() in description.lower():
+                                categoria_id = cat.id
+                                break
+                                
+                        if not categoria_id:
+                             if cats_receita:
+                                categoria_id = cats_receita[0].id
+                             else:
+                                continue
+
+                        nova_receita = Receita(
+                            descricao=description,
+                            valor=amount,
+                            data_recebimento=date_obj,
+                            data_registro=datetime.now(),
+                            user_id=current_user.id,
+                            categoria_id=categoria_id,
+                            meio_recebimento_id=meio_rec_transf.id if meio_rec_transf else None
+                        )
+                        db.session.add(nova_receita)
+                        total_importado += 1
+                        
+                except Exception as e:
+                    erros += 1
+                    print(f"Erro na transação: {e}")
+                    continue
+                    
+        db.session.commit()
+        
+        flash(f'Importação concluída! {total_importado} registros importados. {erros} erros.', 'success')
+        
+    except Exception as e:
+        flash(f'Erro na comunicação com Pluggy: {str(e)}', 'danger')
+        
+    return redirect(url_for('config.openfinance'))

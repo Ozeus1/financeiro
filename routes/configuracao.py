@@ -1672,3 +1672,23 @@ def openfinance_import():
         flash(f'Erro na comunicação com Pluggy: {str(e)}', 'danger')
         
     return redirect(url_for('config.openfinance'))
+
+@config_bp.route('/openfinance/token', methods=['GET'])
+@login_required
+def openfinance_token():
+    """Gera um token de conexão para o widget da Pluggy"""
+    from flask import current_app, jsonify
+    
+    client_id = current_app.config.get('PLUGGY_CLIENT_ID')
+    client_secret = current_app.config.get('PLUGGY_CLIENT_SECRET')
+    
+    if not client_id or not client_secret:
+        return jsonify({'error': 'Credenciais não configuradas'}), 400
+        
+    try:
+        client = PluggyClient(client_id, client_secret)
+        token = client.create_connect_token()
+        return jsonify({'accessToken': token})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+

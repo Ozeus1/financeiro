@@ -21,15 +21,38 @@
                     Conecte suas contas bancárias para importar transações automaticamente.
                 </p>
 
+                <!-- Área de Conexão (Widget) -->
+                <div class="d-grid gap-2 mb-4">
+                    <button id="btn-connect" class="btn btn-outline-primary btn-lg">
+                        <i class="bi bi-plus-circle"></i> Conectar Nova Conta
+                    </button>
+                    <div id="connect-loading" class="text-center d-none">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Carregando Pluggy Connect...</p>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <h6 class="mb-3">Importar Dados</h6>
+
                 <!-- Formulário para iniciar importação -->
-                <form action="{{ url_for('config.openfinance_import') }}" method="POST">
+                <form action="{{ url_for('config.openfinance_import') }}" method="POST" id="import-form">
 
                     <div class="mb-3">
                         <label for="item_id" class="form-label">ID da Conexão (Item ID)</label>
-                        <input type="text" class="form-control" id="item_id" name="item_id" placeholder="Ex: d472..."
-                            required value="{{ item_id if item_id else '' }}">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="item_id" name="item_id"
+                                placeholder="Ex: d472..." required value="{{ item_id if item_id else '' }}">
+                            <button class="btn btn-outline-secondary" type="button" id="btn-paste-id"
+                                title="Colar ID salvo">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
                         <div class="form-text">
-                            Insira o ID da conexão fornecido pela Pluggy se já possuir, ou deixe gerar um novo.
+                            Preenchido automaticamente ao conectar uma conta ou digite manualmente.
                         </div>
                     </div>
 
@@ -50,10 +73,10 @@
                 <div class="alert alert-info">
                     <h6><i class="bi bi-info-circle"></i> Como funciona:</h6>
                     <ol class="mb-0">
-                        <li>Informe o ID da conexão (Item ID).</li>
-                        <li>O sistema buscará as transações dos últimos 30 dias.</li>
-                        <li>Transações serão categorizadas automaticamente pelo nome.</li>
-                        <li>Novas despesas serão adicionadas ao seu painel.</li>
+                        <li>Clique em <strong>Conectar Nova Conta</strong> para escolher seu banco.</li>
+                        <li>Após o login no banco, o <strong>Item ID</strong> será preenchido automaticamente.</li>
+                        <li>Clique em <strong>Iniciar Importação</strong> para baixar as transações os últimos 30 dias.
+                        </li>
                     </ol>
                 </div>
 
@@ -61,4 +84,69 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Pluggy Connect Script -->
+<script src="https://cdn.pluggy.ai/pluggy-connect/v2/pluggy-connect.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const btnConnect = document.getElementById('btn-connect');
+        const loadingDiv = document.getElementById('connect-loading');
+        const itemIdInput = document.getElementById('item_id');
+
+        btnConnect.addEventListener('click', async function () {
+            // Mostrar loading
+            btnConnect.classList.add('d-none');
+            loadingDiv.classList.remove('d-none');
+
+            try {
+                // 1. Obter accessToken do backend
+                const response = await fetch("{{ url_for('config.openfinance_token') }}");
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('Erro ao iniciar conexão: ' + data.error);
+                    return;
+                }
+
+                const accessToken = data.accessToken;
+
+                // 2. Configurar o Widget
+                const pluggyConnect = new PluggyConnect({
+                    connectToken: accessToken,
+                    includeSandbox: true, // Pode passar a ser false em produção se quiser
+                    onSuccess: (itemData) => {
+                        console.log('Conexão realizada com sucesso!', itemData);
+                        // Preencher o input
+                        itemIdInput.value = itemData.item.id;
+                        // Feedback visual
+                        itemIdInput.classList.add('bg-success', 'text-white');
+                        setTimeout(() => itemIdInput.classList.remove('bg-success', 'text-white'), 2000);
+                        alert('Conta conectada com sucesso! O ID foi preenchido. Agora clique em "Iniciar Importação".');
+                    },
+                    onError: (error) => {
+                        console.error('Erro no Pluggy Connect:', error);
+                        alert('Erro na conexão com o banco. Tente novamente.');
+                    },
+                    onClose: () => {
+                        // Restaurar botão
+                        loadingDiv.classList.add('d-none');
+                        btnConnect.classList.remove('d-none');
+                    }
+                });
+
+                // 3. Abrir o Widget
+                pluggyConnect.init();
+
+            } catch (error) {
+                console.error('Erro na requisição:', error);
+                alert('Erro ao comunicar com o servidor.');
+                loadingDiv.classList.add('d-none');
+                btnConnect.classList.remove('d-none');
+            }
+        });
+    });
+</script>
 {% endblock %}

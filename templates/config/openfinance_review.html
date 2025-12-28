@@ -15,6 +15,29 @@
     <input type="hidden" name="item_id" value="{{ item_id }}">
 
     <div class="card shadow-sm mb-4">
+        <div class="card-body bg-light">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <label for="target_card_id" class="form-label fw-bold mb-0">
+                        <i class="bi bi-credit-card-fill text-primary"></i> Atribuir gastos de Cartão de Crédito para:
+                    </label>
+                    <div class="form-text mt-0">
+                        Todas as transações identificadas como "Cartão" serão vinculadas a este cartão selecionado.
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <select name="target_card_id" id="target_card_id" class="form-select">
+                        <option value="">Selecione um cartão...</option>
+                        {% for c in cartoes %}
+                        <option value="{{ c.id }}">{{ c.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0 align-middle">

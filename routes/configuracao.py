@@ -1537,6 +1537,9 @@ def openfinance_import():
         cats_despesa = CategoriaDespesa.query.filter_by(user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
         cats_receita = CategoriaReceita.query.filter_by(user_id=current_user.id).order_by(CategoriaReceita.nome).all()
         
+        # Carregar cartões para seleção
+        cartoes = MeioPagamento.query.filter_by(user_id=current_user.id, tipo='cartao', ativo=True).all()
+        
         cat_outros_despesa = next((c for c in cats_despesa if c.nome.lower() == 'outros'), None)
         cat_outros_receita = next((c for c in cats_receita if c.nome.lower() == 'outros'), None)
         
@@ -1617,7 +1620,8 @@ def openfinance_import():
                              transactions=transactions_display,
                              cats_despesa=cats_despesa,
                              cats_receita=cats_receita,
-                             item_id=item_id)
+                             item_id=item_id,
+                             cartoes=cartoes)
                              
     except Exception as e:
         flash(f'Erro na comunicação com Pluggy: {str(e)}', 'danger')
@@ -1629,6 +1633,7 @@ def openfinance_confirm():
     """Processa a gravação das transações selecionadas"""
     
     selected_indices = request.form.getlist('selected_idx')
+    target_card_id = request.form.get('target_card_id')
     
     if not selected_indices:
         flash('Nenhuma transação selecionada.', 'warning')
@@ -1638,12 +1643,20 @@ def openfinance_confirm():
         count = 0
         
         # Carregar meios de pagamento
-        meio_cartao = MeioPagamento.query.filter_by(user_id=current_user.id, tipo='cartao').first()
+        meio_cartao_padrao = MeioPagamento.query.filter_by(user_id=current_user.id, tipo='cartao').first()
         meio_debito = MeioPagamento.query.filter_by(user_id=current_user.id, tipo='debito').first()
         meio_rec = MeioRecebimento.query.filter_by(user_id=current_user.id).first()
         
-        # Fallback se não tiver tipos específicos
-        if not meio_cartao: meio_cartao = MeioPagamento.query.filter_by(user_id=current_user.id).first()
+        # Se usuário selecionou um cartão específico, usamos ele. Se não, fallback.
+        meio_cartao_selecionado = None
+        if target_card_id:
+             meio_cartao_selecionado = MeioPagamento.query.get(int(target_card_id))
+        
+        # Fallback final se não selecionou e não achou
+        if not meio_cartao_selecionado:
+            meio_cartao_selecionado = meio_cartao_padrao
+        
+        # Fallback para débito
         if not meio_debito: meio_debito = MeioPagamento.query.filter_by(user_id=current_user.id).first()
         
         for idx in selected_indices:
@@ -1658,7 +1671,8 @@ def openfinance_confirm():
                 
                 if amount < 0:
                     # Salvar Despesa
-                    meio_id = meio_cartao.id if acc_type == 'CREDIT' else meio_debito.id
+                    # Se for crédito, usa o selecionado. Se for débito, usa o de débito.
+                    meio_id = meio_cartao_selecionado.id if acc_type == 'CREDIT' else meio_debito.id
                     
                     nova_despesa = Despesa(
                         descricao=description,

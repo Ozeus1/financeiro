@@ -1507,7 +1507,7 @@ def openfinance():
 @config_bp.route('/openfinance/import', methods=['POST'])
 @login_required
 def openfinance_import():
-    """Processa a importação de dados da Pluggy"""
+    """Busca dados da Pluggy e mostra tela de revisão"""
     from flask import current_app
     
     item_id = request.form.get('item_id')
@@ -1533,143 +1533,168 @@ def openfinance_import():
             flash('Nenhuma conta encontrada para este Item ID.', 'warning')
             return redirect(url_for('config.openfinance'))
             
-        total_importado = 0
-        erros = 0
-        
-        # Carregar categorias para matching
-        cats_despesa = CategoriaDespesa.query.filter_by(user_id=current_user.id).all()
-        cats_receita = CategoriaReceita.query.filter_by(user_id=current_user.id).all()
+        # Carregar categorias para o template
+        cats_despesa = CategoriaDespesa.query.filter_by(user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
+        cats_receita = CategoriaReceita.query.filter_by(user_id=current_user.id).order_by(CategoriaReceita.nome).all()
         
         cat_outros_despesa = next((c for c in cats_despesa if c.nome.lower() == 'outros'), None)
         cat_outros_receita = next((c for c in cats_receita if c.nome.lower() == 'outros'), None)
         
-        # Se não tiver 'Outros', pega a primeira ou cria
         if not cat_outros_despesa and cats_despesa:
             cat_outros_despesa = cats_despesa[0]
         if not cat_outros_receita and cats_receita:
             cat_outros_receita = cats_receita[0]
             
-        meio_cartao = MeioPagamento.query.filter_by(user_id=current_user.id, tipo='cartao').first()
-        meio_debito = MeioPagamento.query.filter_by(user_id=current_user.id, tipo='debito').first()
-        meio_rec_transf = MeioRecebimento.query.filter_by(user_id=current_user.id).first() # Fallback
-            
+        transactions_display = []
+        
         for account in accounts:
-            # Identificar meio de pagamento
-            meio_pagamento = None
-            if account.get('type') == 'CREDIT':
-                meio_pagamento = meio_cartao
-            else:
-                meio_pagamento = meio_debito
-                
-            if not meio_pagamento:
-                # Tentar encontrar um genérico
-                meio_pagamento = MeioPagamento.query.filter_by(user_id=current_user.id).first()
+            acc_type = account.get('type') # CREDIT or BANK
             
-            # 2. Buscar transações
+            # Buscar transações
             transactions = client.get_transactions(account['id'])
             
             for tr in transactions:
-                try:
-                    amount = tr.get('amount')
-                    description = tr.get('description')
-                    date_str = tr.get('date').split('T')[0] # 2023-10-27T...
-                    date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+                amount = tr.get('amount')
+                if amount == 0: continue
+                
+                description = tr.get('description')
+                date_str = tr.get('date').split('T')[0]
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+                
+                # Verificar duplicidade
+                exists = False
+                suggested_cat_id = None
+                
+                if amount < 0:
+                    # Despesa
+                    check = Despesa.query.filter_by(
+                        user_id=current_user.id,
+                        valor=abs(amount),
+                        data_pagamento=date_obj,
+                        descricao=description
+                    ).first()
+                    if check: exists = True
                     
-                    # Ignorar transações zeradas
-                    if amount == 0:
-                        continue
-                        
-                    # Verificar duplicidade (simples)
-                    # Se for negativa (despesa)
-                    if amount < 0:
-                        exists = Despesa.query.filter_by(
-                            user_id=current_user.id,
-                            valor=abs(amount),
-                            data_pagamento=date_obj,
-                            descricao=description
-                        ).first()
-                        
-                        if exists:
-                            continue
+                    # Sugerir Categoria
+                    suggested_cat_id = cat_outros_despesa.id if cat_outros_despesa else None
+                    for cat in cats_despesa:
+                        if cat.nome.lower() in description.lower():
+                            suggested_cat_id = cat.id
+                            break
                             
-                        # Categorizar
-                        categoria_id = cat_outros_despesa.id if cat_outros_despesa else None
-                        
-                        # Tentar match por nome
-                        for cat in cats_despesa:
-                            if cat.nome.lower() in description.lower():
-                                categoria_id = cat.id
-                                break
-                                
-                        if not categoria_id:
-                            # Se não encontrou e não tem 'Outros', pular ou erro?
-                            # Vamos assumir que sempre tem alguma categoria se o sistema foi iniciado corretamente
-                            if cats_despesa:
-                                categoria_id = cats_despesa[0].id
-                            else:
-                                continue # Sem categorias cadastradas
-                        
-                        nova_despesa = Despesa(
-                            descricao=description,
-                            valor=abs(amount),
-                            data_pagamento=date_obj,
-                            data_registro=datetime.now(), # Data que foi importado
-                            user_id=current_user.id,
-                            categoria_id=categoria_id,
-                            meio_pagamento_id=meio_pagamento.id if meio_pagamento else None
-                        )
-                        db.session.add(nova_despesa)
-                        total_importado += 1
-                        
-                    else:
-                        # Receita
-                        exists = Receita.query.filter_by(
-                            user_id=current_user.id,
-                            valor=amount,
-                            data_recebimento=date_obj,
-                            descricao=description
-                        ).first()
-                        
-                        if exists:
-                            continue
-                            
-                        # Categorizar
-                        categoria_id = cat_outros_receita.id if cat_outros_receita else None
-                         # Tentar match por nome
-                        for cat in cats_receita:
-                            if cat.nome.lower() in description.lower():
-                                categoria_id = cat.id
-                                break
-                                
-                        if not categoria_id:
-                             if cats_receita:
-                                categoria_id = cats_receita[0].id
-                             else:
-                                continue
-
-                        nova_receita = Receita(
-                            descricao=description,
-                            valor=amount,
-                            data_recebimento=date_obj,
-                            data_registro=datetime.now(),
-                            user_id=current_user.id,
-                            categoria_id=categoria_id,
-                            meio_recebimento_id=meio_rec_transf.id if meio_rec_transf else None
-                        )
-                        db.session.add(nova_receita)
-                        total_importado += 1
-                        
-                except Exception as e:
-                    erros += 1
-                    print(f"Erro na transação: {e}")
-                    continue
+                else:
+                    # Receita
+                    check = Receita.query.filter_by(
+                        user_id=current_user.id,
+                        valor=amount,
+                        data_recebimento=date_obj,
+                        descricao=description
+                    ).first()
+                    if check: exists = True
                     
-        db.session.commit()
+                    # Sugerir Categoria
+                    suggested_cat_id = cat_outros_receita.id if cat_outros_receita else None
+                    for cat in cats_receita:
+                        if cat.nome.lower() in description.lower():
+                            suggested_cat_id = cat.id
+                            break
+                
+                transactions_display.append({
+                    'id': tr.get('id'),
+                    'date': date_str,
+                    'date_formatted': date_obj.strftime('%d/%m/%Y'),
+                    'description': description,
+                    'amount': amount,
+                    'account_type': acc_type,
+                    'exists': exists,
+                    'suggested_category_id': suggested_cat_id
+                })
         
-        flash(f'Importação concluída! {total_importado} registros importados. {erros} erros.', 'success')
+        # Ordenar por data
+        transactions_display.sort(key=lambda x: x['date'], reverse=True)
         
+        return render_template('config/openfinance_review.html', 
+                             transactions=transactions_display,
+                             cats_despesa=cats_despesa,
+                             cats_receita=cats_receita,
+                             item_id=item_id)
+                             
     except Exception as e:
         flash(f'Erro na comunicação com Pluggy: {str(e)}', 'danger')
+        return redirect(url_for('config.openfinance'))
+
+@config_bp.route('/openfinance/confirm', methods=['POST'])
+@login_required
+def openfinance_confirm():
+    """Processa a gravação das transações selecionadas"""
+    
+    selected_indices = request.form.getlist('selected_idx')
+    
+    if not selected_indices:
+        flash('Nenhuma transação selecionada.', 'warning')
+        return redirect(url_for('config.openfinance'))
+        
+    try:
+        count = 0
+        
+        # Carregar meios de pagamento
+        meio_cartao = MeioPagamento.query.filter_by(user_id=current_user.id, tipo='cartao').first()
+        meio_debito = MeioPagamento.query.filter_by(user_id=current_user.id, tipo='debito').first()
+        meio_rec = MeioRecebimento.query.filter_by(user_id=current_user.id).first()
+        
+        # Fallback se não tiver tipos específicos
+        if not meio_cartao: meio_cartao = MeioPagamento.query.filter_by(user_id=current_user.id).first()
+        if not meio_debito: meio_debito = MeioPagamento.query.filter_by(user_id=current_user.id).first()
+        
+        for idx in selected_indices:
+            try:
+                description = request.form.get(f'description_{idx}')
+                amount = float(request.form.get(f'amount_{idx}'))
+                date_str = request.form.get(f'date_{idx}')
+                cat_id = int(request.form.get(f'category_{idx}'))
+                acc_type = request.form.get(f'account_type_{idx}')
+                
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+                
+                if amount < 0:
+                    # Salvar Despesa
+                    meio_id = meio_cartao.id if acc_type == 'CREDIT' else meio_debito.id
+                    
+                    nova_despesa = Despesa(
+                        descricao=description,
+                        valor=abs(amount),
+                        data_pagamento=date_obj,
+                        data_registro=datetime.now(),
+                        user_id=current_user.id,
+                        categoria_id=cat_id,
+                        meio_pagamento_id=meio_id
+                    )
+                    db.session.add(nova_despesa)
+                else:
+                    # Salvar Receita
+                    nova_receita = Receita(
+                        descricao=description,
+                        valor=amount,
+                        data_recebimento=date_obj,
+                        data_registro=datetime.now(),
+                        user_id=current_user.id,
+                        categoria_id=cat_id,
+                        meio_recebimento_id=meio_rec.id if meio_rec else None
+                    )
+                    db.session.add(nova_receita)
+                    
+                count += 1
+                
+            except Exception as e:
+                print(f"Erro ao salvar item {idx}: {e}")
+                continue
+                
+        db.session.commit()
+        flash(f'Sucesso! {count} transações importadas.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao salvar dados: {str(e)}', 'danger')
         
     return redirect(url_for('config.openfinance'))
 

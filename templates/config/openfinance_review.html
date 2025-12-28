@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Revisar Importação - OpenFinance{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2><i class="bi bi-check-circle"></i> Revisar Transações</h2>
+        <p class="text-muted">Selecione as transações que deseja importar e verifique as categorias sugeridas.</p>
+        <hr>
+    </div>
+</div>
+
+<form action="{{ url_for('config.openfinance_confirm') }}" method="POST" id="review-form">
+    <input type="hidden" name="item_id" value="{{ item_id }}">
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-center" style="width: 50px;">
+                                <input type="checkbox" id="select-all" checked>
+                            </th>
+                            <th>Data</th>
+                            <th>Conta</th>
+                            <th>Descrição</th>
+                            <th>Valor</th>
+                            <th>Categoria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tr in transactions %}
+                        <tr class="{{ 'table-secondary' if tr.exists else '' }}">
+                            <td class="text-center">
+                                {% if not tr.exists %}
+                                <input type="checkbox" name="selected_idx" value="{{ loop.index0 }}" class="tx-checkbox"
+                                    checked>
+                                {% else %}
+                                <i class="bi bi-exclamation-circle text-warning" title="Já importado"></i>
+                                {% endif %}
+
+                                <!-- Hidden fields to preserve data -->
+                                <input type="hidden" name="id_{{ loop.index0 }}" value="{{ tr.id }}">
+                                <input type="hidden" name="date_{{ loop.index0 }}" value="{{ tr.date }}">
+                                <input type="hidden" name="description_{{ loop.index0 }}" value="{{ tr.description }}">
+                                <input type="hidden" name="amount_{{ loop.index0 }}" value="{{ tr.amount }}">
+                                <input type="hidden" name="account_type_{{ loop.index0 }}"
+                                    value="{{ tr.account_type }}">
+                            </td>
+                            <td>{{ tr.date_formatted }}</td>
+                            <td>
+                                {% if tr.account_type == 'CREDIT' %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-credit-card"></i> Cartão</span>
+                                {% else %}
+                                <span class="badge bg-info text-dark"><i class="bi bi-bank"></i> Conta</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ tr.description }}</td>
+                            <td class="{{ 'text-danger' if tr.amount < 0 else 'text-success' }}">
+                                R$ {{ "%.2f"|format(tr.amount)|replace('.', ',') }}
+                            </td>
+                            <td>
+                                {% if not tr.exists %}
+                                <select name="category_{{ loop.index0 }}" class="form-select form-select-sm">
+                                    {% if tr.amount < 0 %} <!-- Despesa -->
+                                        {% for cat in cats_despesa %}
+                                        <option value="{{ cat.id }}" {% if cat.id==tr.suggested_category_id %}selected{%
+                                            endif %}>
+                                            {{ cat.nome }}
+                                        </option>
+                                        {% endfor %}
+                                        {% else %}
+                                        <!-- Receita -->
+                                        {% for cat in cats_receita %}
+                                        <option value="{{ cat.id }}" {% if cat.id==tr.suggested_category_id %}selected{%
+                                            endif %}>
+                                            {{ cat.nome }}
+                                        </option>
+                                        {% endfor %}
+                                        {% endif %}
+                                </select>
+                                {% else %}
+                                <span class="text-muted small">Já registrado</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between">
+        <a href="{{ url_for('config.openfinance') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Cancelar
+        </a>
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-lg"></i> Confirmar Importação
+        </button>
+    </div>
+</form>
+
+<script>
+    document.getElementById('select-all').addEventListener('change', function () {
+        const checkboxes = document.querySelectorAll('.tx-checkbox');
+        checkboxes.forEach(cb => cb.checked = this.checked);
+    });
+</script>
+{% endblock %}

@@ -1568,6 +1568,19 @@ def openfinance_import():
                 exists = False
                 suggested_cat_id = None
                 
+                # LÓGICA DE CLASSIFICAÇÃO PERSONALIZADA
+                # Regra 1: Cartão de Crédito
+                # "Todos os dados do cartão, via de regra são despesas, somente as relacionadas como estorno seria receitas"
+                if acc_type == 'CREDIT':
+                    if amount > 0:
+                        # Se for positivo (crédito), só é receita se for estorno. 
+                        # Caso contrário, invertemos para negativo para tratar como despesa (ex: pagamento de fatura, ajustes)
+                        if 'estorno' not in description.lower():
+                            amount = -abs(amount)
+                
+                # Regra 2: Conta Corrente
+                # "Registros vindos da conta corrente podem ser receitas ou despesas" -> Mantém lógica do sinal (já é o padrão)
+
                 if amount < 0:
                     # Despesa
                     check = Despesa.query.filter_by(

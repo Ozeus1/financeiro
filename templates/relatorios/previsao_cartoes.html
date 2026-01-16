@@ -57,6 +57,34 @@
         <div class="d-flex justify-content-between align-items-center flex-wrap">
             <h4 class="mb-0"><i class="bi bi-calculator"></i> Resumo Global - Faturas Previstas</h4>
             <div class="btn-group" role="group">
+                <!-- Botão de Filtro -->
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        <i class="bi bi-funnel"></i> Filtrar
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end p-3"
+                        style="min-width: 250px; max-height: 300px; overflow-y: auto;">
+                        <li>
+                            <h6 class="dropdown-header">Exibir/Ocultar Cartões</h6>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        {% for cartao in previsoes %}
+                        <li class="form-check mb-2">
+                            <input class="form-check-input filter-card-checkbox" type="checkbox"
+                                value="{{ loop.index }}" id="filter-check-{{ loop.index }}" checked
+                                onchange="toggleCardVisibility('{{ loop.index }}')">
+                            <label class="form-check-label text-truncate" for="filter-check-{{ loop.index }}"
+                                style="max-width: 200px; display: inline-block; vertical-align: top;">
+                                {{ cartao.cartao }}
+                            </label>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
                 <button type="button" class="btn btn-sm btn-light" onclick="toggleAllCards(true)">
                     <i class="bi bi-chevron-down"></i> Expandir Todos
                 </button>
@@ -100,7 +128,7 @@
 <!-- Cards por Cartão -->
 <div class="row row-cols-1 row-cols-md-2 g-4">
     {% for cartao in previsoes %}
-    <div class="col">
+    <div class="col" id="col-card-{{ loop.index }}">
         <div class="card h-100 shadow-sm card-fatura">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-card-heading"></i> {{ cartao.cartao }}</h5>
@@ -226,6 +254,9 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Inicializar Filtros de Visibilidade (LocalStorage)
+        loadFilterState();
+
         // Inicializar gráficos para cada cartão
         {% for cartao in previsoes %}
         (function () {
@@ -251,9 +282,7 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    display: false
-                },
+                legend: { display: false },
                 tooltip: {
                     callbacks: {
                         label: function (context) {
@@ -265,14 +294,8 @@
             scales: {
                 y: {
                     beginAtZero: true,
-                    grid: {
-                        display: true,
-                        drawBorder: false
-                    },
                     ticks: {
-                        font: {
-                            size: 10
-                        },
+                        font: { size: 10 },
                         callback: function (value) {
                             if (value >= 1000) return 'R$ ' + (value / 1000).toFixed(0) + 'k';
                             return value;
@@ -280,13 +303,9 @@
                     }
                 },
                 x: {
-                    grid: {
-                        display: false
-                    },
+                    grid: { display: false },
                     ticks: {
-                        font: {
-                            size: 10
-                        },
+                        font: { size: 10 },
                         maxRotation: 45,
                         minRotation: 45
                     }
@@ -297,18 +316,55 @@
         }) ();
     {% endfor %}
     });
-</script>
-<script>
-    // Função para togglear visibilidade de card individual
+
+    // Funções de Filtro de Cartões
+    function toggleCardVisibility(index) {
+        const col = document.getElementById(`col-card-${index}`);
+        const cb = document.getElementById(`filter-check-${index}`);
+
+        if (col && cb) {
+            col.style.display = cb.checked ? '' : 'none';
+            saveFilterState();
+        }
+    }
+
+    function saveFilterState() {
+        const hiddenCards = [];
+        document.querySelectorAll('.filter-card-checkbox').forEach(cb => {
+            if (!cb.checked) {
+                hiddenCards.push(cb.value);
+            }
+        });
+        localStorage.setItem('hidden_cards_forecast', JSON.stringify(hiddenCards));
+
+        // Recalcular layout do masonry se estivesse usando, mas aqui é flex/grid, automático.
+    }
+
+    function loadFilterState() {
+        const stored = localStorage.getItem('hidden_cards_forecast');
+        if (stored) {
+            try {
+                const hiddenCards = JSON.parse(stored);
+                hiddenCards.forEach(index => {
+                    const cb = document.getElementById(`filter-check-${index}`);
+                    if (cb) {
+                        cb.checked = false;
+                        toggleCardVisibility(index);
+                    }
+                });
+            } catch (e) {
+                console.error("Erro ao carregar filtros:", e);
+            }
+        }
+    }
+
+    // Função para togglear visibilidade de card individual (Conteúdo)
     function toggleCard(index) {
         const element = document.getElementById(`card-body-${index}`);
         const icon = document.getElementById(`toggle-icon-${index}`);
 
-        const bsCollapse = new bootstrap.Collapse(element, {
-            toggle: true
-        });
+        const bsCollapse = new bootstrap.Collapse(element, { toggle: true });
 
-        // Atualizar ícone após a transição
         element.addEventListener('shown.bs.collapse', function () {
             icon.classList.remove('bi-chevron-down');
             icon.classList.add('bi-chevron-up');

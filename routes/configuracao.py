@@ -906,19 +906,13 @@ def usuarios():
 def orcamento():
     """Gerenciar orçamento geral por categoria"""
     if request.method == 'POST':
-        action = request.form.get('action', 'salvar')
-        
-        if action == 'excluir':
-            orcamento_id = int(request.form.get('orcamento_id'))
-            orcamento = Orcamento.query.get(orcamento_id)
-            if orcamento and orcamento.user_id == current_user.id:
-                db.session.delete(orcamento)
-                db.session.commit()
-                flash('Orçamento excluído!', 'success')
-            return redirect(url_for('config.orcamento'))
-        
+        # Simplificado: Recebe apenas id da categoria e valor
         categoria_id = int(request.form.get('categoria_id'))
-        valor_orcado = float(request.form.get('valor_orcado').replace(',', '.'))
+        valor_bruto = request.form.get('valor_orcado', '0').replace(',', '.')
+        try:
+            valor_orcado = float(valor_bruto)
+        except ValueError:
+            valor_orcado = 0.0
         
         # Verificar se já existe orçamento para esta categoria
         orcamento_existente = Orcamento.query.filter_by(
@@ -928,25 +922,31 @@ def orcamento():
         
         if orcamento_existente:
             orcamento_existente.valor_orcado = valor_orcado
-            flash('Orçamento atualizado!', 'success')
+            # Se quiser deletar zeros: 
+            # if valor_orcado == 0: db.session.delete(orcamento_existente)
         else:
-            novo_orcamento = Orcamento(
-                categoria_id=categoria_id,
-                valor_orcado=valor_orcado,
-                user_id=current_user.id
-            )
-            db.session.add(novo_orcamento)
-            flash('Orçamento cadastrado!', 'success')
+            if valor_orcado > 0: # Só cria se tiver valor
+                novo_orcamento = Orcamento(
+                    categoria_id=categoria_id,
+                    valor_orcado=valor_orcado,
+                    user_id=current_user.id
+                )
+                db.session.add(novo_orcamento)
         
         db.session.commit()
+        flash('Orçamento atualizado!', 'success')
         return redirect(url_for('config.orcamento'))
     
+    # GET: Preparar dados para a lista unificada
     categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
     orcamentos = Orcamento.query.filter_by(user_id=current_user.id).all()
+    
+    # Dicionário de orçamentos para acesso rápido: {categoria_id: objeto_orcamento}
+    orcamentos_map = {o.categoria_id: o for o in orcamentos}
 
     return render_template('config/orcamento.html',
                           categorias=categorias,
-                          orcamentos=orcamentos)
+                          orcamentos_map=orcamentos_map)
 
 @config_bp.route('/cartoes', methods=['GET', 'POST'])
 @login_required

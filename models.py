@@ -278,9 +278,9 @@ def criar_dados_padrao_usuario(user):
     """Cria categorias e meios de pagamento padrão para um novo usuário"""
     # Categorias de despesa padrão
     categorias_despesa_padrao = [
-        'Tel. e Internet', 'Gás', 'Mercado', 'Alimentação', 'Moradia',
-        'Transporte', 'Educação', 'Saúde', 'Lazer', 'Vestuário',
-        'Funcionários', 'Outros'
+        'Moradia', 'Contas da casa', 'Alimentação', 'Transporte', 'Saúde',
+        'Educação', 'Vestuário', 'Lazer', 'Assinaturas', 'Pets', 'Trabalho',
+        'Impostos', 'Dívidas', 'Tarifas bancárias', 'Emergências', 'Outros'
     ]
     for nome in categorias_despesa_padrao:
         if not CategoriaDespesa.query.filter_by(nome=nome, user_id=user.id).first():
@@ -289,7 +289,9 @@ def criar_dados_padrao_usuario(user):
 
     # Categorias de receita padrão
     categorias_receita_padrao = [
-        'Salário', 'Vendas', 'Rendimentos', 'Freelance', 'Outras Receitas'
+        'Salário', 'Pró-labore', 'Aposentadoria', 'Pensão', 'Aluguel recebido',
+        'Rendimentos financeiros', 'Comissões', 'Serviços prestados', 'Vendas',
+        'Reembolsos', 'Outros'
     ]
     for nome in categorias_receita_padrao:
         if not CategoriaReceita.query.filter_by(nome=nome, user_id=user.id).first():
@@ -299,11 +301,17 @@ def criar_dados_padrao_usuario(user):
     # Meios de pagamento padrão
     meios_pagamento_padrao = [
         ('Dinheiro', 'dinheiro'),
-        ('Cartão de Crédito', 'cartao'),
-        ('Transferência', 'transferencia'),
         ('PIX', 'pix'),
+        ('Débito', 'debito'),
+        ('Crédito à vista', 'cartao'),
+        ('Crédito parcelado', 'cartao'),
         ('Boleto', 'boleto'),
-        ('Débito', 'debito')
+        ('Débito automático', 'debito'),
+        ('Transferência bancária', 'transferencia'),
+        ('Carteira digital', 'outros'),
+        # Especificados pelo usuário, mas mantendo o tipo genérico
+        ('Cartão BB', 'cartao'),
+        ('Cartão Nubank', 'cartao')
     ]
     for nome, tipo in meios_pagamento_padrao:
         if not MeioPagamento.query.filter_by(nome=nome, user_id=user.id).first():
@@ -312,7 +320,11 @@ def criar_dados_padrao_usuario(user):
 
     # Meios de recebimento padrão
     meios_recebimento_padrao = [
-        'Transferência Bancária', 'PIX', 'Dinheiro', 'Cheque'
+        'Dinheiro', 'PIX', 'Crédito à vista', 'Crédito parcelado',
+        'Transferência bancária', 'Boleto recebido', 'Carteira digital',
+        'Depósito bancário',
+        # Especificados pelo usuário
+        'Cartão BB', 'Cartão Nubank'
     ]
     for nome in meios_recebimento_padrao:
         if not MeioRecebimento.query.filter_by(nome=nome, user_id=user.id).first():

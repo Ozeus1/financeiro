@@ -1,340 +1,475 @@
 {% extends "base.html" %}
+{% block title %}Dashboard — Sistema Financeiro{% endblock %}
 
-{% block title %}Dashboard - Sistema Financeiro{% endblock %}
+{% block extra_css %}
+<style>
+/* ─── Tokens ─── */
+:root {
+    --db-bg: #f1f5f9;
+    --db-surface: #ffffff;
+    --db-border: #e2e8f0;
+    --db-text: #0f172a;
+    --db-muted: #64748b;
+    --db-green: #10b981;
+    --db-red: #ef4444;
+    --db-blue: #4361ee;
+    --db-amber: #f59e0b;
+    --db-cyan: #06b6d4;
+    --db-indigo: #6366f1;
+    --db-radius: 14px;
+    --db-shadow: 0 1px 3px rgba(0,0,0,.07);
+    --db-shadow-md: 0 4px 16px rgba(0,0,0,.09);
+    --db-shadow-lg: 0 8px 32px rgba(0,0,0,.12);
+}
+
+/* ─── Scaffold ─── */
+.db-page { background: var(--db-bg); min-height: 80vh; padding-bottom: 2.5rem; }
+
+/* ─── Header ─── */
+.db-header {
+    background: linear-gradient(135deg,#1e3a8a 0%,#4361ee 55%,#7c3aed 100%);
+    padding: 1.4rem 1.5rem 1.2rem;
+    color: #fff;
+    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    flex-wrap: wrap;
+}
+.db-header-greeting { font-size: .82rem; opacity: .75; margin-bottom: .15rem; }
+.db-header-title { font-size: 1.4rem; font-weight: 700; letter-spacing: -.02em; margin: 0; }
+
+/* ─── Section label ─── */
+.db-section-label {
+    font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--db-muted);
+    margin-bottom: .6rem; padding-left: .25rem;
+    display: flex; align-items: center; gap: .4rem;
+}
+
+/* ─── KPI cards ─── */
+.db-kpis { display: grid; grid-template-columns: repeat(3,1fr); gap: .9rem; margin-bottom: 1rem; }
+.db-kpi {
+    background: var(--db-surface);
+    border-radius: var(--db-radius);
+    box-shadow: var(--db-shadow-md);
+    padding: 1rem 1.1rem;
+    display: flex; align-items: center; gap: .9rem;
+    border-left: 4px solid transparent;
+}
+.db-kpi-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; flex-shrink: 0;
+}
+.db-kpi-label { font-size: .72rem; color: var(--db-muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em; }
+.db-kpi-value { font-size: 1.18rem; font-weight: 800; color: var(--db-text);
+    line-height: 1.2; transition: filter .3s; }
+
+/* color variants */
+.db-kpi-green  { border-left-color: var(--db-green); }
+.db-kpi-green  .db-kpi-icon { background: rgba(16,185,129,.1); color: var(--db-green); }
+.db-kpi-red    { border-left-color: var(--db-red); }
+.db-kpi-red    .db-kpi-icon { background: rgba(239,68,68,.1); color: var(--db-red); }
+.db-kpi-blue   { border-left-color: var(--db-blue); }
+.db-kpi-blue   .db-kpi-icon { background: rgba(67,97,238,.1); color: var(--db-blue); }
+.db-kpi-amber  { border-left-color: var(--db-amber); }
+.db-kpi-amber  .db-kpi-icon { background: rgba(245,158,11,.1); color: var(--db-amber); }
+.db-kpi-cyan   { border-left-color: var(--db-cyan); }
+.db-kpi-cyan   .db-kpi-icon { background: rgba(6,182,212,.1); color: var(--db-cyan); }
+.db-kpi-indigo { border-left-color: var(--db-indigo); }
+.db-kpi-indigo .db-kpi-icon { background: rgba(99,102,241,.1); color: var(--db-indigo); }
+
+/* ─── Transaction panels ─── */
+.db-panel {
+    background: var(--db-surface);
+    border-radius: var(--db-radius);
+    box-shadow: var(--db-shadow-md);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+}
+.db-panel-header {
+    padding: .8rem 1.1rem;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--db-border);
+}
+.db-panel-title { font-size: .92rem; font-weight: 700; margin: 0; }
+
+/* pills tabs */
+.db-tabs { display: flex; gap: .25rem; background: #f8fafc;
+    border-radius: 8px; padding: .18rem; }
+.db-tab { border: none; background: transparent; font-size: .75rem; font-weight: 600;
+    padding: .25rem .7rem; border-radius: 6px; color: var(--db-muted); cursor: pointer;
+    transition: background .15s, color .15s; }
+.db-tab.active { background: var(--db-surface); color: var(--db-text);
+    box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+
+.db-txn-list { overflow-y: auto; max-height: 340px; }
+.db-txn-list::-webkit-scrollbar { width: 4px; }
+.db-txn-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+.db-txn-item {
+    display: flex; align-items: flex-start; gap: .75rem;
+    padding: .7rem 1.1rem;
+    border-bottom: 1px solid var(--db-border);
+    transition: background .12s;
+}
+.db-txn-item:last-child { border-bottom: none; }
+.db-txn-item:hover { background: #f8fafc; }
+
+.db-txn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: .38rem; }
+.db-txn-body { flex: 1; min-width: 0; }
+.db-txn-desc { font-size: .85rem; font-weight: 600; color: var(--db-text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.db-txn-tags { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .25rem; }
+.db-tag { font-size: .67rem; padding: .1rem .4rem; border-radius: 4px;
+    background: #f1f5f9; color: var(--db-muted); font-weight: 600; }
+.db-tag-meio { background: #e0f2fe; color: #0284c7; }
+.db-txn-right { flex-shrink: 0; text-align: right; }
+.db-txn-date { font-size: .72rem; color: var(--db-muted); }
+.db-txn-val  { font-size: .88rem; font-weight: 700; transition: filter .3s; }
+
+.db-panel-footer {
+    padding: .65rem 1.1rem;
+    border-top: 1px solid var(--db-border);
+    background: #fafbfc;
+    display: flex; gap: .5rem; justify-content: center;
+}
+
+.db-empty { padding: 2rem 1rem; text-align: center; color: var(--db-muted); font-size: .85rem; }
+
+/* ─── Quick access ─── */
+.db-quick-grid {
+    display: grid; grid-template-columns: repeat(4,1fr); gap: .9rem;
+}
+.db-quick-card {
+    background: var(--db-surface);
+    border-radius: var(--db-radius);
+    box-shadow: var(--db-shadow);
+    padding: 1.2rem .75rem;
+    text-align: center;
+    text-decoration: none;
+    color: var(--db-text);
+    border: 1px solid var(--db-border);
+    transition: box-shadow .2s, transform .2s, border-color .2s;
+    display: flex; flex-direction: column; align-items: center; gap: .5rem;
+}
+.db-quick-card:hover {
+    box-shadow: var(--db-shadow-lg); transform: translateY(-2px); color: var(--db-text);
+}
+.db-quick-icon {
+    width: 50px; height: 50px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+}
+.db-quick-label { font-size: .8rem; font-weight: 600; line-height: 1.3; }
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+    .db-kpis { grid-template-columns: 1fr 1fr; }
+    .db-quick-grid { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 480px) {
+    .db-kpis { grid-template-columns: 1fr; }
+    .db-kpi-value { font-size: 1rem; }
+    .db-quick-grid { grid-template-columns: repeat(2,1fr); }
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<!-- Alerta de Validade do Acesso -->
+<div class="db-page">
+
+<!-- ─── Alertas de validade ─── -->
 {% if not current_user.is_admin() and current_user.data_validade %}
 {% set dias = current_user.dias_restantes() %}
 {% if dias is not none %}
-{% if dias < 0 %} <div class="alert alert-danger alert-dismissible fade show" role="alert">
-    <i class="bi bi-exclamation-triangle-fill"></i>
-    <strong>Acesso Expirado!</strong> Seu acesso expirou há {{ -dias }} dias. Entre em contato com o administrador.
+<div class="alert alert-{% if dias < 0 %}danger{% elif dias <= 7 %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-0 mb-0" role="alert">
+    <i class="bi bi-{% if dias < 0 %}exclamation-triangle-fill{% elif dias <= 7 %}clock-fill{% else %}info-circle-fill{% endif %} me-2"></i>
+    {% if dias < 0 %}<strong>Acesso Expirado!</strong> Seu acesso expirou há {{ -dias }} dias.
+    {% elif dias == 0 %}<strong>Atenção!</strong> Seu acesso expira hoje ({{ current_user.data_validade.strftime('%d/%m/%Y') }}).
+    {% elif dias <= 7 %}<strong>Atenção!</strong> Seu acesso expira em {{ dias }} dias ({{ current_user.data_validade.strftime('%d/%m/%Y') }}).
+    {% else %}Seu acesso expira em {{ dias }} dias ({{ current_user.data_validade.strftime('%d/%m/%Y') }}).
+    {% endif %}
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    {% elif dias == 0 %}
-    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-        <i class="bi bi-exclamation-triangle-fill"></i>
-        <strong>Atenção!</strong> Seu acesso expira hoje ({{ current_user.data_validade.strftime('%d/%m/%Y') }}).
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    {% elif dias <= 7 %} <div class="alert alert-warning alert-dismissible fade show" role="alert">
-        <i class="bi bi-clock-fill"></i>
-        <strong>Atenção!</strong> Seu acesso expira em {{ dias }} dias ({{
-        current_user.data_validade.strftime('%d/%m/%Y') }}).
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- ─── Header ─── -->
+<div class="db-header">
+    <div>
+        <div class="db-header-greeting">
+            <i class="bi bi-person-circle me-1"></i>
+            Olá, {{ current_user.nome or current_user.username }}
         </div>
-        {% elif dias <= 30 %} <div class="alert alert-info alert-dismissible fade show" role="alert">
-            <i class="bi bi-info-circle-fill"></i>
-            Seu acesso expira em {{ dias }} dias ({{ current_user.data_validade.strftime('%d/%m/%Y') }}).
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <h1 class="db-header-title">
+            <i class="bi bi-speedometer2 me-2"></i>Dashboard · {{ mes_atual }}/{{ ano_atual }}
+        </h1>
+    </div>
+    <button class="btn btn-sm btn-outline-light" id="toggleValores" title="Mostrar/Ocultar Valores">
+        <i class="bi bi-eye-slash me-1" id="iconToggle"></i>
+        <span id="textToggle">Ocultar</span>
+    </button>
+</div>
+
+<div class="container-fluid px-3 pt-3">
+
+<!-- ─── KPIs: Competência ─── -->
+<div class="db-section-label">
+    <i class="bi bi-calendar3"></i> Competência do Mês
+</div>
+<div class="db-kpis mb-3">
+    <div class="db-kpi db-kpi-green">
+        <div class="db-kpi-icon"><i class="bi bi-cash-coin"></i></div>
+        <div>
+            <div class="db-kpi-label">Receitas</div>
+            <div class="db-kpi-value valor-monetario">R$ {{ total_receitas|moeda }}</div>
+        </div>
+    </div>
+    <div class="db-kpi db-kpi-red">
+        <div class="db-kpi-icon"><i class="bi bi-wallet2"></i></div>
+        <div>
+            <div class="db-kpi-label">Despesas</div>
+            <div class="db-kpi-value valor-monetario">R$ {{ total_despesas|moeda }}</div>
+        </div>
+    </div>
+    <div class="db-kpi {% if saldo >= 0 %}db-kpi-blue{% else %}db-kpi-amber{% endif %}">
+        <div class="db-kpi-icon"><i class="bi bi-piggy-bank"></i></div>
+        <div>
+            <div class="db-kpi-label">Saldo do Mês</div>
+            <div class="db-kpi-value valor-monetario">R$ {{ saldo|moeda }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── KPIs: Caixa ─── -->
+<div class="db-section-label">
+    <i class="bi bi-cash-stack"></i> Fluxo de Caixa (Realizado)
+</div>
+<div class="db-kpis mb-4">
+    <div class="db-kpi db-kpi-cyan">
+        <div class="db-kpi-icon"><i class="bi bi-arrow-down-circle"></i></div>
+        <div>
+            <div class="db-kpi-label">Entradas (Caixa)</div>
+            <div class="db-kpi-value valor-monetario">R$ {{ fluxo_entradas|moeda }}</div>
+        </div>
+    </div>
+    <div class="db-kpi db-kpi-red">
+        <div class="db-kpi-icon"><i class="bi bi-arrow-up-circle"></i></div>
+        <div>
+            <div class="db-kpi-label">Saídas (Caixa)</div>
+            <div class="db-kpi-value valor-monetario">R$ {{ fluxo_saidas|moeda }}</div>
+        </div>
+    </div>
+    <div class="db-kpi {% if fluxo_saldo >= 0 %}db-kpi-indigo{% else %}db-kpi-amber{% endif %}">
+        <div class="db-kpi-icon"><i class="bi bi-bank"></i></div>
+        <div>
+            <div class="db-kpi-label">Saldo (Caixa)</div>
+            <div class="db-kpi-value valor-monetario">R$ {{ fluxo_saldo|moeda }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Transações ─── -->
+<div class="db-section-label mb-2">
+    <i class="bi bi-list-ul"></i> Últimas Transações
+</div>
+<div class="row g-3 mb-4">
+
+    <!-- Despesas -->
+    <div class="col-md-6">
+      <div class="db-panel h-100">
+        <div class="db-panel-header">
+            <span class="db-panel-title" style="color:var(--db-red);">
+                <i class="bi bi-arrow-up-circle-fill me-2"></i>Últimas Despesas
+            </span>
+            <div class="db-tabs">
+                <button class="db-tab active" onclick="switchTab('desp','data',this)">Por Data</button>
+                <button class="db-tab" onclick="switchTab('desp','reg',this)">Por Registro</button>
             </div>
+        </div>
+
+        <div id="desp-data" class="db-txn-list">
+            {% if ultimas_despesas_data %}
+            {% for d in ultimas_despesas_data %}
+            <div class="db-txn-item">
+                <div class="db-txn-dot" style="background:var(--db-red);"></div>
+                <div class="db-txn-body">
+                    <div class="db-txn-desc" title="{{ d.descricao }}">{{ d.descricao }}</div>
+                    <div class="db-txn-tags">
+                        <span class="db-tag">{{ d.categoria.nome }}</span>
+                        <span class="db-tag db-tag-meio">{{ d.meio_pagamento.nome }}</span>
+                    </div>
+                </div>
+                <div class="db-txn-right">
+                    <div class="db-txn-date">{{ d.data_pagamento.strftime('%d/%m') }}</div>
+                    <div class="db-txn-val valor-monetario" style="color:var(--db-red);">R$ {{ d.valor|moeda }}</div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="db-empty"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nenhuma despesa nesta data.</div>
             {% endif %}
+        </div>
+
+        <div id="desp-reg" class="db-txn-list" style="display:none;">
+            {% if ultimas_despesas_registro %}
+            {% for d in ultimas_despesas_registro %}
+            <div class="db-txn-item">
+                <div class="db-txn-dot" style="background:var(--db-red);"></div>
+                <div class="db-txn-body">
+                    <div class="db-txn-desc" title="{{ d.descricao }}">{{ d.descricao }}</div>
+                    <div class="db-txn-tags">
+                        <span class="db-tag">{{ d.categoria.nome }}</span>
+                        <span class="db-tag db-tag-meio">{{ d.meio_pagamento.nome }}</span>
+                    </div>
+                </div>
+                <div class="db-txn-right">
+                    <div class="db-txn-date">{{ d.data_pagamento.strftime('%d/%m') }}</div>
+                    <div class="db-txn-val valor-monetario" style="color:var(--db-red);">R$ {{ d.valor|moeda }}</div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="db-empty"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nenhuma despesa registrada.</div>
             {% endif %}
+        </div>
+
+        <div class="db-panel-footer">
+            <a href="{{ url_for('despesas.lista') }}" class="btn btn-sm btn-outline-danger">Ver todas</a>
+            <a href="{{ url_for('despesas.criar') }}"  class="btn btn-sm btn-danger">
+                <i class="bi bi-plus-lg me-1"></i>Nova despesa
+            </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Receitas -->
+    <div class="col-md-6">
+      <div class="db-panel h-100">
+        <div class="db-panel-header">
+            <span class="db-panel-title" style="color:var(--db-green);">
+                <i class="bi bi-arrow-down-circle-fill me-2"></i>Últimas Receitas
+            </span>
+            <div class="db-tabs">
+                <button class="db-tab active" onclick="switchTab('rec','data',this)">Por Data</button>
+                <button class="db-tab" onclick="switchTab('rec','reg',this)">Por Registro</button>
+            </div>
+        </div>
+
+        <div id="rec-data" class="db-txn-list">
+            {% if ultimas_receitas_data %}
+            {% for r in ultimas_receitas_data %}
+            <div class="db-txn-item">
+                <div class="db-txn-dot" style="background:var(--db-green);"></div>
+                <div class="db-txn-body">
+                    <div class="db-txn-desc" title="{{ r.descricao }}">{{ r.descricao }}</div>
+                    <div class="db-txn-tags">
+                        <span class="db-tag">{{ r.categoria.nome }}</span>
+                        <span class="db-tag db-tag-meio">{{ r.meio_recebimento.nome }}</span>
+                    </div>
+                </div>
+                <div class="db-txn-right">
+                    <div class="db-txn-date">{{ r.data_recebimento.strftime('%d/%m') }}</div>
+                    <div class="db-txn-val valor-monetario" style="color:var(--db-green);">R$ {{ r.valor|moeda }}</div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="db-empty"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nenhuma receita nesta data.</div>
             {% endif %}
+        </div>
 
-            <div class="row mt-4">
-                <div class="col-12 d-flex justify-content-between align-items-center">
-                    <h2><i class="bi bi-speedometer2"></i> Dashboard - {{ mes_atual }}/{{ ano_atual }}</h2>
-                    <button class="btn btn-outline-secondary" id="toggleValores" title="Mostrar/Ocultar Valores">
-                        <i class="bi bi-eye-slash" id="iconToggle"></i>
-                        <span id="textToggle">Ocultar Valores</span>
-                    </button>
+        <div id="rec-reg" class="db-txn-list" style="display:none;">
+            {% if ultimas_receitas_registro %}
+            {% for r in ultimas_receitas_registro %}
+            <div class="db-txn-item">
+                <div class="db-txn-dot" style="background:var(--db-green);"></div>
+                <div class="db-txn-body">
+                    <div class="db-txn-desc" title="{{ r.descricao }}">{{ r.descricao }}</div>
+                    <div class="db-txn-tags">
+                        <span class="db-tag">{{ r.categoria.nome }}</span>
+                        <span class="db-tag db-tag-meio">{{ r.meio_recebimento.nome }}</span>
+                    </div>
                 </div>
-                <div class="col-12">
-                    <hr>
+                <div class="db-txn-right">
+                    <div class="db-txn-date">{{ r.data_recebimento.strftime('%d/%m') }}</div>
+                    <div class="db-txn-val valor-monetario" style="color:var(--db-green);">R$ {{ r.valor|moeda }}</div>
                 </div>
             </div>
+            {% endfor %}
+            {% else %}
+            <div class="db-empty"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nenhuma receita registrada.</div>
+            {% endif %}
+        </div>
 
-            <!-- Cards Resumo (Competência) -->
-            <div class="row mt-3">
-                <div class="col-md-4">
-                    <div class="card text-white bg-success mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="bi bi-cash-coin"></i> Receitas do Mês</h5>
-                            <h3 class="valor-monetario">R$ {{ total_receitas|moeda }}</h3>
-                        </div>
-                    </div>
-                </div>
+        <div class="db-panel-footer">
+            <a href="{{ url_for('receitas.lista') }}" class="btn btn-sm btn-outline-success">Ver todas</a>
+            <a href="{{ url_for('receitas.criar') }}"  class="btn btn-sm btn-success">
+                <i class="bi bi-plus-lg me-1"></i>Nova receita
+            </a>
+        </div>
+      </div>
+    </div>
+</div>
 
-                <div class="col-md-4">
-                    <div class="card text-white bg-danger mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="bi bi-wallet2"></i> Despesas do Mês</h5>
-                            <h3 class="valor-monetario">R$ {{ total_despesas|moeda }}</h3>
-                        </div>
-                    </div>
-                </div>
+<!-- ─── Acesso Rápido ─── -->
+<div class="db-section-label mb-2">
+    <i class="bi bi-grid-3x3-gap"></i> Acesso Rápido
+</div>
+<div class="db-quick-grid mb-4">
+    <a href="{{ url_for('relatorios.balanco') }}" class="db-quick-card">
+        <div class="db-quick-icon" style="background:rgba(67,97,238,.1);color:#4361ee;">
+            <i class="bi bi-bar-chart-line-fill"></i>
+        </div>
+        <div class="db-quick-label">Balanço Mensal</div>
+    </a>
+    <a href="{{ url_for('relatorios.top_contas') }}" class="db-quick-card">
+        <div class="db-quick-icon" style="background:rgba(245,158,11,.1);color:#f59e0b;">
+            <i class="bi bi-star-fill"></i>
+        </div>
+        <div class="db-quick-label">Top 10 Contas</div>
+    </a>
+    <a href="{{ url_for('despesas.exportar') }}" class="db-quick-card">
+        <div class="db-quick-icon" style="background:rgba(16,185,129,.1);color:#10b981;">
+            <i class="bi bi-file-earmark-arrow-down-fill"></i>
+        </div>
+        <div class="db-quick-label">Exportar Despesas</div>
+    </a>
+    <a href="{{ url_for('receitas.exportar') }}" class="db-quick-card">
+        <div class="db-quick-icon" style="background:rgba(6,182,212,.1);color:#06b6d4;">
+            <i class="bi bi-file-earmark-arrow-down-fill"></i>
+        </div>
+        <div class="db-quick-label">Exportar Receitas</div>
+    </a>
+</div>
 
-                <div class="col-md-4">
-                    <div class="card text-white {% if saldo >= 0 %}bg-primary{% else %}bg-warning{% endif %} mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="bi bi-piggy-bank"></i> Saldo do Mês</h5>
-                            <h3 class="valor-monetario">R$ {{ saldo|moeda }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
+</div><!-- /container -->
+</div><!-- /db-page -->
+{% endblock %}
 
-            <!-- Resumo do Fluxo de Caixa (Realizado) -->
-            <div class="row mt-3">
-                <div class="col-12">
-                    <h5 class="text-muted"><i class="bi bi-cash-stack"></i> Fluxo de Caixa (Realizado)</h5>
-                </div>
-                <div class="col-md-4">
-                    <div class="card text-white bg-info mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">Entradas (Caixa)</h5>
-                            <h3 class="valor-monetario">R$ {{ fluxo_entradas|moeda }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card text-white bg-secondary mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">Saídas (Caixa)</h5>
-                            <h3 class="valor-monetario">R$ {{ fluxo_saidas|moeda }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div
-                        class="card text-white {% if fluxo_saldo >= 0 %}bg-primary{% else %}bg-warning{% endif %} mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">Saldo (Caixa)</h5>
-                            <h3 class="valor-monetario">R$ {{ fluxo_saldo|moeda }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% block extra_js %}
+<script>
+// Toggle ocultar/mostrar valores
+document.getElementById('toggleValores').addEventListener('click', function () {
+    const vals = document.querySelectorAll('.valor-monetario');
+    const icon = document.getElementById('iconToggle');
+    const txt  = document.getElementById('textToggle');
+    const hide = vals[0] && vals[0].style.filter !== 'blur(8px)';
+    vals.forEach(v => v.style.filter = hide ? 'blur(8px)' : 'none');
+    icon.className = hide ? 'bi bi-eye me-1' : 'bi bi-eye-slash me-1';
+    txt.textContent = hide ? 'Mostrar' : 'Ocultar';
+});
 
-            <!-- Últimas Despesas e Receitas -->
-            <div class="row mt-4">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header bg-danger text-white">
-                            <h5 class="mb-0"><i class="bi bi-list-ul"></i> Últimas Despesas</h5>
-                        </div>
-                        <div class="card-body">
-                            <ul class="nav nav-pills nav-fill mb-3" id="pills-tab-desp" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link active py-1" id="pills-desp-data-tab" data-bs-toggle="pill"
-                                        data-bs-target="#pills-desp-data" type="button" role="tab">Por Data
-                                        (Mês)</button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link py-1" id="pills-desp-reg-tab" data-bs-toggle="pill"
-                                        data-bs-target="#pills-desp-reg" type="button" role="tab">Por Registro</button>
-                                </li>
-                            </ul>
-
-                            <div class="tab-content" id="pills-tabContent-desp">
-                                <!-- Por Data (Mês) -->
-                                <div class="tab-pane fade show active" id="pills-desp-data" role="tabpanel">
-                                    {% if ultimas_despesas_data %}
-                                    <div class="list-group">
-                                        {% for despesa in ultimas_despesas_data %}
-                                        <div class="list-group-item">
-                                            <div class="d-flex w-100 justify-content-between">
-                                                <h6 class="mb-1">{{ despesa.descricao }}</h6>
-                                                <small>{{ despesa.data_pagamento.strftime('%d/%m/%Y') }}</small>
-                                            </div>
-                                            <p class="mb-1">
-                                                <span class="badge bg-secondary">{{ despesa.categoria.nome }}</span>
-                                                <span class="badge bg-info">{{ despesa.meio_pagamento.nome }}</span>
-                                            </p>
-                                            <strong class="text-danger valor-monetario">R$ {{ despesa.valor|moeda
-                                                }}</strong>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                    {% else %}
-                                    <p class="text-muted text-center my-3">Nenhuma despesa nesta data.</p>
-                                    {% endif %}
-                                </div>
-
-                                <!-- Por Registro -->
-                                <div class="tab-pane fade" id="pills-desp-reg" role="tabpanel">
-                                    {% if ultimas_despesas_registro %}
-                                    <div class="list-group">
-                                        {% for despesa in ultimas_despesas_registro %}
-                                        <div class="list-group-item">
-                                            <div class="d-flex w-100 justify-content-between">
-                                                <h6 class="mb-1">{{ despesa.descricao }}</h6>
-                                                <small class="text-muted" title="Data do Pagamento">Pgto: {{
-                                                    despesa.data_pagamento.strftime('%d/%m') }}</small>
-                                            </div>
-                                            <p class="mb-1">
-                                                <span class="badge bg-secondary">{{ despesa.categoria.nome }}</span>
-                                                <span class="badge bg-info">{{ despesa.meio_pagamento.nome }}</span>
-                                            </p>
-                                            <strong class="text-danger valor-monetario">R$ {{ despesa.valor|moeda
-                                                }}</strong>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                    {% else %}
-                                    <p class="text-muted text-center my-3">Nenhuma despesa registrada.</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <div class="mt-3 text-center">
-                                <a href="{{ url_for('despesas.lista') }}" class="btn btn-sm btn-outline-danger">Ver
-                                    todas</a>
-                                <a href="{{ url_for('despesas.criar') }}" class="btn btn-sm btn-danger">Nova despesa</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header bg-success text-white">
-                            <h5 class="mb-0"><i class="bi bi-list-ul"></i> Últimas Receitas</h5>
-                        </div>
-                        <div class="card-body">
-                            <ul class="nav nav-pills nav-fill mb-3" id="pills-tab-rec" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link active py-1" id="pills-rec-data-tab" data-bs-toggle="pill"
-                                        data-bs-target="#pills-rec-data" type="button" role="tab">Por Data
-                                        (Mês)</button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link py-1" id="pills-rec-reg-tab" data-bs-toggle="pill"
-                                        data-bs-target="#pills-rec-reg" type="button" role="tab">Por Registro</button>
-                                </li>
-                            </ul>
-
-                            <div class="tab-content" id="pills-tabContent-rec">
-                                <!-- Por Data (Mês) -->
-                                <div class="tab-pane fade show active" id="pills-rec-data" role="tabpanel">
-                                    {% if ultimas_receitas_data %}
-                                    <div class="list-group">
-                                        {% for receita in ultimas_receitas_data %}
-                                        <div class="list-group-item">
-                                            <div class="d-flex w-100 justify-content-between">
-                                                <h6 class="mb-1">{{ receita.descricao }}</h6>
-                                                <small>{{ receita.data_recebimento.strftime('%d/%m/%Y') }}</small>
-                                            </div>
-                                            <p class="mb-1">
-                                                <span class="badge bg-secondary">{{ receita.categoria.nome }}</span>
-                                                <span class="badge bg-info">{{ receita.meio_recebimento.nome }}</span>
-                                            </p>
-                                            <strong class="text-success valor-monetario">R$ {{ receita.valor|moeda
-                                                }}</strong>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                    {% else %}
-                                    <p class="text-muted text-center my-3">Nenhuma receita nesta data.</p>
-                                    {% endif %}
-                                </div>
-
-                                <!-- Por Registro -->
-                                <div class="tab-pane fade" id="pills-rec-reg" role="tabpanel">
-                                    {% if ultimas_receitas_registro %}
-                                    <div class="list-group">
-                                        {% for receita in ultimas_receitas_registro %}
-                                        <div class="list-group-item">
-                                            <div class="d-flex w-100 justify-content-between">
-                                                <h6 class="mb-1">{{ receita.descricao }}</h6>
-                                                <small class="text-muted" title="Data do Recebimento">Rec: {{
-                                                    receita.data_recebimento.strftime('%d/%m') }}</small>
-                                            </div>
-                                            <p class="mb-1">
-                                                <span class="badge bg-secondary">{{ receita.categoria.nome }}</span>
-                                                <span class="badge bg-info">{{ receita.meio_recebimento.nome }}</span>
-                                            </p>
-                                            <strong class="text-success valor-monetario">R$ {{ receita.valor|moeda
-                                                }}</strong>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                    {% else %}
-                                    <p class="text-muted text-center my-3">Nenhuma receita registrada.</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <div class="mt-3 text-center">
-                                <a href="{{ url_for('receitas.lista') }}" class="btn btn-sm btn-outline-success">Ver
-                                    todas</a>
-                                <a href="{{ url_for('receitas.criar') }}" class="btn btn-sm btn-success">Nova
-                                    receita</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Links Rápidos -->
-            <div class="row mt-4 mb-5">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-speedometer"></i> Acesso Rápido</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row text-center">
-                                <div class="col-md-3 mb-3">
-                                    <a href="{{ url_for('relatorios.balanco') }}"
-                                        class="btn btn-outline-primary btn-lg d-block">
-                                        <i class="bi bi-bar-chart fs-1"></i><br>
-                                        Balanço Mensal
-                                    </a>
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <a href="{{ url_for('relatorios.top_contas') }}"
-                                        class="btn btn-outline-warning btn-lg d-block">
-                                        <i class="bi bi-star fs-1"></i><br>
-                                        Top 10 Contas
-                                    </a>
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <a href="{{ url_for('despesas.exportar') }}"
-                                        class="btn btn-outline-success btn-lg d-block">
-                                        <i class="bi bi-file-earmark-excel fs-1"></i><br>
-                                        Exportar Despesas
-                                    </a>
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <a href="{{ url_for('receitas.exportar') }}"
-                                        class="btn btn-outline-info btn-lg d-block">
-                                        <i class="bi bi-file-earmark-excel fs-1"></i><br>
-                                        Exportar Receitas
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <script>
-                document.addEventListener('DOMContentLoaded', function () {
-                    document.getElementById('toggleValores').addEventListener('click', function () {
-                        const valores = document.querySelectorAll('.valor-monetario');
-                        const icon = document.getElementById('iconToggle');
-                        const text = document.getElementById('textToggle');
-
-                        // Verifica o estado atual (se está oculto ou não)
-                        const isHidden = valores[0].style.filter === 'blur(8px)';
-
-                        valores.forEach(valor => {
-                            if (isHidden) {
-                                // Mostrar valores
-                                valor.style.filter = 'none';
-                                icon.className = 'bi bi-eye-slash';
-                                text.textContent = 'Ocultar Valores';
-                            } else {
-                                // Ocultar valores
-                                valor.style.filter = 'blur(8px)';
-                                icon.className = 'bi bi-eye';
-                                text.textContent = 'Mostrar Valores';
-                            }
-                        });
-                    });
-                });
-            </script>
-            {% endblock %}
+// Tabs das listas de transações
+function switchTab(panel, tab, btn) {
+    // esconder todos os painéis do grupo
+    document.getElementById(panel + '-data').style.display = 'none';
+    document.getElementById(panel + '-reg').style.display  = 'none';
+    // mostrar o selecionado
+    document.getElementById(panel + '-' + tab).style.display = '';
+    // atualizar botões ativos
+    btn.closest('.db-tabs').querySelectorAll('.db-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+</script>
+{% endblock %}

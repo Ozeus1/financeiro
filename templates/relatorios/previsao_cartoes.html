@@ -30,6 +30,48 @@
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
+
+    /* Tablet (≤992px) */
+    @media (max-width: 992px) {
+        #modalDetalhes .table {
+            font-size: 0.8rem;
+        }
+        #modalDetalhes .modal-title {
+            font-size: 1rem;
+        }
+        #modalDetalhes .btn-sm {
+            padding: 2px 5px;
+            font-size: 0.7rem;
+        }
+        #modalDetalhes .badge {
+            font-size: 0.68rem;
+        }
+    }
+
+    /* Celular (≤576px) */
+    @media (max-width: 576px) {
+        #modalDetalhes .modal-dialog {
+            margin: 0.25rem;
+        }
+        #modalDetalhes .table {
+            font-size: 0.7rem;
+        }
+        #modalDetalhes .table th,
+        #modalDetalhes .table td {
+            padding: 0.2rem 0.25rem;
+        }
+        #modalDetalhes .modal-title {
+            font-size: 0.9rem;
+        }
+        #modalDetalhes .btn-sm {
+            padding: 1px 4px;
+            font-size: 0.65rem;
+        }
+        #modalDetalhes .badge {
+            font-size: 0.6rem;
+            padding: 2px 4px;
+        }
+    }
 </style>
 {% endblock %}
 

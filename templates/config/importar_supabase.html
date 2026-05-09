@@ -304,6 +304,7 @@
         });
 
         function renderTable(items) {
+            rawData = items;   // guarda dados originais
             tbody.innerHTML = '';
             if (items.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center">Nenhum dado encontrado</td></tr>';
@@ -389,62 +390,73 @@
             });
         });
 
-        // Importar
+        // Importar — usa rawData (dados originais do Supabase) para evitar
+        // problema de innerText vazio em linhas ocultas pela paginação
         function importar(selecionadosApenas) {
-            const items = [];
-            // Usa getFilteredRows() para percorrer TODOS os registros filtrados,
-            // incluindo os de outras páginas (que estão ocultos pela paginação)
-            const rows = getFilteredRows();
-
-            rows.forEach(row => {
-                const checkbox = row.querySelector('.check-item');
-                if (!checkbox) return;
-
-                if (selecionadosApenas && !checkbox.checked) return;
-
-                items.push({
-                    id: row.dataset.id,
-                    descricao: row.querySelector('[data-field="descricao"]').innerText,
-                    valor: row.querySelector('[data-field="valor"]').innerText,
-                    meio_pagamento: row.querySelector('[data-field="meio_pagamento"]').innerText,
-                    categoria: row.querySelector('[data-field="categoria"]').innerText,
-                    parcelas: row.querySelector('[data-field="parcelas"]').innerText,
-                    data_despesa: row.querySelector('[data-field="data_despesa"]').innerText
-                });
-            });
-
-            if (items.length === 0) {
-                alert('Nenhum item selecionado para importação.');
+            if (rawData.length === 0) {
+                alert('Carregue os dados do Supabase antes de importar.');
                 return;
             }
 
-            if (!confirm(`Deseja importar ${items.length} itens?`)) return;
+            let itemsToImport;
+
+            if (selecionadosApenas) {
+                // IDs das linhas com checkbox marcado (em qualquer página)
+                const checkedIds = new Set();
+                document.querySelectorAll('.check-item:checked').forEach(cb => {
+                    checkedIds.add(String(cb.closest('tr').dataset.id));
+                });
+                if (checkedIds.size === 0) {
+                    alert('Selecione ao menos um item antes de importar.');
+                    return;
+                }
+                itemsToImport = rawData.filter(d => checkedIds.has(String(d.id)));
+            } else {
+                // Importar Todos: usa todos os dados filtrados
+                const filteredIds = new Set(getFilteredRows().map(r => String(r.dataset.id)));
+                itemsToImport = rawData.filter(d => filteredIds.has(String(d.id)));
+            }
+
+            if (itemsToImport.length === 0) {
+                alert('Nenhum item encontrado para importação.');
+                return;
+            }
+
+            if (!confirm(`Deseja importar ${itemsToImport.length} itens?`)) return;
+
+            // Converter campos do Supabase para o formato esperado pelo backend
+            const payload = itemsToImport.map(d => {
+                let dataDespesa = d.data_despesa || '';
+                if (dataDespesa.includes('T')) dataDespesa = dataDespesa.split('T')[0];
+                return {
+                    id:             d.id,
+                    descricao:      d.descricao      || '',
+                    valor:          String(d.valor   || 0),
+                    meio_pagamento: d.forma_pagamento || 'Outros',
+                    categoria:      d.conta_despesa  || 'Outros',
+                    parcelas:       String(d.numero_parcelas || 1),
+                    data_despesa:   dataDespesa
+                };
+            });
 
             showLoading();
             fetch('{{ url_for("config.importar_dados_supabase") }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    items: items,
-                    config: getConfig()
-                })
+                body: JSON.stringify({ items: payload, config: getConfig() })
             })
-                .then(r => r.json())
-                .then(data => {
-                    hideLoading();
-                    if (data.success) {
-                        alert(data.message);
-                        // Opcional: Recarregar dados ou remover itens importados da lista
-                        btnCarregar.click();
-                    } else {
-                        alert('Erro na importação: ' + data.message);
-                        if (data.erros) console.log(data.erros);
-                    }
-                })
-                .catch(err => {
-                    hideLoading();
-                    alert('Erro: ' + err);
-                });
+            .then(r => r.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    alert(data.message);
+                    btnCarregar.click();
+                } else {
+                    alert('Erro na importação: ' + data.message);
+                    if (data.erros && data.erros.length) console.error('Erros:', data.erros);
+                }
+            })
+            .catch(err => { hideLoading(); alert('Erro de rede: ' + err); });
         }
 
         btnImportarSel.addEventListener('click', () => importar(true));
@@ -559,6 +571,7 @@
             return cellText.includes(val.toLowerCase());
         }
 
+        let rawData = [];   // dados originais do Supabase (fonte da verdade)
         let currentPage = 1;
         let pageSize = 25;
 

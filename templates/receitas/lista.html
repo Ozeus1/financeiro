@@ -1,182 +1,169 @@
 {% extends "base.html" %}
-
 {% block title %}Receitas{% endblock %}
 
+{% block extra_css %}
+<style>
+:root{--pg-bg:#f1f5f9;--pg-surface:#fff;--pg-border:#e2e8f0;--pg-muted:#64748b;--pg-green:#10b981;--pg-amber:#f59e0b;--pg-red:#ef4444;--pg-radius:14px;--pg-shadow-md:0 4px 16px rgba(0,0,0,.09)}
+.pg-page{background:var(--pg-bg);min-height:70vh;padding-bottom:2.5rem}
+.pg-header{background:linear-gradient(135deg,#064e3b 0%,#059669 55%,#10b981 100%);padding:1.4rem 1.5rem 1.2rem;color:#fff;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem}
+.pg-header-title{font-size:1.3rem;font-weight:700;margin:0;letter-spacing:-.02em}
+.pg-card{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);overflow:hidden;margin-bottom:1.25rem}
+.pg-filter{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);padding:1rem 1.25rem;margin-bottom:1rem}
+.pg-section-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pg-muted);margin-bottom:.6rem;display:flex;align-items:center;gap:.3rem}
+.pg-table{margin:0;width:100%}
+.pg-table thead th{background:#f8fafc;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--pg-muted);border-bottom:2px solid var(--pg-border);padding:.55rem .75rem;white-space:nowrap}
+.pg-table tbody tr{transition:background .12s}
+.pg-table tbody tr:hover{background:#f0fdf4}
+.pg-table tbody td{padding:.5rem .75rem;font-size:.855rem;border-bottom:1px solid var(--pg-border);vertical-align:middle}
+.pg-table tbody tr:last-child td{border-bottom:none}
+.pg-badge-cat{font-size:.68rem;padding:.2rem .45rem;border-radius:5px;background:#f1f5f9;color:#475569;font-weight:600}
+.pg-badge-meio{font-size:.68rem;padding:.2rem .45rem;border-radius:5px;background:#dcfce7;color:#15803d;font-weight:600}
+.pg-val{font-weight:700;color:var(--pg-green)}
+.pg-actions{display:flex;gap:.3rem}
+.btn-edit{background:var(--pg-amber);border:none;color:#fff;border-radius:7px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:.8rem;transition:opacity .15s}
+.btn-edit:hover{opacity:.82;color:#fff}
+.btn-del{background:var(--pg-red);border:none;color:#fff;border-radius:7px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:.8rem;transition:opacity .15s}
+.btn-del:hover{opacity:.82;color:#fff}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row mt-4">
-    <div class="col-12">
-        <h2><i class="bi bi-cash-coin"></i> Gerenciar Receitas</h2>
-        <hr>
+<div class="pg-page">
+<div class="pg-header">
+    <div>
+        <div style="font-size:.8rem;opacity:.7;margin-bottom:.2rem"><i class="bi bi-cash-coin me-1"></i>Finanças</div>
+        <h1 class="pg-header-title">Gerenciar Receitas</h1>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('receitas.criar') }}" class="btn btn-light btn-sm fw-semibold">
+            <i class="bi bi-plus-lg me-1"></i>Nova Receita
+        </a>
+        <a href="{{ url_for('receitas.exportar') }}" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-file-earmark-arrow-down me-1"></i>Excel
+        </a>
     </div>
 </div>
+
+<div class="container-fluid px-3">
 
 <!-- Filtros -->
-<div class="card mb-3">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-funnel"></i> Filtros</h5>
-    </div>
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-3">
-                <label class="form-label">Buscar</label>
-                <input type="text" class="form-control" name="busca" value="{{ request.args.get('busca', '') }}"
-                    placeholder="Descrição...">
-            </div>
-
-            <div class="col-md-2">
-                <label class="form-label">Categoria</label>
-                <select class="form-select" name="categoria_id">
-                    <option value="">Todas</option>
-                    {% for cat in categorias %}
-                    <option value="{{ cat.id }}" {% if request.args.get('categoria_id')==cat.id|string %}selected{%
-                        endif %}>
-                        {{ cat.nome }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="col-md-2">
-                <label class="form-label">Meio Recebimento</label>
-                <select class="form-select" name="meio_recebimento_id">
-                    <option value="">Todos</option>
-                    {% for meio in meios_recebimento %}
-                    <option value="{{ meio.id }}" {% if request.args.get('meio_recebimento_id')==meio.id|string
-                        %}selected{% endif %}>
-                        {{ meio.nome }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="col-md-2">
-                <label class="form-label">Período</label>
-                <select class="form-select" name="periodo" id="periodoSelect" onchange="toggleDatas()">
-                    <option value="mes_atual" {% if periodo=='mes_atual' %}selected{% endif %}>Mês Atual</option>
-                    <option value="todos" {% if periodo=='todos' %}selected{% endif %}>Todos</option>
-                    <option value="personalizado" {% if periodo=='personalizado' %}selected{% endif %}>Personalizado
-                    </option>
-                </select>
-            </div>
-
-            <div class="col-md-2" id="divDataInicio" style="display: none;">
-                <label class="form-label">Data Inicial</label>
-                <input type="date" class="form-control" name="data_inicio" value="{{ data_inicio_filtro or '' }}">
-            </div>
-
-            <div class="col-md-2" id="divDataFim" style="display: none;">
-                <label class="form-label">Data Final</label>
-                <input type="date" class="form-control" name="data_fim" value="{{ data_fim_filtro or '' }}">
-            </div>
-
-            <div class="col-md-1 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="bi bi-search"></i>
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Ações -->
-<div class="mb-3">
-    <a href="{{ url_for('receitas.criar') }}" class="btn btn-success">
-        <i class="bi bi-plus-lg"></i> Nova Receita
-    </a>
-    <a href="{{ url_for('receitas.exportar') }}" class="btn btn-outline-success">
-        <i class="bi bi-file-earmark-excel"></i> Exportar Excel
-    </a>
+<div class="pg-filter">
+    <div class="pg-section-label"><i class="bi bi-funnel"></i>Filtros</div>
+    <form method="GET" class="row g-2 align-items-end">
+        <div class="col-sm-6 col-md-3">
+            <label class="form-label small fw-semibold mb-1">Buscar</label>
+            <input type="text" class="form-control form-control-sm" name="busca" value="{{ request.args.get('busca','') }}" placeholder="Descrição...">
+        </div>
+        <div class="col-sm-6 col-md-2">
+            <label class="form-label small fw-semibold mb-1">Categoria</label>
+            <select class="form-select form-select-sm" name="categoria_id">
+                <option value="">Todas</option>
+                {% for cat in categorias %}
+                <option value="{{ cat.id }}" {% if request.args.get('categoria_id')==cat.id|string %}selected{% endif %}>{{ cat.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-sm-6 col-md-2">
+            <label class="form-label small fw-semibold mb-1">Meio Recebimento</label>
+            <select class="form-select form-select-sm" name="meio_recebimento_id">
+                <option value="">Todos</option>
+                {% for m in meios_recebimento %}
+                <option value="{{ m.id }}" {% if request.args.get('meio_recebimento_id')==m.id|string %}selected{% endif %}>{{ m.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-sm-6 col-md-2">
+            <label class="form-label small fw-semibold mb-1">Período</label>
+            <select class="form-select form-select-sm" name="periodo" id="periodoSelect" onchange="toggleDatas()">
+                <option value="mes_atual" {% if periodo=='mes_atual' %}selected{% endif %}>Mês Atual</option>
+                <option value="todos" {% if periodo=='todos' %}selected{% endif %}>Todos</option>
+                <option value="personalizado" {% if periodo=='personalizado' %}selected{% endif %}>Personalizado</option>
+            </select>
+        </div>
+        <div class="col-sm-6 col-md-2" id="divDataInicio" style="display:none">
+            <label class="form-label small fw-semibold mb-1">De</label>
+            <input type="date" class="form-control form-control-sm" name="data_inicio" value="{{ data_inicio_filtro or '' }}">
+        </div>
+        <div class="col-sm-6 col-md-2" id="divDataFim" style="display:none">
+            <label class="form-label small fw-semibold mb-1">Até</label>
+            <input type="date" class="form-control form-control-sm" name="data_fim" value="{{ data_fim_filtro or '' }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-search"></i></button>
+        </div>
+    </form>
 </div>
 
 <!-- Tabela -->
-<div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Descrição</th>
-                        <th>Categoria</th>
-                        <th>Meio Recebimento</th>
-                        <th class="text-end">Valor</th>
-                        <th>Parcelas</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for receita in receitas.items %}
-                    <tr>
-                        <td>{{ receita.data_recebimento.strftime('%d/%m/%Y') }}</td>
-                        <td>{{ receita.descricao }}</td>
-                        <td><span class="badge bg-secondary">{{ receita.categoria.nome }}</span></td>
-                        <td><span class="badge bg-info">{{ receita.meio_recebimento.nome }}</span></td>
-                        <td class="text-end">R$ {{ "%.2f"|format(receita.valor)|replace('.', ',') }}</td>
-                        <td>{{ receita.num_parcelas }}x</td>
-                        <td>
-                            <a href="{{ url_for('receitas.editar', id=receita.id, **request.args) }}"
-                                class="btn btn-sm btn-warning" title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <form method="POST" action="{{ url_for('receitas.excluir', id=receita.id) }}"
-                                style="display:inline;"
-                                onsubmit="return confirm('Tem certeza que deseja excluir esta receita?');">
-                                <button type="submit" class="btn btn-sm btn-danger" title="Excluir">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+<div class="pg-card">
+    <div class="table-responsive">
+        <table class="pg-table table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th>Categoria</th>
+                    <th>Meio Recebimento</th>
+                    <th class="text-end">Valor</th>
+                    <th class="text-center">Parcelas</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in receitas.items %}
+                <tr>
+                    <td style="white-space:nowrap;color:var(--pg-muted);font-size:.8rem">{{ r.data_recebimento.strftime('%d/%m/%Y') }}</td>
+                    <td style="max-width:220px">{{ r.descricao }}</td>
+                    <td><span class="pg-badge-cat">{{ r.categoria.nome }}</span></td>
+                    <td><span class="pg-badge-meio">{{ r.meio_recebimento.nome }}</span></td>
+                    <td class="text-end pg-val">R$ {{ "{:,.2f}".format(r.valor|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</td>
+                    <td class="text-center" style="font-size:.82rem;color:var(--pg-muted)">{{ r.num_parcelas }}x</td>
+                    <td class="text-center">
+                        <div class="pg-actions justify-content-center">
+                            <a href="{{ url_for('receitas.editar', id=r.id, **request.args) }}" class="btn-edit" title="Editar"><i class="bi bi-pencil"></i></a>
+                            <form method="POST" action="{{ url_for('receitas.excluir', id=r.id) }}" style="display:inline" onsubmit="return confirm('Excluir esta receita?')">
+                                <button type="submit" class="btn-del" title="Excluir"><i class="bi bi-trash"></i></button>
                             </form>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="7" class="text-center text-muted">Nenhuma receita encontrada.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Paginação -->
-        {% if receitas.pages > 1 %}
-        <nav>
-            <ul class="pagination justify-content-center">
-                <li class="page-item {% if not receitas.has_prev %}disabled{% endif %}">
-                    <a class="page-link"
-                        href="{{ url_for('receitas.lista', page=receitas.prev_num, **filtros_url) }}">Anterior</a>
-                </li>
-
-                {% for page_num in range(1, receitas.pages + 1) %}
-                <li class="page-item {% if page_num == receitas.page %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for('receitas.lista', page=page_num, **filtros_url) }}">{{
-                        page_num }}</a>
-                </li>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted py-4"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nenhuma receita encontrada.</td></tr>
                 {% endfor %}
-
-                <li class="page-item {% if not receitas.has_next %}disabled{% endif %}">
-                    <a class="page-link"
-                        href="{{ url_for('receitas.lista', page=receitas.next_num, **filtros_url) }}">Próximo</a>
-                </li>
-            </ul>
-        </nav>
-        {% endif %}
+            </tbody>
+        </table>
     </div>
+
+    {% if receitas.pages > 1 %}
+    <div class="px-3 py-2 border-top bg-light">
+        <nav><ul class="pagination pagination-sm justify-content-center mb-0">
+            <li class="page-item {% if not receitas.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('receitas.lista', page=receitas.prev_num, **filtros_url) }}">«</a>
+            </li>
+            {% for p in range(1, receitas.pages+1) %}
+            <li class="page-item {% if p==receitas.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('receitas.lista', page=p, **filtros_url) }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+            <li class="page-item {% if not receitas.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('receitas.lista', page=receitas.next_num, **filtros_url) }}">»</a>
+            </li>
+        </ul></nav>
+    </div>
+    {% endif %}
 </div>
 
-<script>
-    function toggleDatas() {
-        const periodo = document.getElementById('periodoSelect').value;
-        const divInicio = document.getElementById('divDataInicio');
-        const divFim = document.getElementById('divDataFim');
+</div>
+</div>
+{% endblock %}
 
-        if (periodo === 'personalizado') {
-            divInicio.style.display = 'block';
-            divFim.style.display = 'block';
-        } else {
-            divInicio.style.display = 'none';
-            divFim.style.display = 'none';
-        }
-    }
-    // Executar ao carregar
-    document.addEventListener('DOMContentLoaded', toggleDatas);
+{% block extra_js %}
+<script>
+function toggleDatas(){
+    const v=document.getElementById('periodoSelect').value;
+    document.getElementById('divDataInicio').style.display=v==='personalizado'?'':'none';
+    document.getElementById('divDataFim').style.display=v==='personalizado'?'':'none';
+}
+document.addEventListener('DOMContentLoaded',toggleDatas);
 </script>
 {% endblock %}

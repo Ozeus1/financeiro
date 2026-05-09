@@ -2,6 +2,32 @@
 
 {% block title %}Importar do Supabase{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Tabela compacta para caber 25+ linhas */
+#tabela-importacao { font-size: .78rem; }
+#tabela-importacao thead th {
+    font-size: .7rem; padding: .3rem .4rem;
+    white-space: nowrap;
+}
+#tabela-importacao tbody td {
+    padding: .22rem .4rem;
+    vertical-align: middle;
+}
+#tabela-importacao .form-control-sm,
+#tabela-importacao input[type="date"] {
+    font-size: .68rem; padding: .15rem .3rem; height: 24px;
+}
+/* Altura dinâmica: cabe ~25 linhas (~28px cada) + thead (~60px) */
+@media (min-width: 768px) {
+    .tabela-importacao-wrap { max-height: 78vh; overflow-y: auto; }
+}
+@media (max-width: 767px) {
+    .tabela-importacao-wrap { max-height: 60vh; overflow-y: auto; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -89,7 +115,7 @@
             </div>
         </div>
         <div class="card-body p-0">
-            <div class="table-responsive" style="max-height: 500px;">
+            <div class="table-responsive tabela-importacao-wrap">
                 <table class="table table-hover table-bordered mb-0" id="tabela-importacao">
                     <thead class="table-light sticky-top">
                         <tr>

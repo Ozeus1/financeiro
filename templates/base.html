@@ -10,6 +10,11 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
     .nav-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.5)}
+    /* Navbar dark brand */
+    .finan-brand { font-size: 1.2rem; font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+    .finan-fi  { color: #ef4444; }
+    .finan-nan { color: #4cc9f0; }
+    nav.navbar { background: #0d1b2a !important; }
     /* offcanvas mobile links */
     #mobileNav .nav-link{color:#0f172a;padding:.55rem .75rem;border-radius:8px;font-size:.9rem;display:flex;align-items:center;gap:.5rem}
     #mobileNav .nav-link:hover{background:#f1f5f9}
@@ -23,10 +28,10 @@
 {% if current_user.is_authenticated %}
 
 <!-- ── Desktop Navbar ── -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+<nav class="navbar navbar-expand-lg navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">
-            <i class="bi bi-currency-dollar"></i> Sistema Financeiro
+        <a class="navbar-brand finan-brand" href="{{ url_for('main.dashboard') }}">
+            <span class="finan-fi">Fi</span><span class="finan-nan">Nan</span>
         </a>
 
         <!-- Mobile toggler → opens offcanvas from RIGHT -->
@@ -131,7 +136,7 @@
 
 <!-- ── Mobile Offcanvas (right) ── -->
 <div class="offcanvas offcanvas-end" tabindex="-1" id="mobileNav" style="max-width:300px">
-    <div class="offcanvas-header bg-primary text-white">
+    <div class="offcanvas-header text-white" style="background:#0d1b2a">
         <div class="d-flex align-items-center gap-2">
             {% if current_user.foto_perfil %}
             <img src="{{ url_for('static', filename='uploads/perfil/' ~ current_user.foto_perfil) }}"
@@ -224,7 +229,7 @@
 <!-- Footer -->
 <footer class="bg-light text-center text-lg-start mt-5">
     <div class="text-center p-3">
-        © 2024 Sistema de Gerenciamento Financeiro | Versão 2.0
+        © 2026 Sistema de Gerenciamento Financeiro | Versão 2.1
     </div>
 </footer>
 

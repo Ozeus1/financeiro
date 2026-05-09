@@ -4,259 +4,393 @@
 
 {% block extra_css %}
 <style>
-    .cursor-pointer {
-        cursor: pointer;
-    }
+/* ─── Design tokens ─── */
+:root {
+    --fc-bg: #f1f5f9;
+    --fc-surface: #ffffff;
+    --fc-border: #e2e8f0;
+    --fc-text: #0f172a;
+    --fc-muted: #64748b;
+    --fc-primary: #4361ee;
+    --fc-success: #10b981;
+    --fc-radius: 14px;
+    --fc-shadow: 0 1px 3px rgba(0,0,0,.07);
+    --fc-shadow-md: 0 4px 16px rgba(0,0,0,.09);
+    --fc-shadow-lg: 0 8px 32px rgba(0,0,0,.13);
+}
 
-    .hover-highlight:hover {
-        background-color: #f8f9fa;
-    }
+/* ─── Page scaffold ─── */
+.fc-page { background: var(--fc-bg); min-height: 60vh; padding-bottom: 2.5rem; }
 
-    .fatura-fechada {
-        color: #6c757d;
-        text-decoration: line-through;
-    }
+/* ─── Page header ─── */
+.fc-page-header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #4361ee 55%, #7c3aed 100%);
+    padding: 1.6rem 1.5rem 1.4rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+}
+.fc-header-icon {
+    width: 50px; height: 50px;
+    background: rgba(255,255,255,.18);
+    border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; flex-shrink: 0;
+}
+.fc-header-title { font-size: 1.45rem; font-weight: 700; letter-spacing: -.02em; margin: 0; }
+.fc-header-subtitle { font-size: .82rem; opacity: .72; margin: 0; }
 
-    .fatura-prevista {
-        color: #0d6efd;
-        font-weight: 500;
-    }
+/* ─── Summary card ─── */
+.fc-summary-card {
+    background: var(--fc-surface);
+    border-radius: var(--fc-radius);
+    box-shadow: var(--fc-shadow-md);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+.fc-summary-header {
+    background: linear-gradient(90deg, #0f172a, #1e3a8a);
+    color: #fff;
+    padding: .85rem 1.25rem;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem;
+}
+.fc-summary-title { font-size: .95rem; font-weight: 600; margin: 0; }
 
-    .card-fatura {
-        transition: transform 0.2s;
-    }
+.fc-summary-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .55rem 1.25rem;
+    border-bottom: 1px solid var(--fc-border);
+    transition: background .13s;
+}
+.fc-summary-row:last-of-type { border-bottom: none; }
+.fc-summary-row:hover { background: #f8fafc; }
+.fc-summary-row-label { font-size: .88rem; font-weight: 500; color: var(--fc-text); }
+.fc-summary-row-value { font-size: .88rem; font-weight: 700; color: var(--fc-primary); }
 
-    .card-fatura:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
+.fc-total-row {
+    background: #f8fafc;
+    border-top: 2px solid var(--fc-border);
+    padding: .8rem 1.25rem;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.fc-total-row-label { font-size: 1rem; font-weight: 700; color: var(--fc-text); }
+.fc-total-row-value { font-size: 1.15rem; font-weight: 800; color: var(--fc-success); }
 
-    /* Tablet (≤992px) */
-    @media (max-width: 992px) {
-        #modalDetalhes .table {
-            font-size: 0.8rem;
-        }
-        #modalDetalhes .modal-title {
-            font-size: 1rem;
-        }
-        #modalDetalhes .btn-sm {
-            padding: 2px 5px;
-            font-size: 0.7rem;
-        }
-        #modalDetalhes .badge {
-            font-size: 0.68rem;
-        }
-    }
+/* ─── Cards grid ─── */
+.fc-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
 
-    /* Celular (≤576px) */
-    @media (max-width: 576px) {
-        #modalDetalhes .modal-dialog {
-            margin: 0.25rem;
-        }
-        #modalDetalhes .table {
-            font-size: 0.7rem;
-        }
-        #modalDetalhes .table th,
-        #modalDetalhes .table td {
-            padding: 0.2rem 0.25rem;
-        }
-        #modalDetalhes .modal-title {
-            font-size: 0.9rem;
-        }
-        #modalDetalhes .btn-sm {
-            padding: 1px 4px;
-            font-size: 0.65rem;
-        }
-        #modalDetalhes .badge {
-            font-size: 0.6rem;
-            padding: 2px 4px;
-        }
-    }
+/* ─── Individual card ─── */
+.fc-card {
+    background: var(--fc-surface);
+    border-radius: var(--fc-radius);
+    box-shadow: var(--fc-shadow-md);
+    overflow: hidden;
+    transition: box-shadow .2s, transform .2s;
+}
+.fc-card:hover { box-shadow: var(--fc-shadow-lg); transform: translateY(-2px); }
+
+.fc-card-header {
+    padding: .85rem 1rem;
+    color: #fff;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.fc-card-name { font-weight: 700; font-size: .98rem; }
+.fc-card-badge {
+    background: rgba(255,255,255,.2);
+    border-radius: 20px;
+    padding: .18rem .6rem;
+    font-size: .72rem; font-weight: 600;
+}
+
+/* card color schemes */
+.fc-scheme-0 .fc-card-header { background: linear-gradient(135deg,#4361ee,#3a0ca3); }
+.fc-scheme-1 .fc-card-header { background: linear-gradient(135deg,#7c3aed,#5b21b6); }
+.fc-scheme-2 .fc-card-header { background: linear-gradient(135deg,#0891b2,#0e7490); }
+.fc-scheme-3 .fc-card-header { background: linear-gradient(135deg,#059669,#047857); }
+.fc-scheme-4 .fc-card-header { background: linear-gradient(135deg,#d97706,#b45309); }
+.fc-scheme-5 .fc-card-header { background: linear-gradient(135deg,#dc2626,#b91c1c); }
+
+/* month list inside card */
+.fc-card-body { max-height: 370px; overflow-y: auto; }
+.fc-card-body::-webkit-scrollbar { width: 4px; }
+.fc-card-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+.fc-month-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .62rem 1rem;
+    border-bottom: 1px solid var(--fc-border);
+    cursor: pointer;
+    transition: background .13s;
+    gap: .5rem;
+}
+.fc-month-item:last-child { border-bottom: none; }
+.fc-month-item:hover { background: #f0f7ff; }
+.fc-month-item:hover .fc-chevron { transform: translateX(3px); color: var(--fc-primary); }
+
+.fc-item-month { font-weight: 600; font-size: .88rem; color: var(--fc-text); }
+.fc-item-due { font-size: .7rem; color: var(--fc-muted); margin-top: 1px; }
+.fc-item-right { display: flex; align-items: center; gap: .45rem; flex-shrink: 0; }
+.fc-value-prevista { font-weight: 700; font-size: .92rem; color: var(--fc-primary); }
+.fc-value-fechada { font-weight: 500; font-size: .92rem; color: var(--fc-muted); text-decoration: line-through; }
+.fc-value-zero { color: #cbd5e1; font-size: .92rem; }
+.fc-chevron { color: #cbd5e1; font-size: .78rem; transition: transform .13s, color .13s; }
+
+.fc-chart-area {
+    padding: .7rem 1rem;
+    border-top: 1px solid var(--fc-border);
+    background: #fafbfc;
+}
+.fc-chart-label {
+    font-size: .7rem; color: var(--fc-muted); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em; margin-bottom: .4rem;
+}
+
+.fc-card-footer {
+    padding: .6rem 1rem;
+    background: linear-gradient(90deg,#f8fafc,#f1f5f9);
+    border-top: 1px solid var(--fc-border);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.fc-footer-label { font-size: .72rem; color: var(--fc-muted); }
+.fc-footer-value { font-size: 1.05rem; font-weight: 800; color: var(--fc-primary); }
+
+/* ─── Modal ─── */
+#modalDetalhes .modal-content {
+    border: none;
+    border-radius: var(--fc-radius);
+    overflow: hidden;
+    box-shadow: var(--fc-shadow-lg);
+}
+#modalDetalhes .modal-header {
+    background: linear-gradient(135deg,#1e3a8a,#4361ee);
+    color: #fff;
+    padding: 1rem 1.25rem;
+    border: none;
+}
+#modalDetalhes .modal-body { padding: 0; }
+#modalDetalhes .modal-footer {
+    border-top: 1px solid var(--fc-border);
+    padding: .7rem 1.25rem;
+    background: #f8fafc;
+}
+.fc-modal-title { font-weight: 700; font-size: 1.02rem; line-height: 1.3; }
+
+.fc-modal-table { margin: 0; }
+.fc-modal-table thead th {
+    background: #f8fafc;
+    font-size: .72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .045em;
+    color: var(--fc-muted);
+    border-bottom: 2px solid var(--fc-border);
+    padding: .55rem .75rem;
+    position: sticky; top: 0; z-index: 1;
+    white-space: nowrap;
+}
+.fc-modal-table tbody tr { transition: background .12s; }
+.fc-modal-table tbody tr:hover { background: #f0f7ff; }
+.fc-modal-table tbody td {
+    padding: .5rem .75rem;
+    font-size: .855rem;
+    border-bottom: 1px solid var(--fc-border);
+    vertical-align: middle;
+}
+
+.fc-modal-total {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .8rem 1.25rem;
+    background: #f8fafc;
+    border-top: 2px solid var(--fc-border);
+}
+.fc-modal-total-label { font-size: .75rem; color: var(--fc-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.fc-modal-total-value { font-size: 1.18rem; font-weight: 800; color: var(--fc-primary); }
+
+/* ─── Responsive ─── */
+@media (max-width: 992px) {
+    .fc-cards-grid { grid-template-columns: 1fr 1fr; }
+    #modalDetalhes .fc-modal-table { font-size: .8rem; }
+    #modalDetalhes .fc-modal-table tbody td { padding: .38rem .5rem; }
+}
+@media (max-width: 768px) {
+    .fc-cards-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 576px) {
+    .fc-page-header { padding: 1.1rem 1rem; }
+    #modalDetalhes .modal-dialog { margin: .25rem; }
+    #modalDetalhes .fc-modal-table { font-size: .72rem; }
+    #modalDetalhes .fc-modal-table tbody td,
+    #modalDetalhes .fc-modal-table thead th { padding: .28rem .32rem; }
+    .fc-modal-title { font-size: .88rem; }
+    .fc-modal-total-value { font-size: 1rem; }
+    #modalDetalhes .btn-sm { padding: 1px 4px; font-size: .65rem; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row mt-4">
-    <div class="col-12">
-        <h2><i class="bi bi-credit-card"></i> Previsão de Faturas</h2>
-        <p class="text-muted">Acompanhamento detalhado por cartão. Clique no valor para ver os itens da fatura.</p>
-        <hr>
+<div class="fc-page">
+
+<!-- ─── Page Header ─── -->
+<div class="fc-page-header">
+    <div class="d-flex align-items-center gap-3">
+        <div class="fc-header-icon"><i class="bi bi-credit-card-2-front"></i></div>
+        <div>
+            <h1 class="fc-header-title">Previsão de Faturas</h1>
+            <p class="fc-header-subtitle">Acompanhamento detalhado por cartão · clique no mês para ver os itens</p>
+        </div>
     </div>
 </div>
 
+<div class="container-fluid px-3">
+
 {% if not previsoes %}
-<div class="alert alert-info">
-    <i class="bi bi-info-circle"></i>
-    <strong>Nenhum cartão configurado.</strong><br>
-    Configure os cartões em: Configurações > Configurar Cartões
+<div class="alert alert-info rounded-3">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>Nenhum cartão configurado.</strong>
+    Configure os cartões em: Configurações › Configurar Cartões
 </div>
 {% else %}
 
-<!-- Tabela de Resumo Global -->
+<!-- ─── Resumo Global ─── -->
 {% if resumo_global and resumo_global.detalhes_mensais %}
-<div class="card mb-4 shadow-lg border-primary">
-    <div class="card-header bg-primary text-white">
-        <div class="d-flex justify-content-between align-items-center flex-wrap">
-            <h4 class="mb-0"><i class="bi bi-calculator"></i> Resumo Global - Faturas Previstas</h4>
-            <div class="btn-group" role="group">
-                <!-- Botão de Filtro -->
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown"
-                        aria-expanded="false">
-                        <i class="bi bi-funnel"></i> Filtrar
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end p-3"
-                        style="min-width: 250px; max-height: 300px; overflow-y: auto;">
-                        <li>
-                            <h6 class="dropdown-header">Exibir/Ocultar Cartões</h6>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        {% for cartao in previsoes %}
-                        <li class="form-check mb-2">
-                            <input class="form-check-input filter-card-checkbox" type="checkbox"
-                                value="{{ loop.index }}" id="filter-check-{{ loop.index }}" checked
-                                onchange="toggleCardVisibility('{{ loop.index }}')">
-                            <label class="form-check-label text-truncate" for="filter-check-{{ loop.index }}"
-                                style="max-width: 200px; display: inline-block; vertical-align: top;">
-                                {{ cartao.cartao }}
-                            </label>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-
-                <button type="button" class="btn btn-sm btn-light" onclick="toggleAllCards(true)">
-                    <i class="bi bi-chevron-down"></i> Expandir Todos
+<div class="fc-summary-card">
+    <div class="fc-summary-header">
+        <h2 class="fc-summary-title"><i class="bi bi-calculator me-2"></i>Resumo Global — Faturas Previstas</h2>
+        <div class="d-flex gap-2 flex-wrap">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-funnel"></i> Filtrar
                 </button>
-                <button type="button" class="btn btn-sm btn-light" onclick="toggleAllCards(false)">
-                    <i class="bi bi-chevron-up"></i> Recolher Todos
-                </button>
+                <ul class="dropdown-menu dropdown-menu-end p-3" style="min-width:220px;max-height:280px;overflow-y:auto;">
+                    <li><h6 class="dropdown-header">Exibir / Ocultar Cartões</h6></li>
+                    <li><hr class="dropdown-divider"></li>
+                    {% for cartao in previsoes %}
+                    <li class="form-check mb-2">
+                        <input class="form-check-input filter-card-checkbox" type="checkbox"
+                            value="{{ loop.index }}" id="filter-check-{{ loop.index }}" checked
+                            onchange="toggleCardVisibility('{{ loop.index }}')">
+                        <label class="form-check-label" for="filter-check-{{ loop.index }}">{{ cartao.cartao }}</label>
+                    </li>
+                    {% endfor %}
+                </ul>
             </div>
+            <button class="btn btn-sm btn-outline-light" onclick="toggleAllCards(true)" title="Expandir Todos">
+                <i class="bi bi-chevron-double-down"></i> Expandir
+            </button>
+            <button class="btn btn-sm btn-outline-light" onclick="toggleAllCards(false)" title="Recolher Todos">
+                <i class="bi bi-chevron-double-up"></i> Recolher
+            </button>
         </div>
     </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th><i class="bi bi-calendar-month"></i> Mês/Ano</th>
-                        <th class="text-end"><i class="bi bi-cash-stack"></i> Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in resumo_global.detalhes_mensais %}
-                    <tr>
-                        <td class="fw-bold">{{ item.mes_referencia }}</td>
-                        <td class="text-end text-primary fw-bold">R$ {{ "%.2f"|format(item.total)|replace('.', ',') }}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-                <tfoot>
-                    <tr class="table-active">
-                        <td class="fw-bold fs-5">TOTAL GERAL</td>
-                        <td class="text-end fw-bold fs-5 text-success">R$ {{
-                            "%.2f"|format(resumo_global.total_geral)|replace('.', ',') }}</td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
+
+    {% for item in resumo_global.detalhes_mensais %}
+    <div class="fc-summary-row">
+        <span class="fc-summary-row-label">{{ item.mes_referencia }}</span>
+        <span class="fc-summary-row-value">R$ {{ "%.2f"|format(item.total)|replace('.', ',') }}</span>
+    </div>
+    {% endfor %}
+
+    <div class="fc-total-row">
+        <span class="fc-total-row-label">TOTAL GERAL</span>
+        <span class="fc-total-row-value">R$ {{ "%.2f"|format(resumo_global.total_geral)|replace('.', ',') }}</span>
     </div>
 </div>
 {% endif %}
 
-<!-- Cards por Cartão -->
-<div class="row row-cols-1 row-cols-md-2 g-4">
-    {% for cartao in previsoes %}
-    <div class="col" id="col-card-{{ loop.index }}">
-        <div class="card h-100 shadow-sm card-fatura">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-card-heading"></i> {{ cartao.cartao }}</h5>
-                <div>
-                    <button class="btn btn-sm btn-outline-light" onclick="toggleCard({{ loop.index }})"
-                        id="toggle-btn-{{ loop.index }}" title="Mostrar/Ocultar">
-                        <i class="bi bi-chevron-up" id="toggle-icon-{{ loop.index }}"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="collapse show" id="card-body-{{ loop.index }}">
-                <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                        <table class="table table-striped table-hover mb-0">
-                            <thead class="table-light sticky-top">
-                                <tr>
-                                    <th>Mês/Ano</th>
-                                    <th class="text-end">Valor</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for fatura in cartao.faturas %}
-                                <tr class="cursor-pointer hover-highlight"
-                                    onclick="verDetalhes({{ cartao.cartao_id }}, {{ fatura.mes_int }}, {{ fatura.ano_int }}, '{{ cartao.cartao | replace("'", "") }}'
-                                    , '{{ fatura.mes_referencia }}' )">
-                                    <td>
-                                        <span class="fw-bold">{{ fatura.mes_referencia }}</span>
-                                        <br>
-                                        <small class="text-muted" style="font-size: 0.75rem;">Venc: {{
-                                            fatura.vencimento.strftime('%d/%m') }}</small>
-                                    </td>
-                                    <td class="text-end align-middle">
-                                        {% if fatura.total > 0 %}
-                                        <span
-                                            class="{% if fatura.status == 'Fechada' %}fatura-fechada{% else %}fatura-prevista{% endif %}">
-                                            R$ {{ "%.2f"|format(fatura.total)|replace('.', ',') }}
-                                        </span>
-                                        {% else %}
-                                        <span class="text-muted">-</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <!-- Área do Gráfico -->
-            <div class="p-3 border-top bg-white">
-                <h6 class="text-muted small mb-2"><i class="bi bi-graph-up"></i> Evolução Mensal</h6>
-                <div style="height: 200px;">
-                    <canvas id="chart-{{ loop.index }}"></canvas>
-                </div>
-            </div>
-            <div class="card-footer bg-light">
-                <div class="d-flex justify-content-between align-items-center">
-                    <small class="text-muted">Restante (Próx. Mês+):</small>
-                    <span class="fw-bold text-primary fs-5">R$ {{ "%.2f"|format(cartao.total_restante)|replace('.',
-                        ',')
-                        }}</span>
-                </div>
-            </div>
-        </div> <!-- Fim do collapse -->
+<!-- ─── Cards Grid ─── -->
+<div class="fc-cards-grid">
+{% for cartao in previsoes %}
+{% set scheme = loop.index0 % 6 %}
+<div id="col-card-{{ loop.index }}" class="fc-card fc-scheme-{{ scheme }}">
+
+    <!-- Header -->
+    <div class="fc-card-header">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-credit-card"></i>
+            <span class="fc-card-name">{{ cartao.cartao }}</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="fc-card-badge">{{ cartao.faturas|length }} meses</span>
+            <button class="btn btn-sm btn-outline-light rounded-circle p-0"
+                    onclick="toggleCard({{ loop.index }})"
+                    id="toggle-btn-{{ loop.index }}"
+                    style="width:28px;height:28px;line-height:1;display:flex;align-items:center;justify-content:center;">
+                <i class="bi bi-chevron-up" id="toggle-icon-{{ loop.index }}" style="font-size:.78rem;"></i>
+            </button>
+        </div>
     </div>
-    {% endfor %}
+
+    <!-- Collapsible body -->
+    <div class="collapse show" id="card-body-{{ loop.index }}">
+
+        <!-- Month list -->
+        <div class="fc-card-body">
+            {% for fatura in cartao.faturas %}
+            <div class="fc-month-item"
+                 onclick="verDetalhes({{ cartao.cartao_id }}, {{ fatura.mes_int }}, {{ fatura.ano_int }}, '{{ cartao.cartao | replace("'", "") }}', '{{ fatura.mes_referencia }}')">
+                <div>
+                    <div class="fc-item-month">{{ fatura.mes_referencia }}</div>
+                    <div class="fc-item-due">Venc: {{ fatura.vencimento.strftime('%d/%m') }}</div>
+                </div>
+                <div class="fc-item-right">
+                    {% if fatura.total > 0 %}
+                    <span class="{% if fatura.status == 'Fechada' %}fc-value-fechada{% else %}fc-value-prevista{% endif %}">
+                        R$ {{ "%.2f"|format(fatura.total)|replace('.', ',') }}
+                    </span>
+                    {% else %}
+                    <span class="fc-value-zero">—</span>
+                    {% endif %}
+                    <i class="bi bi-chevron-right fc-chevron"></i>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Chart -->
+        <div class="fc-chart-area">
+            <div class="fc-chart-label"><i class="bi bi-graph-up me-1"></i>Evolução Mensal</div>
+            <div style="height:175px;">
+                <canvas id="chart-{{ loop.index }}"></canvas>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="fc-card-footer">
+            <span class="fc-footer-label">Restante (Próx. Mês+)</span>
+            <span class="fc-footer-value">R$ {{ "%.2f"|format(cartao.total_restante)|replace('.', ',') }}</span>
+        </div>
+
+    </div>
+</div>
+{% endfor %}
 </div>
 
-<!-- Modal de Detalhes -->
+<!-- ─── Modal de Detalhes ─── -->
 <div class="modal fade" id="modalDetalhes" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="modalTitulo">Detalhes da Fatura</h5>
+
+            <div class="modal-header">
+                <div class="fc-modal-title" id="modalTitulo">Detalhes da Fatura</div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
+
             <div class="modal-body">
-                <div id="loadingDetalhes" class="text-center py-4">
+                <!-- Loading -->
+                <div id="loadingDetalhes" class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Carregando...</span>
                     </div>
-                    <p class="mt-2">Carregando transações...</p>
+                    <p class="mt-3 text-muted small">Carregando transações...</p>
                 </div>
-                <div id="conteudoDetalhes" style="display: none;">
+
+                <!-- Conteúdo -->
+                <div id="conteudoDetalhes" style="display:none;">
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover">
+                        <table class="table fc-modal-table">
                             <thead>
                                 <tr>
                                     <th>Data</th>
@@ -267,21 +401,20 @@
                                     <th class="text-center">Ações</th>
                                 </tr>
                             </thead>
-                            <tbody id="tabelaTransacoes">
-                                <!-- Preenchido via JS -->
-                            </tbody>
-                            <tfoot>
-                                <tr class="table-active fw-bold">
-                                    <td colspan="5" class="text-end">TOTAL</td>
-                                    <td class="text-end" id="totalFaturaModal">R$ 0,00</td>
-                                </tr>
-                            </tfoot>
+                            <tbody id="tabelaTransacoes"></tbody>
                         </table>
+                    </div>
+                    <div class="fc-modal-total">
+                        <span class="fc-modal-total-label">Total da Fatura</span>
+                        <span class="fc-modal-total-value" id="totalFaturaModal">R$ 0,00</span>
                     </div>
                 </div>
             </div>
+
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>Fechar
+                </button>
             </div>
         </div>
     </div>
@@ -293,13 +426,12 @@
 </form>
 
 {% endif %}
+</div><!-- /container -->
+</div><!-- /fc-page -->
 {% endblock %}
 
 {% block extra_js %}
 {% if previsoes %}
-<!-- Carregar Chart.js (caso ainda não esteja carregado no base) -->
-<!-- Garantido no base.html -->
-
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         // Reabrir modal se voltou de edição/exclusão
@@ -312,7 +444,6 @@
                 qp.get('nome') || '',
                 qp.get('mesRef') || ''
             );
-            // Limpar params da URL sem recarregar
             history.replaceState(null, '', window.location.pathname);
         }
 
@@ -323,141 +454,104 @@
         {% for cartao in previsoes %}
         (function () {
             const ctx = document.getElementById('chart-{{ loop.index }}').getContext('2d');
-            const labels = {{ cartao.labels_grafico | tojson
-        }};
-    const data = {{ cartao.dados_grafico | tojson }};
+            const labels = {{ cartao.labels_grafico | tojson }};
+            const data = {{ cartao.dados_grafico | tojson }};
 
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Valor (R$)',
-                data: data,
-                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function (context) {
-                            return 'R$ ' + context.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        font: { size: 10 },
-                        callback: function (value) {
-                            if (value >= 1000) return 'R$ ' + (value / 1000).toFixed(0) + 'k';
-                            return value;
-                        }
-                    }
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Valor (R$)',
+                        data: data,
+                        backgroundColor: 'rgba(67,97,238,0.55)',
+                        borderColor: 'rgba(67,97,238,1)',
+                        borderWidth: 1,
+                        borderRadius: 5
+                    }]
                 },
-                x: {
-                    grid: { display: false },
-                    ticks: {
-                        font: { size: 10 },
-                        maxRotation: 45,
-                        minRotation: 45
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return 'R$ ' + context.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: { size: 10 },
+                                callback: function (value) {
+                                    if (value >= 1000) return 'R$' + (value / 1000).toFixed(0) + 'k';
+                                    return value;
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 10 }, maxRotation: 45, minRotation: 45 }
+                        }
                     }
                 }
-            }
-        }
-    });
-        }) ();
-    {% endfor %}
+            });
+        })();
+        {% endfor %}
     });
 
     // Funções de Filtro de Cartões
     function toggleCardVisibility(index) {
         const col = document.getElementById(`col-card-${index}`);
-        const cb = document.getElementById(`filter-check-${index}`);
-
-        if (col && cb) {
-            col.style.display = cb.checked ? '' : 'none';
-            saveFilterState();
-        }
+        const cb  = document.getElementById(`filter-check-${index}`);
+        if (col && cb) { col.style.display = cb.checked ? '' : 'none'; saveFilterState(); }
     }
 
     function saveFilterState() {
-        const hiddenCards = [];
-        document.querySelectorAll('.filter-card-checkbox').forEach(cb => {
-            if (!cb.checked) {
-                hiddenCards.push(cb.value);
-            }
-        });
-        localStorage.setItem('hidden_cards_forecast', JSON.stringify(hiddenCards));
-
-        // Recalcular layout do masonry se estivesse usando, mas aqui é flex/grid, automático.
+        const hidden = [];
+        document.querySelectorAll('.filter-card-checkbox').forEach(cb => { if (!cb.checked) hidden.push(cb.value); });
+        localStorage.setItem('hidden_cards_forecast', JSON.stringify(hidden));
     }
 
     function loadFilterState() {
         const stored = localStorage.getItem('hidden_cards_forecast');
         if (stored) {
             try {
-                const hiddenCards = JSON.parse(stored);
-                hiddenCards.forEach(index => {
+                JSON.parse(stored).forEach(index => {
                     const cb = document.getElementById(`filter-check-${index}`);
-                    if (cb) {
-                        cb.checked = false;
-                        toggleCardVisibility(index);
-                    }
+                    if (cb) { cb.checked = false; toggleCardVisibility(index); }
                 });
-            } catch (e) {
-                console.error("Erro ao carregar filtros:", e);
-            }
+            } catch (e) { console.error("Erro ao carregar filtros:", e); }
         }
     }
 
-    // Função para togglear visibilidade de card individual (Conteúdo)
     function toggleCard(index) {
         const element = document.getElementById(`card-body-${index}`);
-        const icon = document.getElementById(`toggle-icon-${index}`);
-
-        const bsCollapse = new bootstrap.Collapse(element, { toggle: true });
-
-        element.addEventListener('shown.bs.collapse', function () {
-            icon.classList.remove('bi-chevron-down');
-            icon.classList.add('bi-chevron-up');
-        }, { once: true });
-
-        element.addEventListener('hidden.bs.collapse', function () {
-            icon.classList.remove('bi-chevron-up');
-            icon.classList.add('bi-chevron-down');
-        }, { once: true });
+        const icon    = document.getElementById(`toggle-icon-${index}`);
+        new bootstrap.Collapse(element, { toggle: true });
+        element.addEventListener('shown.bs.collapse',  () => { icon.classList.replace('bi-chevron-down','bi-chevron-up');   }, { once: true });
+        element.addEventListener('hidden.bs.collapse', () => { icon.classList.replace('bi-chevron-up',  'bi-chevron-down'); }, { once: true });
     }
 
-    // Função para expandir ou recolher todos os cards
     function toggleAllCards(expand) {
-        const cards = document.querySelectorAll('[id^="card-body-"]');
-        cards.forEach((card, index) => {
-            const actualIndex = index + 1;
-            const icon = document.getElementById(`toggle-icon-${actualIndex}`);
-
+        document.querySelectorAll('[id^="card-body-"]').forEach((card, i) => {
+            const icon = document.getElementById(`toggle-icon-${i + 1}`);
             if (expand && !card.classList.contains('show')) {
                 new bootstrap.Collapse(card, { toggle: true });
-                icon.classList.remove('bi-chevron-down');
-                icon.classList.add('bi-chevron-up');
+                icon.classList.replace('bi-chevron-down','bi-chevron-up');
             } else if (!expand && card.classList.contains('show')) {
                 new bootstrap.Collapse(card, { toggle: true });
-                icon.classList.remove('bi-chevron-up');
-                icon.classList.add('bi-chevron-down');
+                icon.classList.replace('bi-chevron-up','bi-chevron-down');
             }
         });
     }
 
-    // Estado atual do modal (para reabrir após editar/excluir)
+    // Estado atual do modal
     let _modalState = {};
 
     function buildModalNextUrl() {
@@ -471,7 +565,6 @@
         return `/relatorios/previsao-cartoes?${p.toString()}`;
     }
 
-    // Excluir despesa direto da fatura
     function excluirDaFatura(id) {
         if (!confirm('Excluir esta despesa? A ação não pode ser desfeita.')) return;
         const form = document.getElementById('formExcluirFatura');
@@ -480,53 +573,46 @@
         form.submit();
     }
 
-    // Função para abrir modal de detalhes
     function verDetalhes(cartaoId, mes, ano, nomeCartao, mesRef) {
         _modalState = { cartaoId, mes, ano, nomeCartao, mesRef };
 
-        // Configurar modal
-        document.getElementById('modalTitulo').textContent = `Fatura ${nomeCartao} - ${mesRef}`;
+        document.getElementById('modalTitulo').textContent = `Fatura ${nomeCartao} — ${mesRef}`;
         document.getElementById('loadingDetalhes').style.display = 'block';
         document.getElementById('conteudoDetalhes').style.display = 'none';
 
-        const modal = new bootstrap.Modal(document.getElementById('modalDetalhes'));
-        modal.show();
+        new bootstrap.Modal(document.getElementById('modalDetalhes')).show();
 
-        // Buscar dados
         fetch(`/relatorios/api/fatura-detalhes/${cartaoId}/${mes}/${ano}`)
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
-                const tbody = document.getElementById('tabelaTransacoes');
+                const tbody  = document.getElementById('tabelaTransacoes');
                 tbody.innerHTML = '';
-
-                let total = 0;
+                let total    = 0;
                 const nextUrl = buildModalNextUrl();
 
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma transação encontrada.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Nenhuma transação encontrada.</td></tr>';
                 } else {
                     data.forEach(item => {
                         total += item.valor;
-                        const row = `
-                            <tr class="align-middle">
-                                <td>${item.data}</td>
-                                <td>${item.descricao}</td>
-                                <td><span class="badge bg-light text-dark border">${item.categoria}</span></td>
-                                <td>${item.parcelas}</td>
-                                <td class="text-end">R$ ${item.valor.toFixed(2).replace('.', ',')}</td>
-                                <td class="text-center text-nowrap">
-                                    <a href="/despesas/${item.id}/editar?next=${encodeURIComponent(nextUrl)}"
-                                       class="btn btn-sm btn-outline-primary me-1" title="Editar">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <button onclick="excluirDaFatura(${item.id})"
-                                            class="btn btn-sm btn-outline-danger" title="Excluir">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                        tbody.innerHTML += row;
+                        tbody.innerHTML += `
+                        <tr class="align-middle">
+                            <td class="text-nowrap">${item.data}</td>
+                            <td>${item.descricao}</td>
+                            <td><span class="badge bg-light text-dark border">${item.categoria}</span></td>
+                            <td class="text-center">${item.parcelas}</td>
+                            <td class="text-end fw-semibold">R$ ${item.valor.toFixed(2).replace('.', ',')}</td>
+                            <td class="text-center text-nowrap">
+                                <a href="/despesas/${item.id}/editar?next=${encodeURIComponent(nextUrl)}"
+                                   class="btn btn-sm btn-outline-primary me-1" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button onclick="excluirDaFatura(${item.id})"
+                                        class="btn btn-sm btn-outline-danger" title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>`;
                     });
                 }
 
@@ -536,10 +622,9 @@
                 document.getElementById('loadingDetalhes').style.display = 'none';
                 document.getElementById('conteudoDetalhes').style.display = 'block';
             })
-            .catch(error => {
-                console.error('Erro:', error);
+            .catch(() => {
                 document.getElementById('loadingDetalhes').innerHTML =
-                    '<div class="alert alert-danger">Erro ao carregar detalhes. Tente novamente.</div>';
+                    '<div class="alert alert-danger m-3">Erro ao carregar detalhes. Tente novamente.</div>';
             });
     }
 </script>

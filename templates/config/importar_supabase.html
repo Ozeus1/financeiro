@@ -90,33 +90,37 @@
                             </th>
                             <th>
                                 Descrição
-                                <input type="text" class="form-control form-control-sm mt-1 filter-input" data-col="1"
-                                    placeholder="Filtrar...">
+                                <input type="text" class="form-control form-control-sm mt-1 filter-input"
+                                    data-col="1" data-filter-type="text" placeholder="Buscar texto...">
                             </th>
                             <th class="text-end">
                                 Valor
-                                <input type="text" class="form-control form-control-sm mt-1 filter-input" data-col="2"
-                                    placeholder="Filtrar...">
+                                <input type="text" class="form-control form-control-sm mt-1 filter-input"
+                                    data-col="2" data-filter-type="numeric" placeholder="&gt;100  &lt;500  =200">
                             </th>
                             <th>
                                 Meio Pgto.
-                                <input type="text" class="form-control form-control-sm mt-1 filter-input" data-col="3"
-                                    placeholder="Filtrar...">
+                                <input type="text" class="form-control form-control-sm mt-1 filter-input"
+                                    data-col="3" data-filter-type="text" placeholder="Filtrar...">
                             </th>
                             <th>
                                 Categoria
-                                <input type="text" class="form-control form-control-sm mt-1 filter-input" data-col="4"
-                                    placeholder="Filtrar...">
+                                <input type="text" class="form-control form-control-sm mt-1 filter-input"
+                                    data-col="4" data-filter-type="text" placeholder="Filtrar...">
                             </th>
                             <th class="text-center">
                                 Parcelas
-                                <input type="text" class="form-control form-control-sm mt-1 filter-input" data-col="5"
-                                    placeholder="Filtrar...">
+                                <input type="text" class="form-control form-control-sm mt-1 filter-input"
+                                    data-col="5" data-filter-type="text" placeholder="Filtrar...">
                             </th>
-                            <th class="text-center">
+                            <th class="text-center" style="min-width:160px;">
                                 Data Despesa
-                                <input type="text" class="form-control form-control-sm mt-1 filter-input" data-col="6"
-                                    placeholder="Filtrar...">
+                                <div class="d-flex gap-1 mt-1">
+                                    <input type="date" class="form-control form-control-sm filter-input"
+                                        data-col="6" data-filter-type="date-from" title="De:">
+                                    <input type="date" class="form-control form-control-sm filter-input"
+                                        data-col="6" data-filter-type="date-to" title="Até:">
+                                </div>
                             </th>
                             <th class="text-center">Ações</th>
                         </tr>
@@ -465,38 +469,69 @@
             processarExclusao();
         });
 
-        // Filtragem
-        document.querySelectorAll('.filter-input').forEach(input => {
-            input.addEventListener('keyup', function () {
-                const termo = this.value.toLowerCase();
-                const colIndex = this.dataset.col;
-                const rows = tbody.getElementsByTagName('tr');
+        // Filtragem inteligente
+        function parseCellValor(cell) {
+            const text = (cell.textContent || cell.innerText).trim();
+            return parseFloat(text.replace(/\./g, '').replace(',', '.')) || 0;
+        }
 
-                Array.from(rows).forEach(row => {
-                    if (row.cells.length < 8) return; // Ignorar linha de "Nenhum dado"
+        function parseCellData(cell) {
+            const text = (cell.textContent || cell.innerText).trim();
+            const m = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+            if (m) return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
+            return null;
+        }
 
-                    // Lógica de filtro: mostrar se corresponder ao termo
-                    // Mas precisamos considerar todos os filtros ativos
-                    let mostrar = true;
+        function filterMatches(filter, row) {
+            const col = parseInt(filter.dataset.col);
+            const type = filter.dataset.filterType;
+            const val = filter.value.trim();
+            if (!val) return true;
+            const cell = row.cells[col];
+            if (!cell) return true;
 
-                    // Verificar todos os inputs de filtro
-                    document.querySelectorAll('.filter-input').forEach(filter => {
-                        if (filter.value) {
-                            const filterCol = filter.dataset.col;
-                            const filterTerm = filter.value.toLowerCase();
-                            const targetCell = row.cells[filterCol];
-                            if (targetCell) {
-                                const targetText = targetCell.textContent || targetCell.innerText;
-                                if (!targetText.toLowerCase().includes(filterTerm)) {
-                                    mostrar = false;
-                                }
-                            }
-                        }
-                    });
+            if (type === 'numeric') {
+                const m = val.match(/^(>=|<=|>|<|=)?(\d+([.,]\d+)?)$/);
+                if (!m) return true;
+                const op = m[1] || '=';
+                const num = parseFloat(m[2].replace(',', '.'));
+                const cellNum = parseCellValor(cell);
+                if (op === '>') return cellNum > num;
+                if (op === '<') return cellNum < num;
+                if (op === '>=') return cellNum >= num;
+                if (op === '<=') return cellNum <= num;
+                return cellNum === num;
+            }
 
-                    row.style.display = mostrar ? '' : 'none';
-                });
+            if (type === 'date-from') {
+                const cellDate = parseCellData(cell);
+                const from = new Date(val + 'T00:00:00');
+                return cellDate && cellDate >= from;
+            }
+
+            if (type === 'date-to') {
+                const cellDate = parseCellData(cell);
+                const to = new Date(val + 'T23:59:59');
+                return cellDate && cellDate <= to;
+            }
+
+            // text (default)
+            const cellText = (cell.textContent || cell.innerText).toLowerCase();
+            return cellText.includes(val.toLowerCase());
+        }
+
+        function applyFilters() {
+            const filters = document.querySelectorAll('.filter-input');
+            Array.from(tbody.getElementsByTagName('tr')).forEach(row => {
+                if (row.cells.length < 8) return;
+                const visible = Array.from(filters).every(f => filterMatches(f, row));
+                row.style.display = visible ? '' : 'none';
             });
+        }
+
+        document.querySelectorAll('.filter-input').forEach(input => {
+            input.addEventListener('keyup', applyFilters);
+            input.addEventListener('change', applyFilters);
         });
     });
 </script>

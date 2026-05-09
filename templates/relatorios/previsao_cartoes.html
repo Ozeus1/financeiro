@@ -302,6 +302,20 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Reabrir modal se voltou de edição/exclusão
+        const qp = new URLSearchParams(window.location.search);
+        if (qp.get('reopen')) {
+            verDetalhes(
+                parseInt(qp.get('reopen')),
+                parseInt(qp.get('mes')),
+                parseInt(qp.get('ano')),
+                qp.get('nome') || '',
+                qp.get('mesRef') || ''
+            );
+            // Limpar params da URL sem recarregar
+            history.replaceState(null, '', window.location.pathname);
+        }
+
         // Inicializar Filtros de Visibilidade (LocalStorage)
         loadFilterState();
 
@@ -443,16 +457,33 @@
         });
     }
 
+    // Estado atual do modal (para reabrir após editar/excluir)
+    let _modalState = {};
+
+    function buildModalNextUrl() {
+        const p = new URLSearchParams({
+            reopen: _modalState.cartaoId,
+            mes:    _modalState.mes,
+            ano:    _modalState.ano,
+            nome:   _modalState.nomeCartao,
+            mesRef: _modalState.mesRef
+        });
+        return `/relatorios/previsao-cartoes?${p.toString()}`;
+    }
+
     // Excluir despesa direto da fatura
     function excluirDaFatura(id) {
         if (!confirm('Excluir esta despesa? A ação não pode ser desfeita.')) return;
         const form = document.getElementById('formExcluirFatura');
+        form.querySelector('input[name="next"]').value = buildModalNextUrl();
         form.action = `/despesas/${id}/excluir`;
         form.submit();
     }
 
     // Função para abrir modal de detalhes
     function verDetalhes(cartaoId, mes, ano, nomeCartao, mesRef) {
+        _modalState = { cartaoId, mes, ano, nomeCartao, mesRef };
+
         // Configurar modal
         document.getElementById('modalTitulo').textContent = `Fatura ${nomeCartao} - ${mesRef}`;
         document.getElementById('loadingDetalhes').style.display = 'block';
@@ -469,6 +500,7 @@
                 tbody.innerHTML = '';
 
                 let total = 0;
+                const nextUrl = buildModalNextUrl();
 
                 if (data.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma transação encontrada.</td></tr>';
@@ -483,7 +515,7 @@
                                 <td>${item.parcelas}</td>
                                 <td class="text-end">R$ ${item.valor.toFixed(2).replace('.', ',')}</td>
                                 <td class="text-center text-nowrap">
-                                    <a href="/despesas/${item.id}/editar?next=/relatorios/previsao-cartoes"
+                                    <a href="/despesas/${item.id}/editar?next=${encodeURIComponent(nextUrl)}"
                                        class="btn btn-sm btn-outline-primary me-1" title="Editar">
                                         <i class="bi bi-pencil"></i>
                                     </a>

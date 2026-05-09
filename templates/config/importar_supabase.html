@@ -392,12 +392,13 @@
         // Importar
         function importar(selecionadosApenas) {
             const items = [];
-            const rows = document.querySelectorAll('#tbody-dados tr');
+            // Usa getFilteredRows() para percorrer TODOS os registros filtrados,
+            // incluindo os de outras páginas (que estão ocultos pela paginação)
+            const rows = getFilteredRows();
 
             rows.forEach(row => {
                 const checkbox = row.querySelector('.check-item');
-                if (!checkbox) return; // Skip empty message row
-                if (row.style.display === 'none') return; // Skip hidden rows (filtered)
+                if (!checkbox) return;
 
                 if (selecionadosApenas && !checkbox.checked) return;
 
@@ -452,14 +453,11 @@
         // Excluir Selecionados
         btnExcluirSel.addEventListener('click', function () {
             const selecionados = [];
-            document.querySelectorAll('.check-item:checked').forEach(checkbox => {
-                const tr = checkbox.closest('tr');
-                // Only include visible rows
-                if (tr.style.display !== 'none') {
-                    selecionados.push({
-                        id: tr.dataset.id,
-                        element: tr
-                    });
+            // Percorre TODOS os registros filtrados (todas as páginas)
+            getFilteredRows().forEach(tr => {
+                const checkbox = tr.querySelector('.check-item');
+                if (checkbox && checkbox.checked) {
+                    selecionados.push({ id: tr.dataset.id, element: tr });
                 }
             });
 

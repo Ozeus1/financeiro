@@ -1,505 +1,413 @@
 {% extends "base.html" %}
-
 {% block title %}Fluxo de Caixa{% endblock %}
 
+{% block extra_css %}
+<style>
+:root{--pg-bg:#f1f5f9;--pg-surface:#fff;--pg-border:#e2e8f0;--pg-muted:#64748b;--pg-red:#ef4444;--pg-green:#10b981;--pg-blue:#4361ee;--pg-amber:#f59e0b;--pg-cyan:#06b6d4;--pg-radius:14px;--pg-shadow-md:0 4px 16px rgba(0,0,0,.09)}
+.pg-page{background:var(--pg-bg);min-height:70vh;padding-bottom:2.5rem}
+.pg-header{background:linear-gradient(135deg,#064e3b 0%,#0891b2 55%,#4361ee 100%);padding:1.4rem 1.5rem 1.2rem;color:#fff;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem}
+.pg-header-title{font-size:1.3rem;font-weight:700;margin:0;letter-spacing:-.02em}
+.pg-card{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);overflow:hidden;margin-bottom:1.25rem}
+.pg-card-header{padding:.8rem 1.25rem;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--pg-muted);border-bottom:1px solid var(--pg-border);background:#f8fafc;display:flex;align-items:center;gap:.4rem}
+/* tabs */
+.pg-tabs{display:flex;gap:.3rem;background:#f8fafc;border-radius:10px;padding:.25rem;border:1px solid var(--pg-border);margin-bottom:1.25rem;width:fit-content}
+.pg-tab{border:none;background:transparent;font-size:.82rem;font-weight:600;padding:.3rem .9rem;border-radius:8px;color:var(--pg-muted);cursor:pointer;transition:background .15s,color .15s}
+.pg-tab.active{background:var(--pg-surface);color:#0f172a;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+/* form card */
+.pg-form-card{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);overflow:hidden}
+.pg-form-header{padding:.8rem 1.1rem;background:linear-gradient(135deg,#1e3a8a,#4361ee);color:#fff;font-size:.85rem;font-weight:700}
+.pg-form-body{padding:1rem 1.1rem}
+.pg-label{font-size:.75rem;font-weight:700;color:#374151;margin-bottom:.25rem;display:block}
+.pg-input{border-radius:8px;border:1.5px solid var(--pg-border);font-size:.875rem;transition:border-color .15s}
+.pg-input:focus{border-color:var(--pg-blue);box-shadow:0 0 0 3px rgba(67,97,238,.1)}
+/* table */
+.pg-table{margin:0;width:100%}
+.pg-table thead th{background:#f8fafc;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--pg-muted);border-bottom:2px solid var(--pg-border);padding:.5rem .75rem;white-space:nowrap;position:sticky;top:0;z-index:1}
+.pg-table tbody tr{transition:background .12s;cursor:pointer}
+.pg-table tbody tr:hover{background:#f0f7ff}
+.pg-table tbody td{padding:.45rem .75rem;font-size:.835rem;border-bottom:1px solid var(--pg-border);vertical-align:middle}
+.pg-table tbody tr:last-child td{border-bottom:none}
+/* event form bar */
+.pg-event-bar{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);padding:1rem 1.25rem;margin-top:1.25rem}
+.pg-event-bar-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--pg-muted);margin-bottom:.75rem;display:flex;align-items:center;gap:.3rem}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-cash-register"></i> Fluxo de Caixa</h2>
-        <form method="POST" action="{{ url_for('fluxo_caixa.recalcular_tudo') }}" class="d-inline"
-            onsubmit="return confirm('Recalcular todos os balanços? Isso sobrescreverá os valores manuais.');">
-            <button type="submit" class="btn btn-warning">
-                <i class="fas fa-sync-alt"></i> Recalcular Tudo
-            </button>
-        </form>
+<div class="pg-page">
+
+<!-- Header -->
+<div class="pg-header">
+    <div>
+        <div style="font-size:.8rem;opacity:.7;margin-bottom:.2rem"><i class="bi bi-cash-stack me-1"></i>Financeiro</div>
+        <h1 class="pg-header-title"><i class="bi bi-bank me-2"></i>Fluxo de Caixa</h1>
     </div>
+    <form method="POST" action="{{ url_for('fluxo_caixa.recalcular_tudo') }}" style="display:inline"
+          onsubmit="return confirm('Recalcular todos os balanços? Isso sobrescreverá os valores manuais.')">
+        <button type="submit" class="btn btn-warning btn-sm fw-semibold">
+            <i class="bi bi-arrow-repeat me-1"></i>Recalcular Tudo
+        </button>
+    </form>
+</div>
 
-    <!-- Tabs -->
-    <ul class="nav nav-tabs mb-4" id="fluxoCaixaTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="balanco-tab" data-bs-toggle="tab" data-bs-target="#balanco"
-                type="button" role="tab">
-                <i class="fas fa-chart-line"></i> Balanço Mensal
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="eventos-tab" data-bs-toggle="tab" data-bs-target="#eventos" type="button"
-                role="tab">
-                <i class="fas fa-receipt"></i> Eventos de Caixa Avulsos
-            </button>
-        </li>
-    </ul>
+<div class="container-fluid px-3">
 
-    <div class="tab-content" id="fluxoCaixaTabContent">
-        <!-- Tab: Balanço Mensal -->
-        <div class="tab-pane fade show active" id="balanco" role="tabpanel">
-            <div class="row">
-                <!-- Formulário -->
-                <div class="col-md-4">
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Balanço Mensal</h5>
+<!-- Tabs -->
+<div class="pg-tabs">
+    <button class="pg-tab active" onclick="switchFC('balanco',this)">
+        <i class="bi bi-graph-up me-1"></i>Balanço Mensal
+    </button>
+    <button class="pg-tab" onclick="switchFC('eventos',this)">
+        <i class="bi bi-receipt me-1"></i>Eventos de Caixa Avulsos
+    </button>
+</div>
+
+<!-- ── Tab: Balanço Mensal ── -->
+<div id="fc-balanco">
+    <div class="row g-3">
+
+        <!-- Formulário -->
+        <div class="col-md-4">
+            <div class="pg-form-card">
+                <div class="pg-form-header"><i class="bi bi-calculator me-2"></i>Balanço Mensal</div>
+                <div class="pg-form-body">
+                    <form method="POST" action="{{ url_for('fluxo_caixa.salvar_balanco') }}" id="formBalanco">
+                        <input type="hidden" name="balanco_id" id="balanco_id">
+
+                        <div class="mb-2">
+                            <label class="pg-label">Ano</label>
+                            <input type="number" class="form-control form-control-sm pg-input" id="ano" name="ano" value="{{ ano_atual }}" min="2020" max="2100" required>
                         </div>
-                        <div class="card-body">
-                            <form method="POST" action="{{ url_for('fluxo_caixa.salvar_balanco') }}" id="formBalanco">
-                                <input type="hidden" name="balanco_id" id="balanco_id">
-
-                                <div class="mb-3">
-                                    <label for="ano" class="form-label">Ano</label>
-                                    <input type="number" class="form-control" id="ano" name="ano"
-                                        value="{{ ano_atual }}" min="2020" max="2100" required>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="mes" class="form-label">Mês</label>
-                                    <select class="form-select" id="mes" name="mes" required>
-                                        {% for i in range(1, 13) %}
-                                        <option value="{{ i }}" {% if i==mes_atual %}selected{% endif %}>
-                                            {{ meses[i-1] }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Total de Entradas (R$)</label>
-                                    <div class="input-group">
-                                        <input type="number" step="0.01" class="form-control" id="total_entradas"
-                                            name="total_entradas" value="0" required>
-                                        <button class="btn btn-outline-success" type="button" id="btnCalcEntradas">
-                                            <i class="fas fa-calculator"></i> Calcular
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Total de Saídas (R$)</label>
-                                    <div class="input-group">
-                                        <input type="number" step="0.01" class="form-control" id="total_saidas"
-                                            name="total_saidas" value="0" required>
-                                        <button class="btn btn-outline-danger" type="button" id="btnCalcSaidas">
-                                            <i class="fas fa-calculator"></i> Calcular
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Saldo do Mês (R$)</label>
-                                    <input type="text" class="form-control bg-light" id="saldo_mes" readonly>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="observacoes" class="form-label">Observações</label>
-                                    <textarea class="form-control" id="observacoes" name="observacoes"
-                                        rows="3"></textarea>
-                                </div>
-
-                                <div class="d-grid gap-2">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save"></i> Salvar
-                                    </button>
-                                    <button type="button" class="btn btn-secondary" id="btnLimpar">
-                                        <i class="fas fa-eraser"></i> Limpar
-                                    </button>
-                                    <button type="button" class="btn btn-danger" id="btnExcluir" style="display:none;">
-                                        <i class="fas fa-trash"></i> Excluir
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tabela e Gráfico -->
-                <div class="col-md-8">
-                    <!-- Histórico -->
-                    <div class="card shadow-sm mb-4">
-                        <div
-                            class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Histórico de Balanços</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive" style="max-height: 300px;">
-                                <table class="table table-hover table-sm">
-                                    <thead class="table-light sticky-top">
-                                        <tr>
-                                            <th>Mês/Ano</th>
-                                            <th class="text-end">Entradas</th>
-                                            <th class="text-end">Saídas</th>
-                                            <th class="text-end">Saldo</th>
-                                            <th class="text-center">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for balanco in balancos %}
-                                        <tr data-balanco-id="{{ balanco.id }}" data-ano="{{ balanco.ano }}"
-                                            data-mes="{{ balanco.mes }}" data-entradas="{{ balanco.total_entradas }}"
-                                            data-saidas="{{ balanco.total_saidas }}"
-                                            data-obs="{{ balanco.observacoes or '' }}" class="balanco-row"
-                                            style="cursor: pointer;">
-                                            <td>{{ '%02d'|format(balanco.mes) }}/{{ balanco.ano }}</td>
-                                            <td class="text-end text-success">R$ {{
-                                                '{:,.2f}'.format(balanco.total_entradas) }}</td>
-                                            <td class="text-end text-danger">R$ {{
-                                                '{:,.2f}'.format(balanco.total_saidas) }}</td>
-                                            <td
-                                                class="text-end fw-bold {% if balanco.saldo_mes >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                                R$ {{ '{:,.2f}'.format(balanco.saldo_mes) }}
-                                            </td>
-                                            <td class="text-center">
-                                                <a href="{{ url_for('fluxo_caixa.detalhes_mes', ano=balanco.ano, mes=balanco.mes) }}"
-                                                    class="btn btn-sm btn-info" title="Ver detalhes">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="{{ url_for('fluxo_caixa.exportar_excel', ano=balanco.ano, mes=balanco.mes) }}"
-                                                    class="btn btn-sm btn-success" title="Exportar Excel">
-                                                    <i class="fas fa-file-excel"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Gráfico -->
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-info text-white">
-                            <h5 class="mb-0">Evolução do Fluxo de Caixa</h5>
-                        </div>
-                        <div class="card-body">
-                            <!-- Filtros -->
-                            <div class="row mb-3">
-                                <div class="col-md-5">
-                                    <label class="form-label small">Período: De</label>
-                                    <div class="input-group input-group-sm">
-                                        <select class="form-select" id="mes_inicio">
-                                            {% for i in range(1, 13) %}
-                                            <option value="{{ i }}">{{ meses[i-1][:3] }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <input type="number" class="form-control" id="ano_inicio"
-                                            style="max-width: 80px;">
-                                    </div>
-                                </div>
-                                <div class="col-md-5">
-                                    <label class="form-label small">Até</label>
-                                    <div class="input-group input-group-sm">
-                                        <select class="form-select" id="mes_fim">
-                                            {% for i in range(1, 13) %}
-                                            <option value="{{ i }}" {% if i==mes_atual %}selected{% endif %}>{{
-                                                meses[i-1][:3] }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <input type="number" class="form-control" id="ano_fim" value="{{ ano_atual }}"
-                                            style="max-width: 80px;">
-                                    </div>
-                                </div>
-                                <div class="col-md-2 d-flex align-items-end">
-                                    <button class="btn btn-sm btn-primary w-100" id="btnAtualizarGrafico">
-                                        <i class="fas fa-sync-alt"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <canvas id="chartFluxoCaixa" height="150"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tab: Eventos de Caixa Avulsos -->
-        <div class="tab-pane fade" id="eventos" role="tabpanel">
-            <div class="card shadow-sm">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0">Eventos Registrados</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive" style="max-height: 500px;">
-                        <table class="table table-hover">
-                            <thead class="table-light sticky-top">
-                                <tr>
-                                    <th>Data</th>
-                                    <th>Descrição</th>
-                                    <th class="text-end">Valor</th>
-                                    <th class="text-center">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for evento in eventos %}
-                                <tr data-evento-id="{{ evento.id }}" data-data="{{ evento.data.isoformat() }}"
-                                    data-descricao="{{ evento.descricao }}" data-valor="{{ evento.valor }}"
-                                    class="evento-row" style="cursor: pointer;">
-                                    <td>{{ evento.data.strftime('%d/%m/%Y') }}</td>
-                                    <td>{{ evento.descricao }}</td>
-                                    <td class="text-end text-danger">R$ {{ '{:,.2f}'.format(evento.valor) }}
-                                    </td>
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-primary btn-editar-evento"
-                                            data-id="{{ evento.id }}">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                    </td>
-                                </tr>
+                        <div class="mb-2">
+                            <label class="pg-label">Mês</label>
+                            <select class="form-select form-select-sm pg-input" id="mes" name="mes" required>
+                                {% for i in range(1,13) %}
+                                <option value="{{ i }}" {% if i==mes_atual %}selected{% endif %}>{{ meses[i-1] }}</option>
                                 {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="pg-label">Total de Entradas (R$)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" step="0.01" class="form-control pg-input" id="total_entradas" name="total_entradas" value="0" required>
+                                <button class="btn btn-outline-success btn-sm" type="button" id="btnCalcEntradas" title="Calcular">
+                                    <i class="bi bi-calculator"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="pg-label">Total de Saídas (R$)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" step="0.01" class="form-control pg-input" id="total_saidas" name="total_saidas" value="0" required>
+                                <button class="btn btn-outline-danger btn-sm" type="button" id="btnCalcSaidas" title="Calcular">
+                                    <i class="bi bi-calculator"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="pg-label">Saldo do Mês (R$)</label>
+                            <input type="text" class="form-control form-control-sm pg-input" id="saldo_mes" readonly style="background:#f8fafc">
+                        </div>
+                        <div class="mb-3">
+                            <label class="pg-label">Observações</label>
+                            <textarea class="form-control form-control-sm pg-input" id="observacoes" name="observacoes" rows="2"></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Salvar</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btnLimpar"><i class="bi bi-eraser me-1"></i>Limpar</button>
+                            <button type="button" class="btn btn-danger btn-sm" id="btnExcluir" style="display:none"><i class="bi bi-trash me-1"></i>Excluir</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Event Registration Form (Footer) -->
-    <div class="card shadow-sm mt-4">
-        <div class="card-header bg-light">
-            <h6 class="mb-0">Registrar / Editar Evento de Caixa Avulso (Ex: Pagamento de Fatura)</h6>
-        </div>
-        <div class="card-body">
-            <form method="POST" action="{{ url_for('fluxo_caixa.criar_evento') }}" id="formEvento"
-                class="row g-3 align-items-end">
-                <input type="hidden" name="evento_id" id="evento_id">
+        <!-- Histórico + Gráfico -->
+        <div class="col-md-8">
 
-                <div class="col-md-2">
-                    <label for="evento_data" class="form-label">Data</label>
-                    <input type="date" class="form-control" id="evento_data" name="data"
-                        value="{{ date.today().isoformat() }}" required>
+            <!-- Histórico -->
+            <div class="pg-card">
+                <div class="pg-card-header"><i class="bi bi-clock-history"></i>Histórico de Balanços</div>
+                <div class="table-responsive" style="max-height:280px;overflow-y:auto">
+                    <table class="pg-table table">
+                        <thead>
+                            <tr>
+                                <th>Mês/Ano</th>
+                                <th class="text-end">Entradas</th>
+                                <th class="text-end">Saídas</th>
+                                <th class="text-end">Saldo</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in balancos %}
+                            <tr data-balanco-id="{{ b.id }}" data-ano="{{ b.ano }}" data-mes="{{ b.mes }}"
+                                data-entradas="{{ b.total_entradas }}" data-saidas="{{ b.total_saidas }}"
+                                data-obs="{{ b.observacoes or '' }}" class="balanco-row">
+                                <td class="fw-semibold">{{ '%02d'|format(b.mes) }}/{{ b.ano }}</td>
+                                <td class="text-end" style="color:var(--pg-green)">R$ {{ '{:,.2f}'.format(b.total_entradas) }}</td>
+                                <td class="text-end" style="color:var(--pg-red)">R$ {{ '{:,.2f}'.format(b.total_saidas) }}</td>
+                                <td class="text-end fw-bold" style="color:{% if b.saldo_mes >= 0 %}var(--pg-green){% else %}var(--pg-red){% endif %}">
+                                    R$ {{ '{:,.2f}'.format(b.saldo_mes) }}
+                                </td>
+                                <td class="text-center">
+                                    <a href="{{ url_for('fluxo_caixa.detalhes_mes', ano=b.ano, mes=b.mes) }}"
+                                       class="btn btn-sm" style="background:var(--pg-cyan);color:#fff;border-radius:7px;width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center" title="Ver detalhes">
+                                        <i class="bi bi-eye" style="font-size:.75rem"></i>
+                                    </a>
+                                    <a href="{{ url_for('fluxo_caixa.exportar_excel', ano=b.ano, mes=b.mes) }}"
+                                       class="btn btn-sm ms-1" style="background:var(--pg-green);color:#fff;border-radius:7px;width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center" title="Exportar Excel">
+                                        <i class="bi bi-file-earmark-excel" style="font-size:.75rem"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
+            </div>
 
-                <div class="col-md-5">
-                    <label for="evento_descricao" class="form-label">Descrição</label>
-                    <input type="text" class="form-control" id="evento_descricao" name="descricao"
-                        placeholder="Ex: Pagamento Fatura Cartão" required>
-                </div>
-
-                <div class="col-md-2">
-                    <label for="evento_valor" class="form-label">Valor (R$)</label>
-                    <input type="text" inputmode="decimal" class="form-control" id="evento_valor" name="valor" value="0"
-                        required>
-                </div>
-
-                <div class="col-md-3">
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-success flex-grow-1" id="btnSalvarEvento">
-                            <i class="fas fa-plus"></i> Registrar Saída
-                        </button>
-                        <button type="button" class="btn btn-secondary" id="btnLimparEvento">
-                            <i class="fas fa-eraser"></i>
-                        </button>
-                        <button type="button" class="btn btn-danger" id="btnExcluirEvento" style="display:none;">
-                            <i class="fas fa-trash"></i>
-                        </button>
+            <!-- Gráfico -->
+            <div class="pg-card">
+                <div class="pg-card-header"><i class="bi bi-graph-up-arrow"></i>Evolução do Fluxo de Caixa</div>
+                <div class="p-3">
+                    <div class="row g-2 align-items-end mb-3">
+                        <div class="col">
+                            <label class="form-label small fw-semibold mb-1">De</label>
+                            <div class="input-group input-group-sm">
+                                <select class="form-select form-select-sm" id="mes_inicio">
+                                    {% for i in range(1,13) %}<option value="{{ i }}">{{ meses[i-1][:3] }}</option>{% endfor %}
+                                </select>
+                                <input type="number" class="form-control form-control-sm" id="ano_inicio" style="max-width:72px">
+                            </div>
+                        </div>
+                        <div class="col">
+                            <label class="form-label small fw-semibold mb-1">Até</label>
+                            <div class="input-group input-group-sm">
+                                <select class="form-select form-select-sm" id="mes_fim">
+                                    {% for i in range(1,13) %}<option value="{{ i }}" {% if i==mes_atual %}selected{% endif %}>{{ meses[i-1][:3] }}</option>{% endfor %}
+                                </select>
+                                <input type="number" class="form-control form-control-sm" id="ano_fim" value="{{ ano_atual }}" style="max-width:72px">
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-sm btn-primary" id="btnAtualizarGrafico"><i class="bi bi-arrow-repeat"></i></button>
+                        </div>
                     </div>
+                    <canvas id="chartFluxoCaixa" height="150"></canvas>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Script para interatividade -->
+<!-- ── Tab: Eventos de Caixa Avulsos ── -->
+<div id="fc-eventos" style="display:none">
+    <div class="pg-card">
+        <div class="pg-card-header"><i class="bi bi-list-ul"></i>Eventos Registrados</div>
+        <div class="table-responsive" style="max-height:500px;overflow-y:auto">
+            <table class="pg-table table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th class="text-end">Valor</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ev in eventos %}
+                    <tr data-evento-id="{{ ev.id }}" data-data="{{ ev.data.isoformat() }}"
+                        data-descricao="{{ ev.descricao }}" data-valor="{{ ev.valor }}" class="evento-row">
+                        <td style="color:var(--pg-muted);font-size:.8rem">{{ ev.data.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ ev.descricao }}</td>
+                        <td class="text-end fw-bold" style="color:var(--pg-red)">R$ {{ '{:,.2f}'.format(ev.valor) }}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-editar-evento"
+                                    style="background:var(--pg-amber);color:#fff;border:none;border-radius:7px;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center"
+                                    data-id="{{ ev.id }}">
+                                <i class="bi bi-pencil" style="font-size:.75rem"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ── Barra de registro de evento ── -->
+<div class="pg-event-bar">
+    <div class="pg-event-bar-title"><i class="bi bi-plus-circle"></i>Registrar / Editar Evento de Caixa Avulso</div>
+    <form method="POST" action="{{ url_for('fluxo_caixa.criar_evento') }}" id="formEvento"
+          class="row g-2 align-items-end">
+        <input type="hidden" name="evento_id" id="evento_id">
+        <div class="col-sm-2">
+            <label class="form-label small fw-semibold mb-1">Data</label>
+            <input type="date" class="form-control form-control-sm pg-input" id="evento_data" name="data"
+                   value="{{ date.today().isoformat() }}" required>
+        </div>
+        <div class="col-sm-5">
+            <label class="form-label small fw-semibold mb-1">Descrição</label>
+            <input type="text" class="form-control form-control-sm pg-input" id="evento_descricao" name="descricao"
+                   placeholder="Ex: Pagamento Fatura Cartão" required>
+        </div>
+        <div class="col-sm-2">
+            <label class="form-label small fw-semibold mb-1">Valor (R$)</label>
+            <input type="text" inputmode="decimal" class="form-control form-control-sm pg-input"
+                   id="evento_valor" name="valor" value="0" required>
+        </div>
+        <div class="col-sm-3">
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success btn-sm flex-grow-1" id="btnSalvarEvento">
+                    <i class="bi bi-plus-lg me-1"></i>Registrar Saída
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnLimparEvento"><i class="bi bi-eraser"></i></button>
+                <button type="button" class="btn btn-danger btn-sm" id="btnExcluirEvento" style="display:none"><i class="bi bi-trash"></i></button>
+            </div>
+        </div>
+    </form>
+</div>
+
+</div><!-- /container -->
+</div><!-- /pg-page -->
+{% endblock %}
+
+{% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    let chartFluxoCaixa = null;
+// Tab switching (sem Bootstrap tabs)
+function switchFC(tab, btn) {
+    document.getElementById('fc-balanco').style.display = tab === 'balanco' ? '' : 'none';
+    document.getElementById('fc-eventos').style.display = tab === 'eventos' ? '' : 'none';
+    document.querySelectorAll('.pg-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
 
-    // Calcular saldo automaticamente
-    function calcularSaldo() {
-        const entradas = parseFloat(document.getElementById('total_entradas').value) || 0;
-        const saidas = parseFloat(document.getElementById('total_saidas').value) || 0;
-        const saldo = entradas - saidas;
-        document.getElementById('saldo_mes').value = 'R$ ' + saldo.toFixed(2).replace('.', ',');
-    }
+let chartFluxoCaixa = null;
 
-    document.getElementById('total_entradas').addEventListener('input', calcularSaldo);
-    document.getElementById('total_saidas').addEventListener('input', calcularSaldo);
+function calcularSaldo() {
+    const e = parseFloat(document.getElementById('total_entradas').value) || 0;
+    const s = parseFloat(document.getElementById('total_saidas').value) || 0;
+    document.getElementById('saldo_mes').value = 'R$ ' + (e - s).toFixed(2).replace('.', ',');
+}
+document.getElementById('total_entradas').addEventListener('input', calcularSaldo);
+document.getElementById('total_saidas').addEventListener('input', calcularSaldo);
 
-    // Calcular entradas automaticamente
-    document.getElementById('btnCalcEntradas').addEventListener('click', function () {
-        const ano = document.getElementById('ano').value;
-        const mes = document.getElementById('mes').value;
+document.getElementById('btnCalcEntradas').addEventListener('click', function () {
+    const ano = document.getElementById('ano').value, mes = document.getElementById('mes').value;
+    fetch('{{ url_for("fluxo_caixa.calcular_entradas") }}', {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `ano=${ano}&mes=${mes}`
+    }).then(r => r.json()).then(d => { if (d.success) { document.getElementById('total_entradas').value = d.total_entradas.toFixed(2); calcularSaldo(); } });
+});
 
-        fetch('{{ url_for("fluxo_caixa.calcular_entradas") }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `ano=${ano}&mes=${mes}`
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('total_entradas').value = data.total_entradas.toFixed(2);
-                    calcularSaldo();
-                }
-            });
-    });
+document.getElementById('btnCalcSaidas').addEventListener('click', function () {
+    const ano = document.getElementById('ano').value, mes = document.getElementById('mes').value;
+    fetch('{{ url_for("fluxo_caixa.calcular_saidas") }}', {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `ano=${ano}&mes=${mes}`
+    }).then(r => r.json()).then(d => { if (d.success) { document.getElementById('total_saidas').value = d.total_saidas.toFixed(2); calcularSaldo(); } });
+});
 
-    // Calcular saídas automaticamente
-    document.getElementById('btnCalcSaidas').addEventListener('click', function () {
-        const ano = document.getElementById('ano').value;
-        const mes = document.getElementById('mes').value;
+document.getElementById('btnLimpar').addEventListener('click', function () {
+    document.getElementById('formBalanco').reset();
+    document.getElementById('balanco_id').value = '';
+    document.getElementById('btnExcluir').style.display = 'none';
+    calcularSaldo();
+});
 
-        fetch('{{ url_for("fluxo_caixa.calcular_saidas") }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `ano=${ano}&mes=${mes}`
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('total_saidas').value = data.total_saidas.toFixed(2);
-                    calcularSaldo();
-                }
-            });
-    });
-
-    // Limpar formulário de balanço
-    document.getElementById('btnLimpar').addEventListener('click', function () {
-        document.getElementById('formBalanco').reset();
-        document.getElementById('balanco_id').value = '';
-        document.getElementById('btnExcluir').style.display = 'none';
+document.querySelectorAll('.balanco-row').forEach(row => {
+    row.addEventListener('click', function () {
+        document.getElementById('balanco_id').value = this.dataset.balancoId;
+        document.getElementById('ano').value = this.dataset.ano;
+        document.getElementById('mes').value = this.dataset.mes;
+        document.getElementById('total_entradas').value = this.dataset.entradas;
+        document.getElementById('total_saidas').value = this.dataset.saidas;
+        document.getElementById('observacoes').value = this.dataset.obs;
+        document.getElementById('btnExcluir').style.display = 'block';
         calcularSaldo();
     });
+});
 
-    // Selecionar balanço na tabela
-    document.querySelectorAll('.balanco-row').forEach(row => {
-        row.addEventListener('click', function () {
-            document.getElementById('balanco_id').value = this.dataset.balancoId;
-            document.getElementById('ano').value = this.dataset.ano;
-            document.getElementById('mes').value = this.dataset.mes;
-            document.getElementById('total_entradas').value = this.dataset.entradas;
-            document.getElementById('total_saidas').value = this.dataset.saidas;
-            document.getElementById('observacoes').value = this.dataset.obs;
-            document.getElementById('btnExcluir').style.display = 'block';
-            calcularSaldo();
-        });
-    });
-
-    // Excluir balanço
-    document.getElementById('btnExcluir').addEventListener('click', function () {
-        const id = document.getElementById('balanco_id').value;
-        if (confirm('Deseja realmente excluir este balanço?')) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/fluxo-caixa/balanco/${id}/excluir`;
-            document.body.appendChild(form);
-            form.submit();
-        }
-    });
-
-    // Eventos de Caixa Avulsos
-    document.getElementById('btnLimparEvento').addEventListener('click', function () {
-        document.getElementById('formEvento').reset();
-        document.getElementById('evento_id').value = '';
-        document.getElementById('btnExcluirEvento').style.display = 'none';
-        document.getElementById('btnSalvarEvento').innerHTML = '<i class="fas fa-plus"></i> Registrar Saída';
-        document.getElementById('formEvento').action = '{{ url_for("fluxo_caixa.criar_evento") }}';
-    });
-
-    // Selecionar evento
-    document.querySelectorAll('.evento-row').forEach(row => {
-        row.addEventListener('click', function () {
-            const id = this.dataset.eventoId;
-            document.getElementById('evento_id').value = id;
-            document.getElementById('evento_data').value = this.dataset.data;
-            document.getElementById('evento_descricao').value = this.dataset.descricao;
-            document.getElementById('evento_valor').value = this.dataset.valor;
-            document.getElementById('btnExcluirEvento').style.display = 'block';
-            document.getElementById('btnSalvarEvento').innerHTML = '<i class="fas fa-save"></i> Atualizar';
-            document.getElementById('formEvento').action = `/fluxo-caixa/eventos/${id}`;
-        });
-    });
-
-    // Excluir evento
-    document.getElementById('btnExcluirEvento').addEventListener('click', function () {
-        const id = document.getElementById('evento_id').value;
-        if (confirm('Deseja realmente excluir este evento?')) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/fluxo-caixa/eventos/${id}/excluir`;
-            document.body.appendChild(form);
-            form.submit();
-        }
-    });
-
-    // Gráfico
-    function carregarGrafico() {
-        const mesInicio = document.getElementById('mes_inicio').value;
-        const anoInicio = document.getElementById('ano_inicio').value;
-        const mesFim = document.getElementById('mes_fim').value;
-        const anoFim = document.getElementById('ano_fim').value;
-
-        fetch(`{{ url_for('fluxo_caixa.grafico_dados') }}?mes_inicio=${mesInicio}&ano_inicio=${anoInicio}&mes_fim=${mesFim}&ano_fim=${anoFim}`)
-            .then(response => response.json())
-            .then(data => {
-                const ctx = document.getElementById('chartFluxoCaixa').getContext('2d');
-
-                if (chartFluxoCaixa) {
-                    chartFluxoCaixa.destroy();
-                }
-
-                chartFluxoCaixa = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.labels,
-                        datasets: [
-                            {
-                                label: 'Entradas',
-                                data: data.entradas,
-                                backgroundColor: 'rgba(40, 167, 69, 0.7)',
-                                borderColor: 'rgba(40, 167, 69, 1)',
-                                borderWidth: 1
-                            },
-                            {
-                                label: 'Saídas',
-                                data: data.saidas,
-                                backgroundColor: 'rgba(220, 53, 69, 0.7)',
-                                borderColor: 'rgba(220, 53, 69, 1)',
-                                borderWidth: 1
-                            },
-                            {
-                                label: 'Saldo',
-                                data: data.saldos,
-                                type: 'line',
-                                borderColor: 'rgba(0, 123, 255, 1)',
-                                backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                                borderWidth: 2,
-                                fill: false,
-                                yAxisID: 'y1'
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                position: 'left',
-                                title: { display: true, text: 'Entradas/Saídas (R$)' }
-                            },
-                            y1: {
-                                beginAtZero: true,
-                                position: 'right',
-                                title: { display: true, text: 'Saldo (R$)' },
-                                grid: { drawOnChartArea: false }
-                            }
-                        }
-                    }
-                });
-            });
+document.getElementById('btnExcluir').addEventListener('click', function () {
+    const id = document.getElementById('balanco_id').value;
+    if (confirm('Deseja realmente excluir este balanço?')) {
+        const f = document.createElement('form'); f.method = 'POST'; f.action = `/fluxo-caixa/balanco/${id}/excluir`;
+        document.body.appendChild(f); f.submit();
     }
+});
 
-    // Inicializar filtros de data
-    const hoje = new Date();
-    const mesAtual = hoje.getMonth() + 1;
-    const anoAtual = hoje.getFullYear();
-    const dataInicio = new Date(hoje.getFullYear(), hoje.getMonth() - 11, 1);
+document.getElementById('btnLimparEvento').addEventListener('click', function () {
+    document.getElementById('formEvento').reset();
+    document.getElementById('evento_id').value = '';
+    document.getElementById('btnExcluirEvento').style.display = 'none';
+    document.getElementById('btnSalvarEvento').innerHTML = '<i class="bi bi-plus-lg me-1"></i>Registrar Saída';
+    document.getElementById('formEvento').action = '{{ url_for("fluxo_caixa.criar_evento") }}';
+});
 
-    document.getElementById('mes_inicio').value = dataInicio.getMonth() + 1;
-    document.getElementById('ano_inicio').value = dataInicio.getFullYear();
+document.querySelectorAll('.evento-row').forEach(row => {
+    row.addEventListener('click', function () {
+        const id = this.dataset.eventoId;
+        document.getElementById('evento_id').value = id;
+        document.getElementById('evento_data').value = this.dataset.data;
+        document.getElementById('evento_descricao').value = this.dataset.descricao;
+        document.getElementById('evento_valor').value = this.dataset.valor;
+        document.getElementById('btnExcluirEvento').style.display = 'block';
+        document.getElementById('btnSalvarEvento').innerHTML = '<i class="bi bi-save me-1"></i>Atualizar';
+        document.getElementById('formEvento').action = `/fluxo-caixa/eventos/${id}`;
+    });
+});
 
-    // Carregar gráfico inicial
-    document.addEventListener('DOMContentLoaded', carregarGrafico);
-    document.getElementById('btnAtualizarGrafico').addEventListener('click', carregarGrafico);
+document.querySelectorAll('.btn-editar-evento').forEach(btn => {
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        this.closest('tr').click();
+    });
+});
+
+document.getElementById('btnExcluirEvento').addEventListener('click', function () {
+    const id = document.getElementById('evento_id').value;
+    if (confirm('Deseja realmente excluir este evento?')) {
+        const f = document.createElement('form'); f.method = 'POST'; f.action = `/fluxo-caixa/eventos/${id}/excluir`;
+        document.body.appendChild(f); f.submit();
+    }
+});
+
+function carregarGrafico() {
+    const mi = document.getElementById('mes_inicio').value, ai = document.getElementById('ano_inicio').value;
+    const mf = document.getElementById('mes_fim').value, af = document.getElementById('ano_fim').value;
+    fetch(`{{ url_for('fluxo_caixa.grafico_dados') }}?mes_inicio=${mi}&ano_inicio=${ai}&mes_fim=${mf}&ano_fim=${af}`)
+        .then(r => r.json()).then(data => {
+            if (chartFluxoCaixa) chartFluxoCaixa.destroy();
+            chartFluxoCaixa = new Chart(document.getElementById('chartFluxoCaixa').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        { label: 'Entradas', data: data.entradas, backgroundColor: 'rgba(16,185,129,.65)', borderColor: 'rgba(16,185,129,1)', borderWidth: 1, borderRadius: 4 },
+                        { label: 'Saídas',   data: data.saidas,   backgroundColor: 'rgba(239,68,68,.65)',  borderColor: 'rgba(239,68,68,1)',  borderWidth: 1, borderRadius: 4 },
+                        { label: 'Saldo',    data: data.saldos,   type: 'line', borderColor: 'rgba(67,97,238,1)', backgroundColor: 'rgba(67,97,238,.1)', borderWidth: 2, fill: false, tension: .3, yAxisID: 'y1', pointRadius: 4 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: true,
+                    plugins: { tooltip: { callbacks: { label: c => c.dataset.label + ': R$ ' + c.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits:2}) } } },
+                    scales: {
+                        y:  { beginAtZero: true, position: 'left',  title: { display: true, text: 'Entradas/Saídas (R$)' }, ticks: { callback: v => 'R$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } },
+                        y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'Saldo (R$)' }, grid: { drawOnChartArea: false }, ticks: { callback: v => 'R$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
+                    }
+                }
+            });
+        });
+}
+
+const hoje = new Date();
+const dataInicio = new Date(hoje.getFullYear(), hoje.getMonth() - 11, 1);
+document.getElementById('mes_inicio').value = dataInicio.getMonth() + 1;
+document.getElementById('ano_inicio').value = dataInicio.getFullYear();
+document.addEventListener('DOMContentLoaded', carregarGrafico);
+document.getElementById('btnAtualizarGrafico').addEventListener('click', carregarGrafico);
 </script>
 {% endblock %}

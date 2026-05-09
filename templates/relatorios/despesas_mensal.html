@@ -1,203 +1,150 @@
 {% extends "base.html" %}
+{% block title %}Despesas Mensais — {{ nome_mes }}/{{ ano }}{% endblock %}
 
-{% block title %}Despesas Mensais - {{ nome_mes }}/{{ ano }}{% endblock %}
+{% block extra_css %}
+<style>
+:root{--pg-bg:#f1f5f9;--pg-surface:#fff;--pg-border:#e2e8f0;--pg-muted:#64748b;--pg-red:#ef4444;--pg-blue:#4361ee;--pg-radius:14px;--pg-shadow-md:0 4px 16px rgba(0,0,0,.09)}
+.pg-page{background:var(--pg-bg);min-height:70vh;padding-bottom:2.5rem}
+.pg-header{background:linear-gradient(135deg,#7f1d1d 0%,#dc2626 55%,#ef4444 100%);padding:1.4rem 1.5rem 1.2rem;color:#fff;margin-bottom:1.5rem}
+.pg-header-title{font-size:1.3rem;font-weight:700;margin:0;letter-spacing:-.02em}
+.pg-card{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);overflow:hidden;margin-bottom:1.25rem}
+.pg-filter{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);padding:1rem 1.25rem;margin-bottom:1.25rem}
+.pg-kpi{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);padding:1rem 1.25rem;border-left:4px solid transparent;display:flex;align-items:center;gap:.9rem}
+.pg-kpi-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.pg-kpi-label{font-size:.72rem;color:var(--pg-muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.pg-kpi-value{font-size:1.18rem;font-weight:800;color:#0f172a}
+.pg-card-header{padding:.8rem 1.25rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pg-muted);border-bottom:1px solid var(--pg-border);background:#f8fafc;display:flex;align-items:center;gap:.4rem}
+.pg-table{margin:0;width:100%}
+.pg-table thead th{background:#f8fafc;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--pg-muted);border-bottom:2px solid var(--pg-border);padding:.55rem .75rem}
+.pg-table tbody tr{transition:background .12s;cursor:pointer}
+.pg-table tbody tr:hover{background:#fff5f5}
+.pg-table tbody td{padding:.52rem .75rem;font-size:.855rem;border-bottom:1px solid var(--pg-border);vertical-align:middle}
+.pg-table tbody tr:last-child td{border-bottom:none}
+.rank-n{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;font-size:.75rem;font-weight:800;background:#f1f5f9;color:#64748b}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row mt-4">
-    <div class="col-12">
-        <h2><i class="bi bi-wallet2"></i> Despesas Mensais - {{ nome_mes }}/{{ ano }}</h2>
-        <hr>
+<div class="pg-page">
+<div class="pg-header">
+    <div>
+        <div style="font-size:.8rem;opacity:.7;margin-bottom:.2rem"><i class="bi bi-wallet2 me-1"></i>Relatórios</div>
+        <h1 class="pg-header-title">Despesas Mensais — {{ nome_mes }}/{{ ano }}</h1>
     </div>
 </div>
 
-<!-- Filtro de Mês/Ano -->
-<div class="card mb-3">
-    <div class="card-header">
-        <h5><i class="bi bi-calendar"></i> Selecionar Período</h5>
-    </div>
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Mês</label>
-                <select class="form-select" name="mes">
-                    {% for m in range(1, 13) %}
-                    <option value="{{ m }}" {% if m==mes %}selected{% endif %}>
-                        {{ ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][m-1] }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Ano</label>
-                <input type="number" class="form-control" name="ano" value="{{ ano }}" min="2000" max="2100">
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-search"></i> Filtrar
-                </button>
-            </div>
-        </form>
-    </div>
+<div class="container-fluid px-3">
+
+<!-- Filtro -->
+<div class="pg-filter">
+    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pg-muted);margin-bottom:.75rem"><i class="bi bi-funnel me-1"></i>Selecionar Período</div>
+    <form method="GET" class="row g-2 align-items-end">
+        <div class="col-sm-4 col-md-3">
+            <label class="form-label small fw-semibold">Mês</label>
+            <select class="form-select form-select-sm" name="mes">
+                {% for m in range(1,13) %}
+                <option value="{{ m }}" {% if m==mes %}selected{% endif %}>
+                    {{ ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][m-1] }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-sm-3 col-md-2">
+            <label class="form-label small fw-semibold">Ano</label>
+            <input type="number" class="form-control form-control-sm" name="ano" value="{{ ano }}" min="2000" max="2100">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-search me-1"></i>Filtrar</button>
+        </div>
+    </form>
 </div>
 
-<!-- Cards de Resumo -->
-<div class="row mb-3">
+<!-- KPIs -->
+<div class="row g-3 mb-3">
     <div class="col-md-6">
-        <div class="card bg-danger text-white">
-            <div class="card-body">
-                <h5>Total do Mês</h5>
-                <h2>R$ {{ "%.2f"|format(total_mes)|replace('.', ',') }}</h2>
+        <div class="pg-kpi" style="border-left-color:var(--pg-red)">
+            <div class="pg-kpi-icon" style="background:rgba(239,68,68,.1);color:var(--pg-red)"><i class="bi bi-wallet2"></i></div>
+            <div>
+                <div class="pg-kpi-label">Total do Mês</div>
+                <div class="pg-kpi-value" style="color:var(--pg-red)">R$ {{ "{:,.2f}".format(total_mes|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</div>
             </div>
         </div>
     </div>
     <div class="col-md-6">
-        <div class="card bg-info text-white">
-            <div class="card-body">
-                <h5>Categorias com Gastos</h5>
-                <h2>{{ despesas_por_categoria|length }}</h2>
-                <p class="mb-0">categorias registradas</p>
+        <div class="pg-kpi" style="border-left-color:var(--pg-blue)">
+            <div class="pg-kpi-icon" style="background:rgba(67,97,238,.1);color:var(--pg-blue)"><i class="bi bi-grid-3x3-gap"></i></div>
+            <div>
+                <div class="pg-kpi-label">Categorias com Gastos</div>
+                <div class="pg-kpi-value">{{ despesas_por_categoria|length }}</div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Tabela Detalhada -->
-<div class="card">
-    <div class="card-header">
-        <h5>Detalhamento por Categoria</h5>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Categoria</th>
-                        <th class="text-end">Valor Total</th>
-                        <th class="text-center">Quantidade</th>
-                        <th class="text-end">% do Total</th>
-                        <th>Visualização</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for id, categoria, valor, quantidade in despesas_por_categoria %}
-                    <tr class="clickable-row" style="cursor: pointer;"
-                        onclick="window.location.href='{{ url_for('relatorios.detalhes_despesas', categoria=categoria, mes=mes, ano=ano) }}'">
-                        <td><strong>{{ loop.index }}º</strong></td>
-                        <td>
-                            <span class="badge bg-secondary">{{ categoria }}</span>
-                        </td>
-                        <td class="text-end">
-                            <strong>R$ {{ "%.2f"|format(valor)|replace('.', ',') }}</strong>
-                        </td>
-                        <td class="text-center">{{ quantidade }} lançamentos</td>
-                        <td class="text-end">
-                            {{ "%.1f"|format((valor / total_mes * 100) if total_mes > 0 else 0) }}%
-                        </td>
-                        <td>
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-info" role="progressbar"
-                                    style="width: {{ (valor / total_mes * 100) if total_mes > 0 else 0 }}%">
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">Nenhuma despesa neste período</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+<!-- Tabela por categoria -->
+<div class="pg-card">
+    <div class="pg-card-header"><i class="bi bi-bar-chart"></i>Detalhamento por Categoria</div>
+    <div class="table-responsive">
+        <table class="pg-table table">
+            <thead>
+                <tr>
+                    <th style="width:44px">#</th>
+                    <th>Categoria</th>
+                    <th class="text-end">Valor Total</th>
+                    <th class="text-center">Lançamentos</th>
+                    <th class="text-end">%</th>
+                    <th style="min-width:120px">Barra</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for id, categoria, valor, quantidade in despesas_por_categoria %}
+                <tr onclick="window.location.href='{{ url_for('relatorios.detalhes_despesas', categoria=categoria, mes=mes, ano=ano) }}'">
+                    <td><span class="rank-n">{{ loop.index }}</span></td>
+                    <td><span style="font-size:.82rem;padding:.18rem .45rem;border-radius:5px;background:#f1f5f9;color:#475569;font-weight:600">{{ categoria }}</span></td>
+                    <td class="text-end fw-bold" style="color:var(--pg-red)">R$ {{ "{:,.2f}".format(valor|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</td>
+                    <td class="text-center" style="color:var(--pg-muted);font-size:.82rem">{{ quantidade }}</td>
+                    <td class="text-end fw-semibold">{{ "%.1f"|format((valor/total_mes*100) if total_mes>0 else 0) }}%</td>
+                    <td>
+                        <div class="progress" style="height:9px;border-radius:5px;background:#f1f5f9">
+                            <div class="progress-bar" style="width:{{ (valor/total_mes*100) if total_mes>0 else 0 }}%;background:#06b6d4;border-radius:5px"></div>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-4">Nenhuma despesa neste período</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
-<!-- Gráfico de Barras -->
+<!-- Gráfico -->
 {% if despesas_por_categoria %}
-<div class="card mt-4">
-    <div class="card-header">
-        <h5>Visualização Gráfica</h5>
-    </div>
-    <div class="card-body">
-        <canvas id="graficoDespesas" height="100"></canvas>
-    </div>
+<div class="pg-card">
+    <div class="pg-card-header"><i class="bi bi-bar-chart-line"></i>Visualização Gráfica</div>
+    <div class="p-3"><canvas id="graficoDespesas" height="100"></canvas></div>
 </div>
 {% endif %}
+
+</div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 {% if despesas_por_categoria %}
 <script>
-    const ctx = document.getElementById('graficoDespesas');
-
-    // Paleta de cores variada
-    const baseColors = [
-        'rgba(255, 99, 132, 0.7)',   // Vermelho
-        'rgba(54, 162, 235, 0.7)',   // Azul
-        'rgba(255, 206, 86, 0.7)',   // Amarelo
-        'rgba(75, 192, 192, 0.7)',   // Verde Água
-        'rgba(153, 102, 255, 0.7)',  // Roxo
-        'rgba(255, 159, 64, 0.7)',   // Laranja
-        'rgba(23, 162, 184, 0.7)',   // Ciano
-        'rgba(102, 16, 242, 0.7)',   // Índigo
-        'rgba(40, 167, 69, 0.7)',    // Verde
-        'rgba(220, 53, 69, 0.7)',    // Vermelho Escuro
-        'rgba(253, 126, 20, 0.7)',   // Laranja Escuro
-        'rgba(52, 58, 64, 0.7)'      // Cinza Escuro
-    ];
-
-    // Gerar arrays de cores
-    const dataCount = {{ despesas_por_categoria| length }};
-    const backgroundColors = [];
-    const borderColors = [];
-
-    for (let i = 0; i < dataCount; i++) {
-        const color = baseColors[i % baseColors.length];
-        backgroundColors.push(color);
-        borderColors.push(color.replace('0.7', '1.0'));
-    }
-
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: [{% for id, cat, val, qtd in despesas_por_categoria %}'{{ cat }}'{% if not loop.last %}, {% endif %} {% endfor %}],
-    datasets: [{
-        label: 'Valor Total (R$)',
-        data: [{% for id, cat, val, qtd in despesas_por_categoria %}{{ val }}{% if not loop.last %}, {% endif %} {% endfor %}],
-    backgroundColor: backgroundColors,
-        borderColor: borderColors,
-            borderWidth: 1
-            }]
-        },
-    options: {
-        indexAxis: 'y',
-            responsive: true,
-                plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return 'R$ ' + context.parsed.x.toFixed(2).replace('.', ',');
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                beginAtZero: true,
-                    ticks: {
-                    callback: function(value) {
-                        return 'R$ ' + value.toLocaleString('pt-BR');
-                    }
-                }
-            }
-        }
-    }
-    });
+const baseColors=['rgba(255,99,132,.7)','rgba(54,162,235,.7)','rgba(255,206,86,.7)','rgba(75,192,192,.7)','rgba(153,102,255,.7)','rgba(255,159,64,.7)','rgba(23,162,184,.7)','rgba(102,16,242,.7)','rgba(40,167,69,.7)','rgba(220,53,69,.7)','rgba(253,126,20,.7)','rgba(52,58,64,.7)'];
+const n={{ despesas_por_categoria|length }};
+const bg=[],bc=[];
+for(let i=0;i<n;i++){bg.push(baseColors[i%baseColors.length]);bc.push(baseColors[i%baseColors.length].replace('.7','1'));}
+new Chart(document.getElementById('graficoDespesas'),{
+    type:'bar',
+    data:{
+        labels:[{% for id,c,v,q in despesas_por_categoria %}'{{ c }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets:[{label:'Valor Total (R$)',data:[{% for id,c,v,q in despesas_por_categoria %}{{ v }}{% if not loop.last %},{% endif %}{% endfor %}],backgroundColor:bg,borderColor:bc,borderWidth:1,borderRadius:4}]
+    },
+    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'R$ '+c.parsed.x.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},scales:{x:{beginAtZero:true,ticks:{callback:v=>'R$ '+(v>=1000?(v/1000).toFixed(0)+'k':v)}}}}
+});
 </script>
 {% endif %}
 {% endblock %}

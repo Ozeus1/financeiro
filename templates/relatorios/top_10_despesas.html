@@ -1,192 +1,175 @@
 {% extends "base.html" %}
-
 {% block title %}Top 10 Maiores Despesas{% endblock %}
 
+{% block extra_css %}
+<style>
+:root{--pg-bg:#f1f5f9;--pg-surface:#fff;--pg-border:#e2e8f0;--pg-muted:#64748b;--pg-red:#ef4444;--pg-blue:#4361ee;--pg-cyan:#06b6d4;--pg-slate:#64748b;--pg-amber:#f59e0b;--pg-radius:14px;--pg-shadow-md:0 4px 16px rgba(0,0,0,.09)}
+.pg-page{background:var(--pg-bg);min-height:70vh;padding-bottom:2.5rem}
+.pg-header{background:linear-gradient(135deg,#1e3a8a 0%,#4361ee 55%,#7c3aed 100%);padding:1.4rem 1.5rem 1.2rem;color:#fff;margin-bottom:1.5rem}
+.pg-header-title{font-size:1.3rem;font-weight:700;margin:0;letter-spacing:-.02em}
+.pg-card{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);overflow:hidden;margin-bottom:1.25rem}
+.pg-filter{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);padding:1rem 1.25rem;margin-bottom:1.25rem}
+.pg-kpi{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);padding:1rem 1.25rem;border-left:4px solid transparent;display:flex;align-items:center;gap:.9rem}
+.pg-kpi-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.pg-kpi-label{font-size:.72rem;color:var(--pg-muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.pg-kpi-value{font-size:1.1rem;font-weight:800;color:#0f172a}
+.pg-card-header{padding:.8rem 1.25rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pg-muted);border-bottom:1px solid var(--pg-border);background:#f8fafc;display:flex;align-items:center;gap:.4rem}
+.pg-table{margin:0;width:100%}
+.pg-table thead th{background:#f8fafc;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--pg-muted);border-bottom:2px solid var(--pg-border);padding:.55rem .75rem;white-space:nowrap}
+.pg-table tbody tr{transition:background .12s}
+.pg-table tbody tr:hover{background:#f0f7ff}
+.pg-table tbody td{padding:.5rem .75rem;font-size:.855rem;border-bottom:1px solid var(--pg-border);vertical-align:middle}
+.pg-table tbody tr:last-child td{border-bottom:none}
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;font-size:.78rem;font-weight:800}
+.rank-1{background:rgba(245,158,11,.15);color:#b45309}
+.rank-2{background:rgba(100,116,139,.12);color:#475569}
+.rank-3{background:rgba(217,119,6,.12);color:#92400e}
+.rank-n{background:#f1f5f9;color:#64748b}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row mt-4">
-    <div class="col-12">
-        <h2><i class="bi bi-trophy"></i> Top 10 Maiores Despesas</h2>
-        <hr>
+<div class="pg-page">
+<div class="pg-header">
+    <div>
+        <div style="font-size:.8rem;opacity:.7;margin-bottom:.2rem"><i class="bi bi-trophy me-1"></i>Relatórios</div>
+        <h1 class="pg-header-title">Top 10 Maiores Despesas</h1>
     </div>
 </div>
 
-<!-- Filtros -->
-<div class="row">
-    <div class="col-md-12">
-        <div class="card mb-4">
-            <div class="card-body">
-                <form method="GET" class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Período</label>
-                        <select name="periodo" id="periodo" class="form-select">
-                            <option value="mes_atual" {% if periodo=='mes_atual' %}selected{% endif %}>Mês Atual</option>
-                            <option value="ultimos_3_meses" {% if periodo=='ultimos_3_meses' %}selected{% endif %}>Últimos 3 Meses</option>
-                            <option value="ultimos_6_meses" {% if periodo=='ultimos_6_meses' %}selected{% endif %}>Últimos 6 Meses</option>
-                            <option value="ultimo_ano" {% if periodo=='ultimo_ano' %}selected{% endif %}>Último Ano</option>
-                            <option value="personalizado" {% if periodo=='personalizado' %}selected{% endif %}>Personalizado</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3" id="div_data_inicio" style="display: {% if periodo=='personalizado' %}block{% else %}none{% endif %}">
-                        <label class="form-label">Data Início</label>
-                        <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
-                    </div>
-                    <div class="col-md-3" id="div_data_fim" style="display: {% if periodo=='personalizado' %}block{% else %}none{% endif %}">
-                        <label class="form-label">Data Fim</label>
-                        <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-search"></i> Filtrar
-                        </button>
-                    </div>
-                </form>
-            </div>
+<div class="container-fluid px-3">
+
+<!-- Filtro -->
+<div class="pg-filter">
+    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pg-muted);margin-bottom:.75rem"><i class="bi bi-funnel me-1"></i>Período</div>
+    <form method="GET" class="row g-2 align-items-end">
+        <div class="col-sm-5 col-md-3">
+            <label class="form-label small fw-semibold">Período</label>
+            <select name="periodo" id="periodo" class="form-select form-select-sm">
+                <option value="mes_atual" {% if periodo=='mes_atual' %}selected{% endif %}>Mês Atual</option>
+                <option value="ultimos_3_meses" {% if periodo=='ultimos_3_meses' %}selected{% endif %}>Últimos 3 Meses</option>
+                <option value="ultimos_6_meses" {% if periodo=='ultimos_6_meses' %}selected{% endif %}>Últimos 6 Meses</option>
+                <option value="ultimo_ano" {% if periodo=='ultimo_ano' %}selected{% endif %}>Último Ano</option>
+                <option value="personalizado" {% if periodo=='personalizado' %}selected{% endif %}>Personalizado</option>
+            </select>
         </div>
-    </div>
+        <div class="col-sm-4 col-md-2" id="div_data_inicio" style="display:{% if periodo=='personalizado' %}block{% else %}none{% endif %}">
+            <label class="form-label small fw-semibold">De</label>
+            <input type="date" name="data_inicio" class="form-control form-control-sm" value="{{ data_inicio }}">
+        </div>
+        <div class="col-sm-4 col-md-2" id="div_data_fim" style="display:{% if periodo=='personalizado' %}block{% else %}none{% endif %}">
+            <label class="form-label small fw-semibold">Até</label>
+            <input type="date" name="data_fim" class="form-control form-control-sm" value="{{ data_fim }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Filtrar</button>
+        </div>
+    </form>
 </div>
 
-<!-- Cards de Estatísticas -->
-<div class="row">
-    <div class="col-md-3">
-        <div class="card text-white bg-danger mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Total Top 10</h5>
-                <h3>R$ {{ "{:,.2f}".format(total_top10).replace(",", "X").replace(".", ",").replace("X", ".") }}</h3>
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="pg-kpi" style="border-left-color:var(--pg-red)">
+            <div class="pg-kpi-icon" style="background:rgba(239,68,68,.1);color:var(--pg-red)"><i class="bi bi-trophy-fill"></i></div>
+            <div>
+                <div class="pg-kpi-label">Total Top 10</div>
+                <div class="pg-kpi-value" style="color:var(--pg-red)">R$ {{ "{:,.2f}".format(total_top10|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-primary mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Total Período</h5>
-                <h3>R$ {{ "{:,.2f}".format(total_periodo).replace(",", "X").replace(".", ",").replace("X", ".") }}</h3>
+    <div class="col-6 col-md-3">
+        <div class="pg-kpi" style="border-left-color:var(--pg-blue)">
+            <div class="pg-kpi-icon" style="background:rgba(67,97,238,.1);color:var(--pg-blue)"><i class="bi bi-wallet2"></i></div>
+            <div>
+                <div class="pg-kpi-label">Total Período</div>
+                <div class="pg-kpi-value">R$ {{ "{:,.2f}".format(total_periodo|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-info mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Média</h5>
-                <h3>R$ {{ "{:,.2f}".format(media_despesa).replace(",", "X").replace(".", ",").replace("X", ".") }}</h3>
+    <div class="col-6 col-md-3">
+        <div class="pg-kpi" style="border-left-color:var(--pg-cyan)">
+            <div class="pg-kpi-icon" style="background:rgba(6,182,212,.1);color:var(--pg-cyan)"><i class="bi bi-calculator"></i></div>
+            <div>
+                <div class="pg-kpi-label">Média</div>
+                <div class="pg-kpi-value">R$ {{ "{:,.2f}".format(media_despesa|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-secondary mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Total Transações</h5>
-                <h3>{{ quantidade_total }}</h3>
+    <div class="col-6 col-md-3">
+        <div class="pg-kpi" style="border-left-color:var(--pg-slate)">
+            <div class="pg-kpi-icon" style="background:#f1f5f9;color:var(--pg-slate)"><i class="bi bi-receipt"></i></div>
+            <div>
+                <div class="pg-kpi-label">Total Transações</div>
+                <div class="pg-kpi-value">{{ quantidade_total }}</div>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Gráfico -->
-<div class="row">
-    <div class="col-md-12">
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Top 10 Maiores Despesas</h5>
-                <canvas id="chartTop10" height="80"></canvas>
-            </div>
-        </div>
+<div class="pg-card">
+    <div class="pg-card-header"><i class="bi bi-bar-chart-line"></i>Top 10 Maiores Despesas</div>
+    <div class="p-3"><canvas id="chartTop10" height="80"></canvas></div>
+</div>
+
+<!-- Tabela detalhada -->
+<div class="pg-card">
+    <div class="pg-card-header"><i class="bi bi-table"></i>Detalhamento</div>
+    <div class="table-responsive">
+        <table class="pg-table table">
+            <thead>
+                <tr>
+                    <th style="width:48px">Pos.</th>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th>Categoria</th>
+                    <th>Meio de Pagamento</th>
+                    <th class="text-end">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in top_despesas %}
+                <tr>
+                    <td>
+                        <span class="rank-badge {% if loop.index==1 %}rank-1{% elif loop.index==2 %}rank-2{% elif loop.index==3 %}rank-3{% else %}rank-n{% endif %}">
+                            {{ loop.index }}
+                        </span>
+                    </td>
+                    <td style="color:var(--pg-muted);font-size:.8rem;white-space:nowrap">{{ d.data_pagamento.strftime('%d/%m/%Y') }}</td>
+                    <td>{{ d.descricao }}</td>
+                    <td><span style="font-size:.68rem;padding:.2rem .45rem;border-radius:5px;background:#f1f5f9;color:#475569;font-weight:600">{{ d.categoria.nome }}</span></td>
+                    <td><span style="font-size:.68rem;padding:.2rem .45rem;border-radius:5px;background:#e0f2fe;color:#0284c7;font-weight:600">{{ d.meio_pagamento.nome }}</span></td>
+                    <td class="text-end fw-bold" style="color:var(--pg-red)">R$ {{ "{:,.2f}".format(d.valor|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
-<!-- Tabela Detalhada -->
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Detalhamento</h5>
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Posição</th>
-                                <th>Data</th>
-                                <th>Descrição</th>
-                                <th>Categoria</th>
-                                <th>Meio de Pagamento</th>
-                                <th class="text-end">Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for despesa in top_despesas %}
-                            <tr>
-                                <td><span class="badge bg-primary">{{ loop.index }}º</span></td>
-                                <td>{{ despesa.data_pagamento.strftime('%d/%m/%Y') }}</td>
-                                <td>{{ despesa.descricao }}</td>
-                                <td>{{ despesa.categoria.nome }}</td>
-                                <td>{{ despesa.meio_pagamento.nome }}</td>
-                                <td class="text-end">R$ {{ "{:,.2f}".format(despesa.valor).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+</div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Mostrar/ocultar campos de data personalizada
-document.getElementById('periodo').addEventListener('change', function() {
-    const divInicio = document.getElementById('div_data_inicio');
-    const divFim = document.getElementById('div_data_fim');
-    if (this.value === 'personalizado') {
-        divInicio.style.display = 'block';
-        divFim.style.display = 'block';
-    } else {
-        divInicio.style.display = 'none';
-        divFim.style.display = 'none';
-    }
+document.getElementById('periodo').addEventListener('change',function(){
+    const show=this.value==='personalizado';
+    document.getElementById('div_data_inicio').style.display=show?'':'none';
+    document.getElementById('div_data_fim').style.display=show?'':'none';
 });
 
-// Gráfico de Barras Horizontais
-const ctx = document.getElementById('chartTop10').getContext('2d');
-new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels: {{ chart_labels | tojson }},
-        datasets: [{
-            label: 'Valor (R$)',
-            data: {{ chart_data | tojson }},
-            backgroundColor: [
-                '#e74c3c', '#e67e22', '#f39c12', '#f1c40f', '#2ecc71',
-                '#1abc9c', '#3498db', '#9b59b6', '#34495e', '#95a5a6'
-            ],
-            borderWidth: 1
-        }]
+new Chart(document.getElementById('chartTop10').getContext('2d'),{
+    type:'bar',
+    data:{
+        labels:{{ chart_labels|tojson }},
+        datasets:[{label:'Valor (R$)',data:{{ chart_data|tojson }},backgroundColor:['#e74c3c','#e67e22','#f39c12','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#34495e','#95a5a6'],borderRadius:4}]
     },
-    options: {
-        indexAxis: 'y',
-        responsive: true,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return 'R$ ' + context.parsed.x.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                beginAtZero: true,
-                ticks: {
-                    callback: function(value) {
-                        return 'R$ ' + value.toLocaleString('pt-BR');
-                    }
-                }
-            }
-        }
+    options:{
+        indexAxis:'y',responsive:true,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'R$ '+c.parsed.x.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},
+        scales:{x:{beginAtZero:true,ticks:{callback:v=>'R$ '+(v>=1000?(v/1000).toFixed(0)+'k':v)}}}
     }
 });
 </script>

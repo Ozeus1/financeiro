@@ -55,25 +55,39 @@
 }
 .fc-summary-title { font-size: .95rem; font-weight: 600; margin: 0; }
 
+.fc-summary-rows-wrap {
+    display: flex; flex-direction: column; align-items: center;
+}
 .fc-summary-row {
     display: flex; justify-content: space-between; align-items: center;
-    padding: .55rem 1.25rem;
+    width: 100%; max-width: 540px;
+    padding: .5rem 1rem;
     border-bottom: 1px solid var(--fc-border);
     transition: background .13s;
 }
 .fc-summary-row:last-of-type { border-bottom: none; }
-.fc-summary-row:hover { background: #f8fafc; }
+.fc-summary-row:hover { background: #f0f7ff; }
 .fc-summary-row-label { font-size: .88rem; font-weight: 500; color: var(--fc-text); }
-.fc-summary-row-value { font-size: .88rem; font-weight: 700; color: var(--fc-primary); }
+.fc-summary-row-value { font-size: .9rem; font-weight: 700; color: var(--fc-primary); }
 
 .fc-total-row {
     background: #f8fafc;
     border-top: 2px solid var(--fc-border);
-    padding: .8rem 1.25rem;
-    display: flex; justify-content: space-between; align-items: center;
+    padding: .75rem 1.25rem;
+    display: flex; justify-content: center; align-items: center; gap: 2rem;
 }
 .fc-total-row-label { font-size: 1rem; font-weight: 700; color: var(--fc-text); }
-.fc-total-row-value { font-size: 1.15rem; font-weight: 800; color: var(--fc-success); }
+.fc-total-row-value { font-size: 1.2rem; font-weight: 800; color: var(--fc-success); }
+
+.fc-summary-chart-area {
+    padding: .75rem 1.25rem 1rem;
+    border-top: 1px solid var(--fc-border);
+    background: #fafbfc;
+}
+.fc-summary-chart-label {
+    font-size: .7rem; color: var(--fc-muted); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em; margin-bottom: .5rem;
+}
 
 /* ─── Cards grid ─── */
 .fc-cards-grid {
@@ -286,16 +300,26 @@
         </div>
     </div>
 
+    <div class="fc-summary-rows-wrap">
     {% for item in resumo_global.detalhes_mensais %}
     <div class="fc-summary-row">
         <span class="fc-summary-row-label">{{ item.mes_referencia }}</span>
-        <span class="fc-summary-row-value">R$ {{ "%.2f"|format(item.total)|replace('.', ',') }}</span>
+        <span class="fc-summary-row-value">R$ {{ "{:,.2f}".format(item.total|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</span>
     </div>
     {% endfor %}
+    </div>
+
+    <!-- Gráfico Global -->
+    <div class="fc-summary-chart-area">
+        <div class="fc-summary-chart-label"><i class="bi bi-bar-chart-line me-1"></i>Evolução Mensal — Todos os Cartões</div>
+        <div style="height:200px;">
+            <canvas id="chart-global"></canvas>
+        </div>
+    </div>
 
     <div class="fc-total-row">
         <span class="fc-total-row-label">TOTAL GERAL</span>
-        <span class="fc-total-row-value">R$ {{ "%.2f"|format(resumo_global.total_geral)|replace('.', ',') }}</span>
+        <span class="fc-total-row-value">R$ {{ "{:,.2f}".format(resumo_global.total_geral|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</span>
     </div>
 </div>
 {% endif %}
@@ -338,7 +362,7 @@
                 <div class="fc-item-right">
                     {% if fatura.total > 0 %}
                     <span class="{% if fatura.status == 'Fechada' %}fc-value-fechada{% else %}fc-value-prevista{% endif %}">
-                        R$ {{ "%.2f"|format(fatura.total)|replace('.', ',') }}
+                        R$ {{ "{:,.2f}".format(fatura.total|float)|replace(',','X')|replace('.',',')|replace('X','.') }}
                     </span>
                     {% else %}
                     <span class="fc-value-zero">—</span>
@@ -360,7 +384,7 @@
         <!-- Footer -->
         <div class="fc-card-footer">
             <span class="fc-footer-label">Restante (Próx. Mês+)</span>
-            <span class="fc-footer-value">R$ {{ "%.2f"|format(cartao.total_restante)|replace('.', ',') }}</span>
+            <span class="fc-footer-value">R$ {{ "{:,.2f}".format(cartao.total_restante|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</span>
         </div>
 
     </div>
@@ -449,6 +473,39 @@
 
         // Inicializar Filtros de Visibilidade (LocalStorage)
         loadFilterState();
+
+        // Gráfico Global
+        (function () {
+            const ctx = document.getElementById('chart-global');
+            if (!ctx) return;
+            const labels = {{ resumo_global.detalhes_mensais | map(attribute='mes_referencia') | list | tojson }};
+            const data   = {{ resumo_global.detalhes_mensais | map(attribute='total') | list | tojson }};
+            new Chart(ctx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total (R$)',
+                        data: data,
+                        backgroundColor: 'rgba(16,185,129,0.55)',
+                        borderColor: 'rgba(16,185,129,1)',
+                        borderWidth: 1,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: c => 'R$ ' + c.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) } }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { font: { size: 10 }, callback: v => v >= 1000 ? 'R$' + (v/1000).toFixed(0) + 'k' : v } },
+                        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45, minRotation: 45 } }
+                    }
+                }
+            });
+        })();
 
         // Inicializar gráficos para cada cartão
         {% for cartao in previsoes %}

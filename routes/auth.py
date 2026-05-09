@@ -1,7 +1,8 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User
 from functools import wraps
+import os
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -111,19 +112,37 @@ def register():
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
-    """Perfil do usuário e alteração de senha"""
+    """Perfil do usuário"""
     if request.method == 'POST':
-        current_password = request.form.get('current_password')
-        new_password = request.form.get('new_password')
-        confirm_password = request.form.get('confirm_password')
-        
-        if not current_user.check_password(current_password):
-            flash('Senha atual incorreta.', 'danger')
-        elif new_password != confirm_password:
-            flash('As novas senhas não conferem.', 'warning')
-        else:
-            current_user.set_password(new_password)
+        action = request.form.get('action', 'change_password')
+
+        if action == 'update_profile':
+            current_user.nome     = request.form.get('nome', '').strip() or None
+            current_user.whatsapp = request.form.get('whatsapp', '').strip() or None
+
+            foto_file = request.files.get('foto_perfil')
+            if foto_file and foto_file.filename:
+                ext = foto_file.filename.rsplit('.', 1)[-1].lower()
+                if ext in current_app.config.get('ALLOWED_PHOTO_EXTENSIONS', {'jpg','jpeg','png','webp'}):
+                    foto_nome = f"user_{current_user.id}.{ext}"
+                    foto_file.save(os.path.join(current_app.config['UPLOAD_PERFIL_FOLDER'], foto_nome))
+                    current_user.foto_perfil = foto_nome
+
             db.session.commit()
-            flash('Senha alterada com sucesso!', 'success')
-            
+            flash('Perfil atualizado com sucesso!', 'success')
+
+        else:  # change_password
+            current_password  = request.form.get('current_password')
+            new_password      = request.form.get('new_password')
+            confirm_password  = request.form.get('confirm_password')
+
+            if not current_user.check_password(current_password):
+                flash('Senha atual incorreta.', 'danger')
+            elif new_password != confirm_password:
+                flash('As novas senhas não conferem.', 'warning')
+            else:
+                current_user.set_password(new_password)
+                db.session.commit()
+                flash('Senha alterada com sucesso!', 'success')
+
     return render_template('auth/profile.html')

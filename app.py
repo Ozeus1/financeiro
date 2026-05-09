@@ -45,13 +45,14 @@ def create_app(config_name='default'):
         except (ValueError, TypeError):
             return "0,00"
 
-    # Migração automática: adicionar colunas novas se não existirem
+    # Migração automática
     with app.app_context():
         try:
             from sqlalchemy import text
             with db.engine.connect() as conn:
                 for col, col_type in [('nome', 'VARCHAR(150)'), ('whatsapp', 'VARCHAR(20)'), ('foto_perfil', 'VARCHAR(255)')]:
                     conn.execute(text(f'ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {col_type}'))
+                conn.execute(text('CREATE TABLE IF NOT EXISTS config_sistema (id SERIAL PRIMARY KEY, chave VARCHAR(80) UNIQUE NOT NULL, valor TEXT)'))
                 conn.commit()
         except Exception:
             pass

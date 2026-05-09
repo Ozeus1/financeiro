@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
 from flask_login import login_required, current_user
 from routes.auth import admin_required, gerente_required
-from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa, Receita, BalancoMensal, EventoCaixaAvulso
+from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa, Receita, BalancoMensal, EventoCaixaAvulso, ConfigSistema
 from utils.supabase_client import SupabaseClient
 import json
 from datetime import datetime
@@ -927,6 +927,86 @@ def usuarios():
     
     usuarios = User.query.order_by(User.username).all()
     return render_template('config/usuarios.html', usuarios=usuarios)
+
+
+# ─── SMTP / WhatsApp config ───────────────────────────────────────────────────
+
+_SMTP_KEYS = ['smtp_host','smtp_port','smtp_secure','smtp_user','smtp_password','smtp_from',
+              'webhook_whatsapp','notificar_email','notificar_whatsapp']
+
+@config_bp.route('/smtp-whatsapp', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def smtp_whatsapp():
+    if request.method == 'POST':
+        action = request.form.get('action', 'save')
+
+        if action == 'save':
+            for key in _SMTP_KEYS:
+                val = request.form.get(key, '').strip()
+                ConfigSistema.set(key, val if val else None)
+            db.session.commit()
+            flash('Configurações salvas com sucesso!', 'success')
+
+        elif action == 'test_email':
+            dest = request.form.get('test_email_dest', '').strip()
+            resultado = _enviar_email_teste(dest)
+            flash(resultado[1], resultado[0])
+
+        elif action == 'test_whatsapp':
+            numero = request.form.get('test_whatsapp_numero', '').strip()
+            resultado = _enviar_whatsapp_teste(numero)
+            flash(resultado[1], resultado[0])
+
+        return redirect(url_for('config.smtp_whatsapp'))
+
+    cfg = {k: ConfigSistema.get(k, '') for k in _SMTP_KEYS}
+    return render_template('config/smtp_whatsapp.html', cfg=cfg)
+
+
+def _enviar_email_teste(destinatario):
+    import smtplib, ssl
+    from email.mime.text import MIMEText
+    try:
+        host     = ConfigSistema.get('smtp_host', '')
+        port     = int(ConfigSistema.get('smtp_port', 465) or 465)
+        secure   = (ConfigSistema.get('smtp_secure', 'true') or 'true').lower() == 'true'
+        user     = ConfigSistema.get('smtp_user', '')
+        password = ConfigSistema.get('smtp_password', '')
+        from_    = ConfigSistema.get('smtp_from', user)
+        if not host or not user:
+            return ('warning', 'Configure o SMTP antes de testar.')
+        msg = MIMEText('Teste de e-mail do Sistema Financeiro.')
+        msg['Subject'] = 'Teste SMTP — Sistema Financeiro'
+        msg['From'] = from_
+        msg['To']   = destinatario
+        ctx = ssl.create_default_context()
+        if secure:
+            with smtplib.SMTP_SSL(host, port, context=ctx) as s:
+                s.login(user, password); s.sendmail(from_, [destinatario], msg.as_string())
+        else:
+            with smtplib.SMTP(host, port) as s:
+                s.ehlo(); s.starttls(context=ctx); s.login(user, password)
+                s.sendmail(from_, [destinatario], msg.as_string())
+        return ('success', f'E-mail de teste enviado para {destinatario}.')
+    except Exception as e:
+        return ('danger', f'Erro ao enviar e-mail: {e}')
+
+
+def _enviar_whatsapp_teste(numero):
+    import requests as req
+    try:
+        webhook = ConfigSistema.get('webhook_whatsapp', '')
+        if not webhook:
+            return ('warning', 'Configure o Webhook WhatsApp antes de testar.')
+        mensagem = f'Teste do Sistema Financeiro<0>{numero}'
+        r = req.post(webhook, data=mensagem, timeout=10)
+        if r.status_code < 300:
+            return ('success', f'Mensagem de teste enviada para {numero}.')
+        return ('warning', f'Webhook respondeu com status {r.status_code}.')
+    except Exception as e:
+        return ('danger', f'Erro ao enviar WhatsApp: {e}')
+
 
 @config_bp.route('/orcamento', methods=['GET', 'POST'])
 @login_required

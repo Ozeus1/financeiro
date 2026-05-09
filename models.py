@@ -68,6 +68,28 @@ class User(UserMixin, db.Model):
         return f'<User {self.username}>'
 
 
+class ConfigSistema(db.Model):
+    """Configurações globais do sistema (smtp, webhooks, etc.)"""
+    __tablename__ = 'config_sistema'
+
+    id    = db.Column(db.Integer, primary_key=True)
+    chave = db.Column(db.String(80), unique=True, nullable=False)
+    valor = db.Column(db.Text, nullable=True)
+
+    @classmethod
+    def get(cls, chave, default=None):
+        obj = cls.query.filter_by(chave=chave).first()
+        return obj.valor if obj else default
+
+    @classmethod
+    def set(cls, chave, valor):
+        obj = cls.query.filter_by(chave=chave).first()
+        if obj:
+            obj.valor = valor
+        else:
+            db.session.add(cls(chave=chave, valor=valor))
+
+
 class CategoriaDespesa(db.Model):
     """Categorias de despesas (configurável por usuário)"""
     __tablename__ = 'categorias_despesa'

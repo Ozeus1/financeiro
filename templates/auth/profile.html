@@ -1,81 +1,170 @@
 {% extends "base.html" %}
-
 {% block title %}Meu Perfil{% endblock %}
 
+{% block extra_css %}
+<style>
+:root{--pg-bg:#f1f5f9;--pg-surface:#fff;--pg-border:#e2e8f0;--pg-radius:14px;--pg-shadow-md:0 4px 16px rgba(0,0,0,.09)}
+.pg-page{background:var(--pg-bg);min-height:70vh;padding-bottom:2.5rem}
+.pg-header{background:linear-gradient(135deg,#1e3a8a 0%,#4361ee 55%,#7c3aed 100%);padding:1.4rem 1.5rem 1.2rem;color:#fff;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem}
+.pg-avatar-big{width:60px;height:60px;border-radius:50%;border:3px solid rgba(255,255,255,.4);object-fit:cover;flex-shrink:0}
+.pg-avatar-placeholder{width:60px;height:60px;border-radius:50%;border:3px solid rgba(255,255,255,.4);background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0}
+.pg-header-title{font-size:1.2rem;font-weight:700;margin:0}
+.pg-header-sub{font-size:.82rem;opacity:.72;margin:0}
+.pg-card{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);overflow:hidden;margin-bottom:1.25rem;max-width:680px;margin-left:auto;margin-right:auto}
+.pg-card-header{padding:.8rem 1.25rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:1px solid var(--pg-border);background:#f8fafc;display:flex;align-items:center;gap:.4rem}
+.pg-card-body{padding:1.25rem}
+.pg-label{font-size:.78rem;font-weight:700;color:#374151;margin-bottom:.3rem;display:block}
+.pg-input{border-radius:8px;border:1.5px solid var(--pg-border);font-size:.9rem;transition:border-color .15s}
+.pg-input:focus{border-color:#4361ee;box-shadow:0 0 0 3px rgba(67,97,238,.1)}
+
+.foto-wrap{position:relative;display:inline-block;margin-bottom:.75rem}
+.foto-wrap img,.foto-wrap .foto-ph{width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid var(--pg-border)}
+.foto-wrap .foto-ph{background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:2.2rem;color:#94a3b8}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row mt-4">
-    <div class="col-md-8 offset-md-2">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4><i class="bi bi-person-circle"></i> Meu Perfil</h4>
-            </div>
-            <div class="card-body">
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <h5>Informações do Usuário</h5>
-                        <hr>
-                        <p><strong>Usuário:</strong> {{ current_user.username }}</p>
-                        <p><strong>E-mail:</strong> {{ current_user.email }}</p>
-                        <p><strong>Nível de Acesso:</strong>
-                            {% if current_user.is_admin() %}
-                            <span class="badge bg-danger">Administrador</span>
-                            {% else %}
-                            <span class="badge bg-secondary">Usuário</span>
-                            {% endif %}
-                        </p>
+<div class="pg-page">
 
-                        {% if not current_user.is_admin() %}
-                        <p><strong>Validade do Acesso:</strong>
-                            {% if current_user.data_validade %}
-                                {{ current_user.data_validade.strftime('%d/%m/%Y') }}
-                                {% if current_user.dias_restantes() is not none %}
-                                    {% if current_user.dias_restantes() < 0 %}
-                                    <br><span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> Expirado há {{ -current_user.dias_restantes() }} dias</span>
-                                    {% elif current_user.dias_restantes() == 0 %}
-                                    <br><span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Expira hoje!</span>
-                                    {% elif current_user.dias_restantes() <= 7 %}
-                                    <br><span class="badge bg-warning text-dark"><i class="bi bi-clock"></i> Restam {{ current_user.dias_restantes() }} dias</span>
-                                    {% elif current_user.dias_restantes() <= 30 %}
-                                    <br><span class="badge bg-info"><i class="bi bi-info-circle"></i> Restam {{ current_user.dias_restantes() }} dias</span>
-                                    {% else %}
-                                    <br><span class="badge bg-success"><i class="bi bi-check-circle"></i> Restam {{ current_user.dias_restantes() }} dias</span>
-                                    {% endif %}
-                                {% endif %}
-                            {% else %}
-                            <span class="text-success"><i class="bi bi-infinity"></i> Sem prazo de validade</span>
-                            {% endif %}
-                        </p>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-12">
-                        <h5>Alterar Senha</h5>
-                        <hr>
-                        <form method="POST">
-                            <div class="mb-3">
-                                <label class="form-label">Senha Atual</label>
-                                <input type="password" class="form-control" name="current_password" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Nova Senha</label>
-                                <input type="password" class="form-control" name="new_password" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Confirmar Nova Senha</label>
-                                <input type="password" class="form-control" name="confirm_password" required>
-                            </div>
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-save"></i> Salvar Nova Senha
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="pg-header">
+    {% if current_user.foto_perfil %}
+    <img src="{{ url_for('static', filename='uploads/perfil/' ~ current_user.foto_perfil) }}"
+         class="pg-avatar-big" alt="foto">
+    {% else %}
+    <div class="pg-avatar-placeholder"><i class="bi bi-person"></i></div>
+    {% endif %}
+    <div>
+        <h1 class="pg-header-title">{{ current_user.nome or current_user.username }}</h1>
+        <p class="pg-header-sub">@{{ current_user.username }} ·
+            {% if current_user.is_admin() %}<span style="background:rgba(255,255,255,.2);padding:.1rem .4rem;border-radius:4px;font-size:.72rem">Admin</span>
+            {% else %}<span style="background:rgba(255,255,255,.15);padding:.1rem .4rem;border-radius:4px;font-size:.72rem">Usuário</span>{% endif %}
+        </p>
     </div>
 </div>
+
+<div class="container-fluid px-3">
+
+<!-- Dados do perfil -->
+<div class="pg-card">
+    <div class="pg-card-header"><i class="bi bi-person-fill"></i>Dados do Perfil</div>
+    <div class="pg-card-body">
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="action" value="update_profile">
+
+            <!-- Foto -->
+            <div class="text-center mb-3">
+                <div class="foto-wrap d-inline-block">
+                    {% if current_user.foto_perfil %}
+                    <img src="{{ url_for('static', filename='uploads/perfil/' ~ current_user.foto_perfil) }}"
+                         id="foto-preview" alt="foto">
+                    {% else %}
+                    <div class="foto-ph" id="foto-preview"><i class="bi bi-person"></i></div>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="form-label small text-muted d-block mb-1">Foto de Perfil</label>
+                    <input type="file" class="form-control form-control-sm" name="foto_perfil"
+                           accept="image/jpeg,image/png,image/webp" style="max-width:280px;margin:0 auto"
+                           onchange="previewFoto(this)">
+                    <small class="text-muted">JPG, PNG ou WEBP · máx. 2 MB</small>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="pg-label">Nome Completo</label>
+                    <input type="text" class="form-control pg-input" name="nome"
+                           value="{{ current_user.nome or '' }}" placeholder="Seu nome">
+                </div>
+                <div class="col-md-6">
+                    <label class="pg-label">WhatsApp</label>
+                    <input type="text" class="form-control pg-input" name="whatsapp"
+                           value="{{ current_user.whatsapp or '' }}" placeholder="(99) 99999-9999">
+                </div>
+                <div class="col-12">
+                    <label class="pg-label">Login (username)</label>
+                    <input type="text" class="form-control pg-input bg-light" value="{{ current_user.username }}" disabled>
+                    <small class="text-muted">O login só pode ser alterado por um administrador.</small>
+                </div>
+                <div class="col-12">
+                    <label class="pg-label">E-mail</label>
+                    <input type="text" class="form-control pg-input bg-light" value="{{ current_user.email }}" disabled>
+                </div>
+            </div>
+
+            {% if not current_user.is_admin() and current_user.data_validade %}
+            <div class="alert alert-light border rounded-3 mt-3 p-2 small">
+                <i class="bi bi-calendar-check me-1"></i>
+                <strong>Validade:</strong> {{ current_user.data_validade.strftime('%d/%m/%Y') }}
+                {% set dias = current_user.dias_restantes() %}
+                {% if dias is not none %}
+                    {% if dias < 0 %} — <span class="text-danger">Expirado há {{ -dias }} dias</span>
+                    {% elif dias == 0 %} — <span class="text-warning">Expira hoje!</span>
+                    {% else %} — Restam {{ dias }} dias{% endif %}
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-check-lg me-1"></i>Salvar Perfil
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Alterar senha -->
+<div class="pg-card">
+    <div class="pg-card-header"><i class="bi bi-key-fill"></i>Alterar Senha</div>
+    <div class="pg-card-body">
+        <form method="POST">
+            <input type="hidden" name="action" value="change_password">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="pg-label">Senha Atual</label>
+                    <input type="password" class="form-control pg-input" name="current_password" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="pg-label">Nova Senha</label>
+                    <input type="password" class="form-control pg-input" name="new_password" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="pg-label">Confirmar</label>
+                    <input type="password" class="form-control pg-input" name="confirm_password" required>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-warning btn-sm">
+                    <i class="bi bi-shield-check me-1"></i>Alterar Senha
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewFoto(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const el = document.getElementById('foto-preview');
+        if (el.tagName === 'IMG') {
+            el.src = e.target.result;
+        } else {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.id = 'foto-preview';
+            img.style.cssText = 'width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid #e2e8f0;';
+            el.replaceWith(img);
+        }
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+</script>
 {% endblock %}

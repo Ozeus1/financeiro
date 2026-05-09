@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Config SMTP / WhatsApp{% endblock %}
+
+{% block extra_css %}
+<style>
+:root{--pg-bg:#f1f5f9;--pg-surface:#fff;--pg-border:#e2e8f0;--pg-muted:#64748b;--pg-radius:14px;--pg-shadow-md:0 4px 16px rgba(0,0,0,.09)}
+.pg-page{background:var(--pg-bg);min-height:70vh;padding-bottom:2.5rem}
+.pg-header{background:linear-gradient(135deg,#1e3a8a 0%,#4361ee 55%,#7c3aed 100%);padding:1.4rem 1.5rem 1.2rem;color:#fff;margin-bottom:1.5rem}
+.pg-header-title{font-size:1.3rem;font-weight:700;margin:0;letter-spacing:-.02em}
+.pg-card{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);overflow:hidden;margin-bottom:1.25rem}
+.pg-card-header{padding:.8rem 1.25rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pg-muted);border-bottom:1px solid var(--pg-border);background:#f8fafc;display:flex;align-items:center;gap:.4rem}
+.pg-card-body{padding:1.25rem}
+.pg-label{font-size:.78rem;font-weight:700;color:#374151;margin-bottom:.3rem;display:block}
+.pg-input{border-radius:8px;border:1.5px solid var(--pg-border);font-size:.9rem;transition:border-color .15s}
+.pg-input:focus{border-color:#4361ee;box-shadow:0 0 0 3px rgba(67,97,238,.1)}
+.pg-section{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pg-muted);margin-bottom:.75rem;display:flex;align-items:center;gap:.35rem}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pg-page">
+<div class="pg-header">
+    <div>
+        <div style="font-size:.8rem;opacity:.7;margin-bottom:.2rem"><i class="bi bi-gear me-1"></i>Configurações · Admin</div>
+        <h1 class="pg-header-title"><i class="bi bi-envelope-at me-2"></i>SMTP e WhatsApp</h1>
+    </div>
+</div>
+
+<div class="container-fluid px-3" style="max-width:860px">
+<form method="POST">
+    <input type="hidden" name="action" value="save">
+
+    <!-- SMTP -->
+    <div class="pg-card">
+        <div class="pg-card-header"><i class="bi bi-envelope-fill"></i>Configurações SMTP (E-mail)</div>
+        <div class="pg-card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="pg-label">Host</label>
+                    <input type="text" class="form-control pg-input" name="smtp_host"
+                           value="{{ cfg.smtp_host }}" placeholder="smtp.hostinger.com">
+                </div>
+                <div class="col-md-3">
+                    <label class="pg-label">Porta</label>
+                    <input type="number" class="form-control pg-input" name="smtp_port"
+                           value="{{ cfg.smtp_port or 465 }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="pg-label">Secure (SSL)</label>
+                    <select class="form-select pg-input" name="smtp_secure">
+                        <option value="true" {% if cfg.smtp_secure != 'false' %}selected{% endif %}>true</option>
+                        <option value="false" {% if cfg.smtp_secure == 'false' %}selected{% endif %}>false</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="pg-label">Usuário</label>
+                    <input type="text" class="form-control pg-input" name="smtp_user"
+                           value="{{ cfg.smtp_user }}" placeholder="email@dominio.com">
+                </div>
+                <div class="col-md-6">
+                    <label class="pg-label">Senha</label>
+                    <input type="password" class="form-control pg-input" name="smtp_password"
+                           value="{{ cfg.smtp_password }}" placeholder="••••••••">
+                </div>
+                <div class="col-md-6">
+                    <label class="pg-label">From (remetente)</label>
+                    <input type="text" class="form-control pg-input" name="smtp_from"
+                           value="{{ cfg.smtp_from }}" placeholder="noreply@dominio.com">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WhatsApp -->
+    <div class="pg-card">
+        <div class="pg-card-header"><i class="bi bi-whatsapp"></i>Webhook WhatsApp</div>
+        <div class="pg-card-body">
+            <div class="mb-3">
+                <label class="pg-label">URL do Webhook</label>
+                <input type="url" class="form-control pg-input" name="webhook_whatsapp"
+                       value="{{ cfg.webhook_whatsapp }}" placeholder="https://...">
+            </div>
+            <div class="alert alert-light border rounded-3 p-2" style="font-size:.82rem">
+                <i class="bi bi-info-circle me-1 text-primary"></i>
+                O sistema envia texto puro no formato <code>Mensagem&lt;0&gt;NÚMERO</code>.
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificações -->
+    <div class="pg-card">
+        <div class="pg-card-header"><i class="bi bi-bell-fill"></i>Canais de Notificação</div>
+        <div class="pg-card-body">
+            <p class="text-muted small mb-3">Escolha se os avisos do sistema serão enviados por e-mail, WhatsApp, ou pelos dois canais ao mesmo tempo.</p>
+            <div class="d-flex gap-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="notificar_email" value="1"
+                           id="chk_email" {% if cfg.notificar_email == '1' %}checked{% endif %}>
+                    <label class="form-check-label fw-semibold" for="chk_email">
+                        <i class="bi bi-envelope-fill text-primary me-1"></i>E-mail
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="notificar_whatsapp" value="1"
+                           id="chk_wpp" {% if cfg.notificar_whatsapp == '1' %}checked{% endif %}>
+                    <label class="form-check-label fw-semibold" for="chk_wpp">
+                        <i class="bi bi-whatsapp text-success me-1"></i>WhatsApp
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mb-4">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i>Salvar Configurações
+        </button>
+    </div>
+</form>
+
+<!-- Testes -->
+<div class="pg-card">
+    <div class="pg-card-header"><i class="bi bi-send-check"></i>Testes de Envio</div>
+    <div class="pg-card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="pg-section"><i class="bi bi-envelope"></i>Teste de E-mail</div>
+                <form method="POST" class="d-flex gap-2">
+                    <input type="hidden" name="action" value="test_email">
+                    <input type="email" class="form-control pg-input" name="test_email_dest"
+                           placeholder="destinatário" required>
+                    <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap">Enviar teste</button>
+                </form>
+            </div>
+            <div class="col-md-6">
+                <div class="pg-section"><i class="bi bi-whatsapp"></i>Teste de WhatsApp</div>
+                <form method="POST" class="d-flex gap-2">
+                    <input type="hidden" name="action" value="test_whatsapp">
+                    <input type="text" class="form-control pg-input" name="test_whatsapp_numero"
+                           placeholder="número WhatsApp (ex: 5585999...)" required>
+                    <button type="submit" class="btn btn-outline-success btn-sm text-nowrap">Enviar teste</button>
+                </form>
+                <small class="text-muted d-block mt-1">Formato enviado: <code>Teste Sistema&lt;0&gt;NÚMERO</code></small>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+</div>
+{% endblock %}

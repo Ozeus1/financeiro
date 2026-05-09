@@ -78,7 +78,15 @@
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Dados para Importar</h5>
-            <span class="badge bg-light text-dark" id="contador-registros">0 registros</span>
+            <div class="d-flex align-items-center gap-2">
+                <label class="mb-0 small">Por página:</label>
+                <select class="form-select form-select-sm text-dark bg-white" id="pageSizeSelect" style="width:auto;">
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <span class="badge bg-light text-dark" id="contador-registros">0 registros</span>
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive" style="max-height: 500px;">
@@ -101,17 +109,17 @@
                             <th>
                                 Meio Pgto.
                                 <input type="text" class="form-control form-control-sm mt-1 filter-input"
-                                    data-col="3" data-filter-type="text" placeholder="Filtrar...">
+                                    data-col="3" data-filter-type="text" placeholder="Buscar texto...">
                             </th>
                             <th>
                                 Categoria
                                 <input type="text" class="form-control form-control-sm mt-1 filter-input"
-                                    data-col="4" data-filter-type="text" placeholder="Filtrar...">
+                                    data-col="4" data-filter-type="text" placeholder="Buscar texto...">
                             </th>
                             <th class="text-center">
                                 Parcelas
                                 <input type="text" class="form-control form-control-sm mt-1 filter-input"
-                                    data-col="5" data-filter-type="text" placeholder="Filtrar...">
+                                    data-col="5" data-filter-type="numeric" placeholder="&gt;2  &lt;5  =3">
                             </th>
                             <th class="text-center" style="min-width:160px;">
                                 Data Despesa
@@ -134,6 +142,10 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top" id="pagination-container" style="display:none!important;">
+            <span class="text-muted small" id="pagination-info"></span>
+            <nav><ul class="pagination pagination-sm mb-0" id="pagination-controls"></ul></nav>
         </div>
         <div class="card-footer bg-light">
             <div class="d-flex justify-content-between">
@@ -314,6 +326,9 @@
                     }
                 });
             });
+
+            currentPage = 1;
+            renderPage();
         }
 
         function excluirItem(id, tr) {
@@ -520,18 +535,90 @@
             return cellText.includes(val.toLowerCase());
         }
 
-        function applyFilters() {
-            const filters = document.querySelectorAll('.filter-input');
-            Array.from(tbody.getElementsByTagName('tr')).forEach(row => {
-                if (row.cells.length < 8) return;
-                const visible = Array.from(filters).every(f => filterMatches(f, row));
-                row.style.display = visible ? '' : 'none';
+        let currentPage = 1;
+        let pageSize = 25;
+
+        function getDataRows() {
+            return Array.from(tbody.getElementsByTagName('tr')).filter(r => r.cells.length >= 8);
+        }
+
+        function getFilteredRows() {
+            const filters = Array.from(document.querySelectorAll('.filter-input'));
+            return getDataRows().filter(row => filters.every(f => filterMatches(f, row)));
+        }
+
+        function getPageRange(cur, total) {
+            if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
+            if (cur <= 4) return [1, 2, 3, 4, 5, '...', total];
+            if (cur >= total - 3) return [1, '...', total-4, total-3, total-2, total-1, total];
+            return [1, '...', cur-1, cur, cur+1, '...', total];
+        }
+
+        function renderPage() {
+            const filtered = getFilteredRows();
+            const total = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            getDataRows().forEach(r => r.style.display = 'none');
+            const start = (currentPage - 1) * pageSize;
+            filtered.slice(start, start + pageSize).forEach(r => r.style.display = '');
+
+            // Info
+            const s = total > 0 ? start + 1 : 0;
+            const e = Math.min(start + pageSize, total);
+            document.getElementById('pagination-info').textContent =
+                total > 0 ? `Exibindo ${s}–${e} de ${total}` : 'Nenhum resultado';
+
+            // Mostrar/ocultar container
+            const pc = document.getElementById('pagination-container');
+            pc.style.display = total > 0 ? 'flex' : 'none';
+            pc.style.setProperty('display', total > 0 ? 'flex' : 'none', 'important');
+
+            // Botões de página
+            const ul = document.getElementById('pagination-controls');
+            ul.innerHTML = '';
+
+            const mkLi = (label, page, active, disabled) => {
+                const li = document.createElement('li');
+                li.className = `page-item${active ? ' active' : ''}${disabled ? ' disabled' : ''}`;
+                li.innerHTML = disabled && label === '…'
+                    ? `<span class="page-link">${label}</span>`
+                    : `<a class="page-link" href="#" data-page="${page}">${label}</a>`;
+                return li;
+            };
+
+            ul.appendChild(mkLi('«', currentPage - 1, false, currentPage === 1));
+            getPageRange(currentPage, totalPages).forEach(p => {
+                ul.appendChild(p === '...'
+                    ? mkLi('…', null, false, true)
+                    : mkLi(p, p, p === currentPage, false));
             });
+            ul.appendChild(mkLi('»', currentPage + 1, false, currentPage === totalPages));
+
+            ul.querySelectorAll('a[data-page]').forEach(a => {
+                a.addEventListener('click', e => {
+                    e.preventDefault();
+                    const p = parseInt(a.dataset.page);
+                    if (p >= 1 && p <= totalPages) { currentPage = p; renderPage(); }
+                });
+            });
+        }
+
+        function applyFilters() {
+            currentPage = 1;
+            renderPage();
         }
 
         document.querySelectorAll('.filter-input').forEach(input => {
             input.addEventListener('keyup', applyFilters);
             input.addEventListener('change', applyFilters);
+        });
+
+        document.getElementById('pageSizeSelect').addEventListener('change', function () {
+            pageSize = parseInt(this.value);
+            currentPage = 1;
+            renderPage();
         });
     });
 </script>

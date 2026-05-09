@@ -166,20 +166,32 @@
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.despesas_mensal') }}"><i class="bi bi-wallet2"></i>Despesas Mensais</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.receitas_mensal') }}"><i class="bi bi-cash-coin"></i>Receitas Mensais</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.top_contas') }}"><i class="bi bi-star"></i>Top 10 Contas</a>
-        <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.top_10_despesas') }}"><i class="bi bi-trophy"></i>Top 10 Despesas</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.despesas_por_categoria_evolucao') }}"><i class="bi bi-graph-up"></i>Evolução por Categoria</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.despesas_por_pagamento') }}"><i class="bi bi-credit-card-2-front"></i>Por Meio de Pagamento</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.despesas_entre_datas') }}"><i class="bi bi-calendar-range"></i>Despesas Entre Datas</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.despesas_mensais_periodo') }}"><i class="bi bi-calendar3"></i>Mensal por Período</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.top_10_despesas') }}"><i class="bi bi-trophy"></i>Top 10 Maiores Despesas</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.evolucao_temporal') }}"><i class="bi bi-graph-up-arrow"></i>Evolução Temporal</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.comparativo_anual') }}"><i class="bi bi-calendar-range"></i>Comparativo Anual</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.orcado_vs_gasto') }}"><i class="bi bi-clipboard-data"></i>Orçado vs Gasto</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.previsao_cartoes') }}"><i class="bi bi-credit-card"></i>Previsão Cartões</a>
 
         <div class="nav-section">Configurações</div>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.categorias_despesa') }}"><i class="bi bi-tags"></i>Categorias Despesa</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.categorias_receita') }}"><i class="bi bi-tags"></i>Categorias Receita</a>
-        <a class="nav-link dropdown-sub" href="{{ url_for('config.meios_pagamento') }}"><i class="bi bi-credit-card-2-front"></i>Meios Pagamento</a>
-        <a class="nav-link dropdown-sub" href="{{ url_for('config.meios_recebimento') }}"><i class="bi bi-bank"></i>Meios Recebimento</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('config.meios_pagamento') }}"><i class="bi bi-credit-card-2-front"></i>Meios de Pagamento</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('config.meios_recebimento') }}"><i class="bi bi-bank"></i>Meios de Recebimento</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.orcamento') }}"><i class="bi bi-calculator"></i>Orçamentos</a>
-        <a class="nav-link dropdown-sub" href="{{ url_for('config.cartoes') }}"><i class="bi bi-credit-card"></i>Cartões</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('config.cartoes') }}"><i class="bi bi-credit-card"></i>Configurar Cartões</a>
         {% if current_user.is_admin() %}
+        <div class="nav-divider"></div>
+        <a class="nav-link dropdown-sub" href="{{ url_for('config.importar_dados_antigos') }}"><i class="bi bi-download"></i>Importar Dados Antigos</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('config.importar_supabase') }}"><i class="bi bi-cloud-download"></i>Importar do Supabase</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.usuarios') }}"><i class="bi bi-people"></i>Gerenciar Usuários</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('auth.register') }}"><i class="bi bi-person-plus"></i>Novo Usuário</a>
+        <div class="nav-divider"></div>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.smtp_whatsapp') }}"><i class="bi bi-envelope-at"></i>SMTP / WhatsApp</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('config.openfinance') }}"><i class="bi bi-bank"></i>OpenFinance (Pluggy)</a>
         {% endif %}
 
         <div class="nav-divider"></div>

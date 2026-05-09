@@ -123,6 +123,8 @@ def editar(id):
         flash('Você não tem permissão para editar esta despesa.', 'danger')
         return redirect(url_for('despesas.lista', **filtros))
     
+    next_url = request.args.get('next') or request.form.get('next')
+
     if request.method == 'POST':
         despesa.descricao = request.form.get('descricao')
         despesa.valor = float(request.form.get('valor').replace(',', '.'))
@@ -130,17 +132,18 @@ def editar(id):
         despesa.meio_pagamento_id = int(request.form.get('meio_pagamento_id'))
         despesa.num_parcelas = int(request.form.get('num_parcelas', 1))
         despesa.data_pagamento = datetime.strptime(request.form.get('data_pagamento'), '%Y-%m-%d').date()
-        
+
         db.session.commit()
-        
-        # Recuperar filtros do form (se houver) ou usar padrão
+        flash('Despesa atualizada com sucesso!', 'success')
+
+        if next_url:
+            return redirect(next_url)
+
         filtros_redirect = {}
         for key in ['periodo', 'data_inicio', 'data_fim', 'categoria_id', 'meio_pagamento_id', 'busca', 'page']:
             val = request.form.get(f'filtro_{key}')
             if val:
                 filtros_redirect[key] = val
-        
-        flash('Despesa atualizada com sucesso!', 'success')
         return redirect(url_for('despesas.lista', **filtros_redirect))
 
     categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
@@ -150,7 +153,8 @@ def editar(id):
                          despesa=despesa,
                          categorias=categorias,
                          meios_pagamento=meios_pagamento,
-                         filtros=filtros)
+                         filtros=filtros,
+                         next_url=next_url)
 
 @despesas_bp.route('/<int:id>/excluir', methods=['POST'])
 @login_required
@@ -163,11 +167,12 @@ def excluir(id):
         flash('Você não tem permissão para excluir esta despesa.', 'danger')
         return redirect(url_for('despesas.lista'))
     
+    next_url = request.form.get('next')
     db.session.delete(despesa)
     db.session.commit()
-    
+
     flash('Despesa excluída com sucesso!', 'success')
-    return redirect(url_for('despesas.lista'))
+    return redirect(next_url if next_url else url_for('despesas.lista'))
 
 @despesas_bp.route('/exportar')
 @login_required

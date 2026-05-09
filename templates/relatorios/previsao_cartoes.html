@@ -222,6 +222,7 @@
                                     <th>Categoria</th>
                                     <th>Parcela</th>
                                     <th class="text-end">Valor</th>
+                                    <th class="text-center">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="tabelaTransacoes">
@@ -229,7 +230,7 @@
                             </tbody>
                             <tfoot>
                                 <tr class="table-active fw-bold">
-                                    <td colspan="4" class="text-end">TOTAL</td>
+                                    <td colspan="5" class="text-end">TOTAL</td>
                                     <td class="text-end" id="totalFaturaModal">R$ 0,00</td>
                                 </tr>
                             </tfoot>
@@ -243,6 +244,11 @@
         </div>
     </div>
 </div>
+
+<!-- Form oculto para excluir despesa da fatura -->
+<form id="formExcluirFatura" method="POST" style="display:none;">
+    <input type="hidden" name="next" value="/relatorios/previsao-cartoes">
+</form>
 
 {% endif %}
 {% endblock %}
@@ -395,6 +401,14 @@
         });
     }
 
+    // Excluir despesa direto da fatura
+    function excluirDaFatura(id) {
+        if (!confirm('Excluir esta despesa? A ação não pode ser desfeita.')) return;
+        const form = document.getElementById('formExcluirFatura');
+        form.action = `/despesas/${id}/excluir`;
+        form.submit();
+    }
+
     // Função para abrir modal de detalhes
     function verDetalhes(cartaoId, mes, ano, nomeCartao, mesRef) {
         // Configurar modal
@@ -415,17 +429,27 @@
                 let total = 0;
 
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhuma transação encontrada.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma transação encontrada.</td></tr>';
                 } else {
                     data.forEach(item => {
                         total += item.valor;
                         const row = `
-                            <tr>
+                            <tr class="align-middle">
                                 <td>${item.data}</td>
                                 <td>${item.descricao}</td>
                                 <td><span class="badge bg-light text-dark border">${item.categoria}</span></td>
                                 <td>${item.parcelas}</td>
                                 <td class="text-end">R$ ${item.valor.toFixed(2).replace('.', ',')}</td>
+                                <td class="text-center text-nowrap">
+                                    <a href="/despesas/${item.id}/editar?next=/relatorios/previsao-cartoes"
+                                       class="btn btn-sm btn-outline-primary me-1" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button onclick="excluirDaFatura(${item.id})"
+                                            class="btn btn-sm btn-outline-danger" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
                             </tr>
                         `;
                         tbody.innerHTML += row;

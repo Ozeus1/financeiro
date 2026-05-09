@@ -442,9 +442,10 @@ def api_fatura_detalhes(cartao_id, mes, ano):
                 if data_parcela.month == mes and data_parcela.year == ano:
                     # Encontrou! Adicionar aos detalhes
                     detalhes.append({
+                        'id': d.id,
                         'data': d.data_pagamento.strftime('%d/%m/%Y'),
                         'descricao': d.descricao,
-                        'valor': valor_parcela, # Valor da parcela, não total
+                        'valor': valor_parcela,
                         'categoria': d.categoria.nome,
                         'parcelas': f"{i+1}/{d.num_parcelas}" if d.num_parcelas > 1 else "À vista"
                     })

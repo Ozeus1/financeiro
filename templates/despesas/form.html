@@ -75,9 +75,12 @@
                     <input type="hidden" name="filtro_{{ key }}" value="{{ value }}">
                     {% endfor %}
                     {% endif %}
+                    {% if next_url %}
+                    <input type="hidden" name="next" value="{{ next_url }}">
+                    {% endif %}
 
                     <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('despesas.lista', **filtros) if filtros else url_for('despesas.lista') }}"
+                        <a href="{{ next_url if next_url else (url_for('despesas.lista', **filtros) if filtros else url_for('despesas.lista')) }}"
                             class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Voltar
                         </a>

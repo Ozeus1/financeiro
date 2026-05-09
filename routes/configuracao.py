@@ -999,7 +999,7 @@ def _enviar_whatsapp_teste(numero):
         webhook = ConfigSistema.get('webhook_whatsapp', '')
         if not webhook:
             return ('warning', 'Configure o Webhook WhatsApp antes de testar.')
-        mensagem = f'Teste do Sistema Financeiro<0>{numero}'
+        mensagem = f'Teste do Sistema Financeiro<o>{numero}'
         r = req.post(webhook, data=mensagem, timeout=10)
         if r.status_code < 300:
             return ('success', f'Mensagem de teste enviada para {numero}.')

@@ -4,6 +4,73 @@ from models import db, User
 from functools import wraps
 import os
 
+
+def _generate_reset_token(email):
+    from itsdangerous import URLSafeTimedSerializer
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    return s.dumps(email, salt='password-reset')
+
+
+def _verify_reset_token(token, max_age=3600):
+    from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    try:
+        email = s.loads(token, salt='password-reset', max_age=max_age)
+    except (SignatureExpired, BadSignature):
+        return None
+    return email
+
+
+def _send_reset_email(to_email, reset_url):
+    from models import ConfigSistema
+    import smtplib, ssl
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    host     = ConfigSistema.get('smtp_host', '')
+    port     = int(ConfigSistema.get('smtp_port', 465) or 465)
+    secure   = (ConfigSistema.get('smtp_secure', 'true') or 'true').lower() == 'true'
+    user     = ConfigSistema.get('smtp_user', '')
+    password = ConfigSistema.get('smtp_password', '')
+    from_    = ConfigSistema.get('smtp_from', user)
+
+    if not host or not user:
+        raise ValueError('Servidor SMTP não configurado. Solicite ao administrador.')
+
+    html_body = f"""
+    <div style="font-family:sans-serif;max-width:500px;margin:auto">
+      <h2 style="color:#4361ee">Redefinir Senha</h2>
+      <p>Recebemos uma solicitação para redefinir a senha do seu acesso ao
+         <strong>Sistema Financeiro</strong>.</p>
+      <p style="margin:1.5rem 0">
+        <a href="{reset_url}"
+           style="background:#4361ee;color:#fff;padding:.75rem 1.5rem;border-radius:8px;
+                  text-decoration:none;font-weight:600">
+          Redefinir minha senha
+        </a>
+      </p>
+      <p style="color:#64748b;font-size:.85rem">
+        Este link expira em 1 hora. Se você não solicitou a redefinição,
+        ignore este e-mail.
+      </p>
+    </div>
+    """
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = 'Redefinir Senha — Sistema Financeiro'
+    msg['From']    = from_
+    msg['To']      = to_email
+    msg.attach(MIMEText(html_body, 'html'))
+
+    ctx = ssl.create_default_context()
+    if secure:
+        with smtplib.SMTP_SSL(host, port, context=ctx) as s:
+            s.login(user, password)
+            s.sendmail(from_, [to_email], msg.as_string())
+    else:
+        with smtplib.SMTP(host, port) as s:
+            s.ehlo(); s.starttls(context=ctx); s.login(user, password)
+            s.sendmail(from_, [to_email], msg.as_string())
+
 auth_bp = Blueprint('auth', __name__)
 
 def admin_required(f):
@@ -146,3 +213,64 @@ def profile():
                 flash('Senha alterada com sucesso!', 'success')
 
     return render_template('auth/profile.html')
+
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Solicitar redefinição de senha por e-mail"""
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        user  = User.query.filter_by(email=email).first()
+
+        # Sempre exibe a mesma mensagem para não revelar quais e-mails existem
+        msg_ok = 'Se este e-mail estiver cadastrado, você receberá as instruções em breve.'
+
+        if user and user.ativo:
+            try:
+                token     = _generate_reset_token(email)
+                reset_url = url_for('auth.reset_password', token=token, _external=True)
+                _send_reset_email(email, reset_url)
+            except Exception as e:
+                flash(f'Erro ao enviar e-mail: {e}', 'danger')
+                return render_template('auth/forgot_password.html')
+
+        flash(msg_ok, 'info')
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/forgot_password.html')
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Redefinir senha via token do e-mail"""
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+
+    email = _verify_reset_token(token)
+    if not email:
+        flash('Link inválido ou expirado. Solicite um novo.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        flash('Usuário não encontrado.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    if request.method == 'POST':
+        new_password     = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+
+        if len(new_password) < 6:
+            flash('A senha deve ter pelo menos 6 caracteres.', 'warning')
+        elif new_password != confirm_password:
+            flash('As senhas não conferem.', 'warning')
+        else:
+            user.set_password(new_password)
+            db.session.commit()
+            flash('Senha redefinida com sucesso! Faça login.', 'success')
+            return redirect(url_for('auth.login'))
+
+    return render_template('auth/reset_password.html', token=token)

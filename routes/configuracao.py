@@ -1209,10 +1209,17 @@ def importar_dados_supabase():
                     db.session.commit()
                 
                 # Criar Despesa
-                valor_str = str(item.get('valor', '0'))
-                # Remove thousand separator (.) and replace decimal separator (,) with (.)
-                valor_str = valor_str.replace('.', '').replace(',', '.')
-                valor = float(valor_str)
+                raw_valor = item.get('valor', 0)
+                if isinstance(raw_valor, (int, float)):
+                    # Já é número — usa direto
+                    valor = float(raw_valor)
+                else:
+                    valor_str = str(raw_valor).strip()
+                    if ',' in valor_str:
+                        # Formato brasileiro: 1.234,56 → remove '.' de milhar, troca ',' por '.'
+                        valor_str = valor_str.replace('.', '').replace(',', '.')
+                    # Caso contrário é ponto decimal padrão: 4.99 → usa direto
+                    valor = float(valor_str) if valor_str else 0.0
                 
                 # Converter data (assumindo formato YYYY-MM-DD ou DD/MM/YYYY)
                 data_str = item.get('data_despesa')

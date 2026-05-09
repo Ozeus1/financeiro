@@ -431,10 +431,10 @@
                 return {
                     id:             d.id,
                     descricao:      d.descricao      || '',
-                    valor:          String(d.valor   || 0),
+                    valor:          parseFloat(d.valor) || 0,
                     meio_pagamento: d.forma_pagamento || 'Outros',
                     categoria:      d.conta_despesa  || 'Outros',
-                    parcelas:       String(d.numero_parcelas || 1),
+                    parcelas:       parseInt(d.numero_parcelas) || 1,
                     data_despesa:   dataDespesa
                 };
             });

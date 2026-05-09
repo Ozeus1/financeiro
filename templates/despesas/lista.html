@@ -24,6 +24,8 @@
 .btn-edit:hover{opacity:.82;color:#fff}
 .btn-del{background:var(--pg-red);border:none;color:#fff;border-radius:7px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:.8rem;transition:opacity .15s}
 .btn-del:hover{opacity:.82;color:#fff}
+/* hint do operador */
+.op-hint{font-size:.62rem;color:var(--pg-muted);margin-top:.15rem}
 </style>
 {% endblock %}
 
@@ -46,55 +48,80 @@
 
 <div class="container-fluid px-3">
 
-<!-- Filtros -->
+<!-- ── Filtros Inteligentes ── -->
 <div class="pg-filter">
     <div class="pg-section-label"><i class="bi bi-funnel"></i>Filtros</div>
-    <form method="GET" class="row g-2 align-items-end">
+    <form method="GET" id="formFiltros" class="row g-2 align-items-end">
+
+        <!-- Descrição -->
         <div class="col-sm-6 col-md-3">
-            <label class="form-label small fw-semibold mb-1">Buscar</label>
-            <input type="text" class="form-control form-control-sm" name="busca" value="{{ request.args.get('busca','') }}" placeholder="Descrição...">
+            <label class="form-label small fw-semibold mb-1">Descrição</label>
+            <input type="text" class="form-control form-control-sm" name="busca"
+                   value="{{ request.args.get('busca','') }}" placeholder="Buscar texto...">
         </div>
+
+        <!-- Categoria -->
         <div class="col-sm-6 col-md-2">
             <label class="form-label small fw-semibold mb-1">Categoria</label>
-            <select class="form-select form-select-sm" name="categoria_id">
-                <option value="">Todas</option>
-                {% for cat in categorias %}
-                <option value="{{ cat.id }}" {% if request.args.get('categoria_id')==cat.id|string %}selected{% endif %}>{{ cat.nome }}</option>
-                {% endfor %}
-            </select>
+            <input type="text" class="form-control form-control-sm" name="categoria_busca"
+                   value="{{ request.args.get('categoria_busca','') }}" placeholder="Buscar texto...">
         </div>
+
+        <!-- Meio Pagamento -->
         <div class="col-sm-6 col-md-2">
             <label class="form-label small fw-semibold mb-1">Meio Pagamento</label>
-            <select class="form-select form-select-sm" name="meio_pagamento_id">
-                <option value="">Todos</option>
-                {% for m in meios_pagamento %}
-                <option value="{{ m.id }}" {% if request.args.get('meio_pagamento_id')==m.id|string %}selected{% endif %}>{{ m.nome }}</option>
-                {% endfor %}
-            </select>
+            <input type="text" class="form-control form-control-sm" name="meio_busca"
+                   value="{{ request.args.get('meio_busca','') }}" placeholder="Buscar texto...">
         </div>
+
+        <!-- Valor -->
+        <div class="col-sm-3 col-md-1">
+            <label class="form-label small fw-semibold mb-1">Valor</label>
+            <input type="text" class="form-control form-control-sm" name="valor_filtro"
+                   value="{{ request.args.get('valor_filtro','') }}" placeholder=">100">
+            <div class="op-hint">&gt;100 &lt;500 =200</div>
+        </div>
+
+        <!-- Parcelas -->
+        <div class="col-sm-3 col-md-1">
+            <label class="form-label small fw-semibold mb-1">Parcelas</label>
+            <input type="text" class="form-control form-control-sm" name="parcelas_filtro"
+                   value="{{ request.args.get('parcelas_filtro','') }}" placeholder=">1">
+            <div class="op-hint">&gt;2 &lt;5 =3</div>
+        </div>
+
+        <!-- Período -->
         <div class="col-sm-6 col-md-2">
             <label class="form-label small fw-semibold mb-1">Período</label>
             <select class="form-select form-select-sm" name="periodo" id="periodoSelect" onchange="toggleDatas()">
                 <option value="mes_atual" {% if periodo=='mes_atual' %}selected{% endif %}>Mês Atual</option>
-                <option value="todos" {% if periodo=='todos' %}selected{% endif %}>Todos</option>
+                <option value="todos"     {% if periodo=='todos'     %}selected{% endif %}>Todos</option>
                 <option value="personalizado" {% if periodo=='personalizado' %}selected{% endif %}>Personalizado</option>
             </select>
         </div>
+
+        <!-- Datas (custom) -->
         <div class="col-sm-6 col-md-2" id="divDataInicio" style="display:none">
             <label class="form-label small fw-semibold mb-1">De</label>
-            <input type="date" class="form-control form-control-sm" name="data_inicio" value="{{ data_inicio_filtro or '' }}">
+            <input type="date" class="form-control form-control-sm" name="data_inicio"
+                   value="{{ data_inicio_filtro or '' }}">
         </div>
         <div class="col-sm-6 col-md-2" id="divDataFim" style="display:none">
             <label class="form-label small fw-semibold mb-1">Até</label>
-            <input type="date" class="form-control form-control-sm" name="data_fim" value="{{ data_fim_filtro or '' }}">
+            <input type="date" class="form-control form-control-sm" name="data_fim"
+                   value="{{ data_fim_filtro or '' }}">
         </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search"></i></button>
+
+        <div class="col-auto d-flex gap-1">
+            <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-search"></i></button>
+            <a href="{{ url_for('despesas.lista') }}" class="btn btn-outline-secondary btn-sm" title="Limpar filtros">
+                <i class="bi bi-x-lg"></i>
+            </a>
         </div>
     </form>
 </div>
 
-<!-- Tabela -->
+<!-- ── Tabela ── -->
 <div class="pg-card">
     <div class="table-responsive">
         <table class="pg-table table">
@@ -116,27 +143,42 @@
                     <td style="max-width:220px">{{ d.descricao }}</td>
                     <td><span class="pg-badge-cat">{{ d.categoria.nome }}</span></td>
                     <td><span class="pg-badge-meio">{{ d.meio_pagamento.nome }}</span></td>
-                    <td class="text-end pg-val">R$ {{ "{:,.2f}".format(d.valor|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</td>
+                    <td class="text-end pg-val">R$ {{ d.valor|moeda }}</td>
                     <td class="text-center" style="font-size:.82rem;color:var(--pg-muted)">{{ d.num_parcelas }}x</td>
                     <td class="text-center">
                         <div class="pg-actions justify-content-center">
-                            <a href="{{ url_for('despesas.editar', id=d.id, **request.args) }}" class="btn-edit" title="Editar"><i class="bi bi-pencil"></i></a>
-                            <form method="POST" action="{{ url_for('despesas.excluir', id=d.id) }}" style="display:inline" onsubmit="return confirm('Excluir esta despesa?')">
+                            {# Editar — passa todos os filtros atuais + página como next #}
+                            <a href="{{ url_for('despesas.editar', id=d.id, **request.args) }}"
+                               class="btn-edit" title="Editar"><i class="bi bi-pencil"></i></a>
+
+                            {# Excluir — passa next com URL completa para retornar ao mesmo ponto #}
+                            <form method="POST" action="{{ url_for('despesas.excluir', id=d.id) }}"
+                                  style="display:inline"
+                                  onsubmit="return confirm('Excluir esta despesa?')">
+                                <input type="hidden" name="next" value="{{ request.url }}">
                                 <button type="submit" class="btn-del" title="Excluir"><i class="bi bi-trash"></i></button>
                             </form>
                         </div>
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="7" class="text-center text-muted py-4"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nenhuma despesa encontrada.</td></tr>
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>Nenhuma despesa encontrada.
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
     {% if despesas.pages > 1 %}
-    <div class="px-3 py-2 border-top bg-light">
-        <nav><ul class="pagination pagination-sm justify-content-center mb-0">
+    <div class="px-3 py-2 border-top bg-light d-flex justify-content-between align-items-center">
+        <small class="text-muted">
+            Exibindo {{ despesas.per_page * (despesas.page-1) + 1 }}–{{ [despesas.per_page * despesas.page, despesas.total] | min }}
+            de {{ despesas.total }}
+        </small>
+        <nav><ul class="pagination pagination-sm mb-0">
             <li class="page-item {% if not despesas.has_prev %}disabled{% endif %}">
                 <a class="page-link" href="{{ url_for('despesas.lista', page=despesas.prev_num, **filtros_url) }}">«</a>
             </li>

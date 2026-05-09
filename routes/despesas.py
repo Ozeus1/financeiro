@@ -3,6 +3,30 @@ from flask_login import login_required, current_user
 from models import db, Despesa, CategoriaDespesa, MeioPagamento
 from datetime import datetime, date
 from sqlalchemy import extract, func
+import re
+
+def _parse_operador(valor_str):
+    """Parse '>100', '<500', '>=200', '<=300', '=150' → (op, num) ou None"""
+    if not valor_str:
+        return None
+    m = re.match(r'^(>=|<=|>|<|=)(\d+(?:[.,]\d+)?)$', valor_str.strip())
+    if not m:
+        return None
+    op  = m.group(1)
+    num = float(m.group(2).replace(',', '.'))
+    return op, num
+
+def _apply_op(query, col, valor_str):
+    parsed = _parse_operador(valor_str)
+    if not parsed:
+        return query
+    op, num = parsed
+    if op == '>':  return query.filter(col > num)
+    if op == '<':  return query.filter(col < num)
+    if op == '>=': return query.filter(col >= num)
+    if op == '<=': return query.filter(col <= num)
+    if op == '=':  return query.filter(col == num)
+    return query
 
 despesas_bp = Blueprint('despesas', __name__)
 
@@ -13,57 +37,75 @@ def lista():
     page = request.args.get('page', 1, type=int)
     per_page = 20
     
-    # Filtros
-    categoria_id = request.args.get('categoria_id', type=int)
+    # Filtros básicos
+    busca             = request.args.get('busca', '').strip()
+    categoria_busca   = request.args.get('categoria_busca', '').strip()
+    meio_busca        = request.args.get('meio_busca', '').strip()
+    valor_filtro      = request.args.get('valor_filtro', '').strip()
+    parcelas_filtro   = request.args.get('parcelas_filtro', '').strip()
+    # Compatibilidade legada
+    categoria_id      = request.args.get('categoria_id', type=int)
     meio_pagamento_id = request.args.get('meio_pagamento_id', type=int)
-    busca = request.args.get('busca', '').strip()
-    
-    # Periodo (padrão: mes_atual)
-    periodo = request.args.get('periodo', 'mes_atual')
+
+    # Período (padrão: mes_atual)
+    periodo     = request.args.get('periodo', 'mes_atual')
     data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    
-    # Lógica do período
+    data_fim    = request.args.get('data_fim')
+
     if periodo == 'mes_atual':
         hoje = datetime.now()
         import calendar
         ultimo_dia = calendar.monthrange(hoje.year, hoje.month)[1]
         data_inicio = date(hoje.year, hoje.month, 1).strftime('%Y-%m-%d')
-        data_fim = date(hoje.year, hoje.month, ultimo_dia).strftime('%Y-%m-%d')
+        data_fim    = date(hoje.year, hoje.month, ultimo_dia).strftime('%Y-%m-%d')
     elif periodo == 'todos':
         data_inicio = None
-        data_fim = None
-    # Se personalizado, usa os valores de data_inicio e data_fim recebidos
-    
-    # Query base - todos veem apenas seus próprios dados
+        data_fim    = None
+
+    # Query base
     query = Despesa.query.filter_by(user_id=current_user.id)
-    
-    # Aplicar filtros
-    if categoria_id:
+
+    # Busca na descrição
+    if busca:
+        query = query.filter(Despesa.descricao.ilike(f'%{busca}%'))
+
+    # Categoria — busca por texto (novo) ou por ID (legado)
+    if categoria_busca:
+        query = query.join(CategoriaDespesa, Despesa.categoria_id == CategoriaDespesa.id)\
+                     .filter(CategoriaDespesa.nome.ilike(f'%{categoria_busca}%'))
+    elif categoria_id:
         query = query.filter_by(categoria_id=categoria_id)
-    if meio_pagamento_id:
+
+    # Meio de pagamento — busca por texto (novo) ou por ID (legado)
+    if meio_busca:
+        query = query.join(MeioPagamento, Despesa.meio_pagamento_id == MeioPagamento.id)\
+                     .filter(MeioPagamento.nome.ilike(f'%{meio_busca}%'))
+    elif meio_pagamento_id:
         query = query.filter_by(meio_pagamento_id=meio_pagamento_id)
-        
+
+    # Filtro de datas
     if data_inicio:
         query = query.filter(Despesa.data_pagamento >= datetime.strptime(data_inicio, '%Y-%m-%d').date())
     if data_fim:
         query = query.filter(Despesa.data_pagamento <= datetime.strptime(data_fim, '%Y-%m-%d').date())
-        
-    if busca:
-        query = query.filter(Despesa.descricao.ilike(f'%{busca}%'))
-    
+
+    # Filtro de valor com operador
+    query = _apply_op(query, Despesa.valor, valor_filtro)
+
+    # Filtro de parcelas com operador
+    query = _apply_op(query, Despesa.num_parcelas, parcelas_filtro)
+
     # Ordenar e paginar
     despesas = query.order_by(Despesa.data_pagamento.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
-    
-    # Carregar opções para filtros
-    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
+
+    # Carregar opções (para compatibilidade com dropdowns legacy)
+    categorias      = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
     meios_pagamento = MeioPagamento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
-    
-    # Args para paginação (excluindo page)
+
     filtros_url = {k: v for k, v in request.args.items() if k != 'page'}
-    
+
     return render_template('despesas/lista.html',
                          despesas=despesas,
                          categorias=categorias,
@@ -140,7 +182,9 @@ def editar(id):
             return redirect(next_url)
 
         filtros_redirect = {}
-        for key in ['periodo', 'data_inicio', 'data_fim', 'categoria_id', 'meio_pagamento_id', 'busca', 'page']:
+        _all_keys = ['periodo','data_inicio','data_fim','categoria_id','meio_pagamento_id',
+                     'busca','categoria_busca','meio_busca','valor_filtro','parcelas_filtro','page']
+        for key in _all_keys:
             val = request.form.get(f'filtro_{key}')
             if val:
                 filtros_redirect[key] = val

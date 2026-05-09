@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from routes.auth import admin_required, gerente_required
 from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa, Receita, BalancoMensal, EventoCaixaAvulso
@@ -795,13 +795,14 @@ def usuarios():
             password = request.form.get('password')
             nivel = request.form.get('nivel')
             data_validade_str = request.form.get('data_validade')
+            nome = request.form.get('nome', '').strip() or None
+            whatsapp = request.form.get('whatsapp', '').strip() or None
 
             if User.query.filter_by(username=username).first():
                 flash('Nome de usuário já existe!', 'warning')
             elif User.query.filter_by(email=email).first():
                 flash('E-mail já cadastrado!', 'warning')
             else:
-                # Processar data de validade (apenas para usuários normais)
                 data_validade = None
                 if nivel != 'admin' and data_validade_str:
                     from datetime import datetime
@@ -812,13 +813,25 @@ def usuarios():
                     email=email,
                     nivel_acesso=nivel,
                     ativo=True,
-                    data_validade=data_validade
+                    data_validade=data_validade,
+                    nome=nome,
+                    whatsapp=whatsapp
                 )
                 novo_usuario.set_password(password)
                 db.session.add(novo_usuario)
                 db.session.commit()
 
-                # Criar dados padrão
+                # Salvar foto de perfil se enviada
+                foto_file = request.files.get('foto_perfil')
+                if foto_file and foto_file.filename:
+                    ext = foto_file.filename.rsplit('.', 1)[-1].lower()
+                    if ext in current_app.config.get('ALLOWED_PHOTO_EXTENSIONS', {'jpg','jpeg','png','webp'}):
+                        import os
+                        foto_nome = f"user_{novo_usuario.id}.{ext}"
+                        foto_file.save(os.path.join(current_app.config['UPLOAD_PERFIL_FOLDER'], foto_nome))
+                        novo_usuario.foto_perfil = foto_nome
+                        db.session.commit()
+
                 from models import criar_dados_padrao_usuario
                 criar_dados_padrao_usuario(novo_usuario)
 
@@ -828,10 +841,11 @@ def usuarios():
             id = int(request.form.get('id'))
             username = request.form.get('username')
             email = request.form.get('email')
-            
+            nome = request.form.get('nome', '').strip() or None
+            whatsapp = request.form.get('whatsapp', '').strip() or None
+
             user = User.query.get(id)
             if user:
-                # Verificar duplicidade apenas se mudou o valor
                 if user.username != username and User.query.filter_by(username=username).first():
                     flash('Nome de usuário já existe!', 'warning')
                 elif user.email != email and User.query.filter_by(email=email).first():
@@ -839,6 +853,19 @@ def usuarios():
                 else:
                     user.username = username
                     user.email = email
+                    user.nome = nome
+                    user.whatsapp = whatsapp
+
+                    # Foto de perfil
+                    foto_file = request.files.get('foto_perfil')
+                    if foto_file and foto_file.filename:
+                        ext = foto_file.filename.rsplit('.', 1)[-1].lower()
+                        if ext in current_app.config.get('ALLOWED_PHOTO_EXTENSIONS', {'jpg','jpeg','png','webp'}):
+                            import os
+                            foto_nome = f"user_{user.id}.{ext}"
+                            foto_file.save(os.path.join(current_app.config['UPLOAD_PERFIL_FOLDER'], foto_nome))
+                            user.foto_perfil = foto_nome
+
                     db.session.commit()
                     flash('Dados do usuário atualizados!', 'success')
 

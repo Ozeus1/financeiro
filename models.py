@@ -16,7 +16,10 @@ class User(UserMixin, db.Model):
     nivel_acesso = db.Column(db.String(20), nullable=False, default='usuario')  # admin, usuario
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    data_validade = db.Column(db.Date, nullable=True)  # Data de validade do acesso (apenas para usuários normais)
+    data_validade = db.Column(db.Date, nullable=True)
+    nome = db.Column(db.String(150), nullable=True)
+    whatsapp = db.Column(db.String(20), nullable=True)
+    foto_perfil = db.Column(db.String(255), nullable=True)
     
     # Relacionamentos
     despesas = db.relationship('Despesa', backref='usuario', lazy=True, cascade='all, delete-orphan')

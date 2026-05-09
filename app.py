@@ -7,9 +7,15 @@ import os
 def create_app(config_name='default'):
     """Factory function para criar a aplicação Flask"""
     app = Flask(__name__)
-    
+
     # Carregar configurações
     app.config.from_object(config[config_name])
+
+    # Pasta de upload de fotos de perfil
+    upload_folder = os.path.join(app.root_path, 'static', 'uploads', 'perfil')
+    os.makedirs(upload_folder, exist_ok=True)
+    app.config['UPLOAD_PERFIL_FOLDER'] = upload_folder
+    app.config['ALLOWED_PHOTO_EXTENSIONS'] = {'jpg', 'jpeg', 'png', 'webp'}
     
     # Inicializar extensões
     init_db(app)
@@ -38,6 +44,17 @@ def create_app(config_name='default'):
             return valor_formatado
         except (ValueError, TypeError):
             return "0,00"
+
+    # Migração automática: adicionar colunas novas se não existirem
+    with app.app_context():
+        try:
+            from sqlalchemy import text
+            with db.engine.connect() as conn:
+                for col, col_type in [('nome', 'VARCHAR(150)'), ('whatsapp', 'VARCHAR(20)'), ('foto_perfil', 'VARCHAR(255)')]:
+                    conn.execute(text(f'ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {col_type}'))
+                conn.commit()
+        except Exception:
+            pass
 
     # Registrar blueprints
     from routes.auth import auth_bp

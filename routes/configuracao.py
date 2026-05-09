@@ -993,17 +993,27 @@ def _enviar_email_teste(destinatario):
         return ('danger', f'Erro ao enviar e-mail: {e}')
 
 
-def _enviar_whatsapp_teste(numero):
+def _enviar_whatsapp(mensagem, numero):
+    """Envia mensagem WhatsApp via webhook. Formato: texto<o>numero"""
     import requests as req
+    webhook = ConfigSistema.get('webhook_whatsapp', '')
+    if not webhook:
+        raise ValueError('Webhook WhatsApp não configurado.')
+    payload = f'{mensagem}<o>{numero}'
+    r = req.post(
+        webhook,
+        data=payload.encode('utf-8'),
+        headers={'Content-Type': 'text/plain; charset=utf-8'},
+        timeout=10
+    )
+    r.raise_for_status()
+    return r
+
+
+def _enviar_whatsapp_teste(numero):
     try:
-        webhook = ConfigSistema.get('webhook_whatsapp', '')
-        if not webhook:
-            return ('warning', 'Configure o Webhook WhatsApp antes de testar.')
-        mensagem = f'Teste do Sistema Financeiro<o>{numero}'
-        r = req.post(webhook, data=mensagem, timeout=10)
-        if r.status_code < 300:
-            return ('success', f'Mensagem de teste enviada para {numero}.')
-        return ('warning', f'Webhook respondeu com status {r.status_code}.')
+        _enviar_whatsapp('Teste do Sistema Financeiro', numero)
+        return ('success', f'Mensagem de teste enviada para {numero}.')
     except Exception as e:
         return ('danger', f'Erro ao enviar WhatsApp: {e}')
 

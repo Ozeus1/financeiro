@@ -994,17 +994,20 @@ def _enviar_email_teste(destinatario):
 
 
 def _enviar_whatsapp(mensagem, numero):
-    """Envia mensagem WhatsApp via webhook. Formato: texto<o>numero"""
+    """Envia mensagem WhatsApp via webhook. Formato exato: texto<o>numero"""
     import requests as req
+    import re
     webhook = ConfigSistema.get('webhook_whatsapp', '')
     if not webhook:
         raise ValueError('Webhook WhatsApp não configurado.')
-    payload = f'{mensagem}<o>{numero}'
+    # Manter apenas dígitos no número
+    numero_limpo = re.sub(r'\D', '', numero)
+    payload = f'{mensagem}<o>{numero_limpo}'
     r = req.post(
         webhook,
         data=payload.encode('utf-8'),
         headers={'Content-Type': 'text/plain; charset=utf-8'},
-        timeout=10
+        timeout=15
     )
     r.raise_for_status()
     return r

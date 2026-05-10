@@ -8,6 +8,17 @@ from dateutil.relativedelta import relativedelta
 
 relatorios_bp = Blueprint('relatorios', __name__)
 
+
+def calcular_primeira_fatura(data_compra, dia_fechamento, dia_vencimento):
+    """Retorna o primeiro mes de vencimento da fatura para uma compra."""
+    if data_compra.day > dia_fechamento:
+        meses_a_adicionar = 1 if dia_fechamento < dia_vencimento else 2
+    else:
+        meses_a_adicionar = 0 if dia_fechamento < dia_vencimento else 1
+
+    return (data_compra + relativedelta(months=meses_a_adicionar)).replace(day=1)
+
+
 @relatorios_bp.route('/balanco')
 @login_required
 def balanco():
@@ -291,23 +302,7 @@ def previsao_cartoes():
             valor_parcela = despesa.valor / despesa.num_parcelas
             data_base = despesa.data_pagamento
             
-            # Regra (labeling por mês de PAGAMENTO):
-            # A "Fatura M" fecha no dia dia_fechamento do mês M-1 e vence no dia vencimento do mês M.
-            # Período de cobrança: (M-2)/dia_fechamento+1 até (M-1)/dia_fechamento.
-            #
-            # Consequência para o algoritmo:
-            #   dia ≤ dia_fechamento → compra ainda dentro do período que fecha este mês
-            #                          → paga no mês seguinte → primeira_fatura = mês_compra + 1
-            #   dia > dia_fechamento → fechamento do mês passou → entra no próximo período
-            #                          → paga daqui a 2 meses → primeira_fatura = mês_compra + 2
-            #
-            # Exemplo Visa (fechamento=28, vencimento=06):
-            #   Compra 05/04: 5 ≤ 28 → +1 → Fatura Maio (fecha 28/04, vence 06/05) ✓
-            #   Compra 29/04: 29 > 28 → +2 → Fatura Junho (fecha 28/05, vence 06/06) ✓
-            if data_base.day > dia_fechamento:
-                primeira_fatura = (data_base + relativedelta(months=2)).replace(day=1)
-            else:
-                primeira_fatura = (data_base + relativedelta(months=1)).replace(day=1)
+            primeira_fatura = calcular_primeira_fatura(data_base, dia_fechamento, dia_vencimento)
                 
             # Distribuir parcelas
             for i in range(despesa.num_parcelas):
@@ -433,6 +428,7 @@ def api_fatura_detalhes(cartao_id, mes, ano):
         # Verificar configuração de fechamento para este cartão
         config = FechamentoCartao.query.filter_by(meio_pagamento_id=cartao_id).first()
         dia_fechamento = config.dia_fechamento if config else 31
+        dia_vencimento = config.dia_vencimento if config else 10
         
         detalhes = []
         
@@ -440,12 +436,7 @@ def api_fatura_detalhes(cartao_id, mes, ano):
             valor_parcela = d.valor / d.num_parcelas
             data_base = d.data_pagamento
             
-            # Mesma regra do forecast builder (labeling por mês de pagamento)
-            if data_base.day > dia_fechamento:
-                primeira_fatura = (data_base + relativedelta(months=2)).replace(day=1)
-            else:
-                primeira_fatura = (data_base + relativedelta(months=1)).replace(day=1)
-
+            primeira_fatura = calcular_primeira_fatura(data_base, dia_fechamento, dia_vencimento)
             # Verificar se alguma parcela cai no mês/ano solicitado
             for i in range(d.num_parcelas):
                 data_parcela = primeira_fatura + relativedelta(months=i)

@@ -203,6 +203,40 @@
 </div>
 
 <script>
+    // Listas de opções vindas do banco
+    const CATEGORIAS_NOMES  = {{ categorias  | map(attribute='nome') | list | tojson }};
+    const MEIOS_NOMES       = {{ meios_pagamento | map(attribute='nome') | list | tojson }};
+
+    function _buildSelect(nomes, selectedName, fieldName) {
+        const esc = s => s.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const opts = nomes.map(n =>
+            `<option value="${esc(n)}"${n === selectedName ? ' selected' : ''}>${esc(n)}</option>`
+        ).join('');
+        return `<select class="cell-select" data-field="${fieldName}">`
+             + `<option value="Outros"${!nomes.includes(selectedName) ? ' selected' : ''}>Outros</option>`
+             + opts + `</select>`;
+    }
+
+    function _toInputDate(s) {
+        if (!s) return '';
+        if (s.includes('T')) s = s.split('T')[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) { const [d,m,y] = s.split('/'); return `${y}-${m}-${d}`; }
+        if (/^\d{2}\/\d{2}\/\d{2}$/.test(s)) {
+            const [d,m,y] = s.split('/');
+            return `20${y}-${m}-${d}`;
+        }
+        return s;
+    }
+
+    function _getCellValue(cell) {
+        const sel = cell.querySelector('select');
+        if (sel) return sel.value;
+        const inp = cell.querySelector('input');
+        if (inp) return inp.value;
+        return (cell.textContent || cell.innerText || '').trim();
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const configBody = document.getElementById('configBody');
         const iconToggle = document.getElementById('iconToggleConfig');
@@ -324,16 +358,20 @@
                     dataDespesa = `${parts[2]}/${parts[1]}/${parts[0]}`;
                 }
 
+                const meioNome = item.forma_pagamento || 'Outros';
+                const catNome  = item.conta_despesa  || 'Outros';
+                const dateVal  = _toInputDate(dataDespesa);
+
                 const tr = document.createElement('tr');
                 tr.dataset.id = item.id;
                 tr.innerHTML = `
                 <td class="text-center"><input type="checkbox" class="check-item"></td>
                 <td contenteditable="true" class="editable" data-field="descricao">${item.descricao || ''}</td>
                 <td contenteditable="true" class="editable text-end" data-field="valor">${valor}</td>
-                <td contenteditable="true" class="editable" data-field="meio_pagamento">${item.forma_pagamento || 'Outros'}</td>
-                <td contenteditable="true" class="editable" data-field="categoria">${item.conta_despesa || 'Outros'}</td>
+                <td data-field="meio_pagamento">${_buildSelect(MEIOS_NOMES, meioNome, 'meio_pagamento')}</td>
+                <td data-field="categoria">${_buildSelect(CATEGORIAS_NOMES, catNome, 'categoria')}</td>
                 <td contenteditable="true" class="editable text-center" data-field="parcelas">${item.numero_parcelas || 1}</td>
-                <td contenteditable="true" class="editable text-center" data-field="data_despesa">${dataDespesa}</td>
+                <td data-field="data_despesa"><input type="date" class="cell-date" data-field="data_despesa" value="${dateVal}"></td>
                 <td class="text-center">
                     <button class="btn btn-sm btn-danger btn-excluir" title="Excluir do Supabase">
                         <i class="fas fa-trash"></i>
@@ -424,17 +462,28 @@
 
             if (!confirm(`Deseja importar ${itemsToImport.length} itens?`)) return;
 
-            // Converter campos do Supabase para o formato esperado pelo backend
+            // Converter campos: lê edições do DOM (select/input) e cai back para rawData
             const payload = itemsToImport.map(d => {
-                let dataDespesa = d.data_despesa || '';
+                const tr = tbody.querySelector(`tr[data-id="${d.id}"]`);
+
+                // Lê da célula DOM se disponível (input/select funcionam mesmo hidden)
+                const readCell = (field, fallback) => {
+                    if (!tr) return fallback;
+                    const td = tr.querySelector(`[data-field="${field}"]`);
+                    return td ? _getCellValue(td) || fallback : fallback;
+                };
+
+                let dataDespesa = readCell('data_despesa', d.data_despesa || '');
                 if (dataDespesa.includes('T')) dataDespesa = dataDespesa.split('T')[0];
+                // data input retorna YYYY-MM-DD — manter assim para o backend
+
                 return {
                     id:             d.id,
-                    descricao:      d.descricao      || '',
-                    valor:          parseFloat(d.valor) || 0,
-                    meio_pagamento: d.forma_pagamento || 'Outros',
-                    categoria:      d.conta_despesa  || 'Outros',
-                    parcelas:       parseInt(d.numero_parcelas) || 1,
+                    descricao:      readCell('descricao', d.descricao || ''),
+                    valor:          parseFloat(String(readCell('valor', d.valor || 0)).replace('.','').replace(',','.')) || 0,
+                    meio_pagamento: readCell('meio_pagamento', d.forma_pagamento || 'Outros'),
+                    categoria:      readCell('categoria',      d.conta_despesa  || 'Outros'),
+                    parcelas:       parseInt(readCell('parcelas', d.numero_parcelas || 1)) || 1,
                     data_despesa:   dataDespesa
                 };
             });
@@ -566,8 +615,8 @@
                 return cellDate && cellDate <= to;
             }
 
-            // text (default)
-            const cellText = (cell.textContent || cell.innerText).toLowerCase();
+            // text (default) — usa _getCellValue para suportar select/input
+            const cellText = _getCellValue(cell).toLowerCase();
             return cellText.includes(val.toLowerCase());
         }
 
@@ -661,9 +710,18 @@
 </script>
 
 <style>
-    .editable {
-        background-color: #fff;
-        cursor: text;
+    .editable { background-color:#fff; cursor:text; }
+    /* Selects e inputs inline na tabela */
+    #tabela-importacao select.cell-select,
+    #tabela-importacao input.cell-date {
+        font-size:.72rem; padding:.12rem .3rem; height:24px;
+        border:1px solid #dee2e6; border-radius:4px;
+        background:#fff; width:100%; min-width:80px;
+    }
+    #tabela-importacao select.cell-select:focus,
+    #tabela-importacao input.cell-date:focus {
+        outline:none; border-color:#0d6efd;
+        box-shadow:0 0 0 2px rgba(13,110,253,.15);
     }
 
     .editable:focus {

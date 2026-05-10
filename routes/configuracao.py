@@ -1113,10 +1113,17 @@ def importar_supabase():
     config_key = Configuracao.query.filter_by(chave='supabase_key').first()
     config_table = Configuracao.query.filter_by(chave='supabase_table').first()
     
+    categorias      = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id)\
+                                            .order_by(CategoriaDespesa.nome).all()
+    meios_pagamento = MeioPagamento.query.filter_by(ativo=True, user_id=current_user.id)\
+                                         .order_by(MeioPagamento.nome).all()
+
     return render_template('config/importar_supabase.html',
                          supabase_url=config_url.valor if config_url else '',
                          supabase_key=config_key.valor if config_key else '',
-                         supabase_table=config_table.valor if config_table else '')
+                         supabase_table=config_table.valor if config_table else '',
+                         categorias=categorias,
+                         meios_pagamento=meios_pagamento)
 
 @config_bp.route('/importar-supabase/salvar-config', methods=['POST'])
 @login_required

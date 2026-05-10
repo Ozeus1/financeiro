@@ -659,13 +659,18 @@ def categorias_despesa():
             categoria = CategoriaDespesa.query.filter_by(id=id, user_id=current_user.id).first()
             if categoria:
                 count = Despesa.query.filter_by(categoria_id=id, user_id=current_user.id).count()
-                if count > 0 and transfer_id:
-                    Despesa.query.filter_by(categoria_id=id, user_id=current_user.id)\
-                                 .update({'categoria_id': int(transfer_id)})
-                elif count > 0:
+                if count > 0 and not transfer_id:
                     flash(f'Selecione uma categoria de destino para as {count} despesas vinculadas.', 'warning')
                     return redirect(url_for('config.categorias_despesa'))
-                db.session.delete(categoria)
+                if count > 0 and transfer_id:
+                    Despesa.query.filter_by(categoria_id=id, user_id=current_user.id)\
+                                 .update({'categoria_id': int(transfer_id)}, synchronize_session=False)
+                # Remover orçamentos vinculados (sem transferência)
+                Orcamento.query.filter_by(categoria_id=id, user_id=current_user.id)\
+                               .delete(synchronize_session=False)
+                db.session.flush()           # persiste no banco antes do DELETE
+                db.session.expunge(categoria)  # remove do cache da sessão
+                CategoriaDespesa.query.filter_by(id=id, user_id=current_user.id).delete(synchronize_session=False)
                 db.session.commit()
                 flash('Categoria excluída com sucesso!', 'success')
 
@@ -718,13 +723,15 @@ def categorias_receita():
             categoria = CategoriaReceita.query.filter_by(id=id, user_id=current_user.id).first()
             if categoria:
                 count = Receita.query.filter_by(categoria_id=id, user_id=current_user.id).count()
-                if count > 0 and transfer_id:
-                    Receita.query.filter_by(categoria_id=id, user_id=current_user.id)\
-                                 .update({'categoria_id': int(transfer_id)})
-                elif count > 0:
+                if count > 0 and not transfer_id:
                     flash(f'Selecione uma categoria de destino para as {count} receitas vinculadas.', 'warning')
                     return redirect(url_for('config.categorias_receita'))
-                db.session.delete(categoria)
+                if count > 0 and transfer_id:
+                    Receita.query.filter_by(categoria_id=id, user_id=current_user.id)\
+                                 .update({'categoria_id': int(transfer_id)}, synchronize_session=False)
+                db.session.flush()
+                db.session.expunge(categoria)
+                CategoriaReceita.query.filter_by(id=id, user_id=current_user.id).delete(synchronize_session=False)
                 db.session.commit()
                 flash('Categoria excluída com sucesso!', 'success')
 
@@ -780,13 +787,17 @@ def meios_pagamento():
             meio = MeioPagamento.query.filter_by(id=id, user_id=current_user.id).first()
             if meio:
                 count = Despesa.query.filter_by(meio_pagamento_id=id, user_id=current_user.id).count()
-                if count > 0 and transfer_id:
-                    Despesa.query.filter_by(meio_pagamento_id=id, user_id=current_user.id)\
-                                 .update({'meio_pagamento_id': int(transfer_id)})
-                elif count > 0:
+                if count > 0 and not transfer_id:
                     flash(f'Selecione um meio de destino para as {count} despesas vinculadas.', 'warning')
                     return redirect(url_for('config.meios_pagamento'))
-                db.session.delete(meio)
+                if count > 0 and transfer_id:
+                    Despesa.query.filter_by(meio_pagamento_id=id, user_id=current_user.id)\
+                                 .update({'meio_pagamento_id': int(transfer_id)}, synchronize_session=False)
+                # Remover configurações de fechamento vinculadas ao cartão
+                FechamentoCartao.query.filter_by(meio_pagamento_id=id).delete(synchronize_session=False)
+                db.session.flush()
+                db.session.expunge(meio)
+                MeioPagamento.query.filter_by(id=id, user_id=current_user.id).delete(synchronize_session=False)
                 db.session.commit()
                 flash('Meio de pagamento excluído com sucesso!', 'success')
 
@@ -839,13 +850,15 @@ def meios_recebimento():
             meio = MeioRecebimento.query.filter_by(id=id, user_id=current_user.id).first()
             if meio:
                 count = Receita.query.filter_by(meio_recebimento_id=id, user_id=current_user.id).count()
-                if count > 0 and transfer_id:
-                    Receita.query.filter_by(meio_recebimento_id=id, user_id=current_user.id)\
-                                 .update({'meio_recebimento_id': int(transfer_id)})
-                elif count > 0:
+                if count > 0 and not transfer_id:
                     flash(f'Selecione um meio de destino para as {count} receitas vinculadas.', 'warning')
                     return redirect(url_for('config.meios_recebimento'))
-                db.session.delete(meio)
+                if count > 0 and transfer_id:
+                    Receita.query.filter_by(meio_recebimento_id=id, user_id=current_user.id)\
+                                 .update({'meio_recebimento_id': int(transfer_id)}, synchronize_session=False)
+                db.session.flush()
+                db.session.expunge(meio)
+                MeioRecebimento.query.filter_by(id=id, user_id=current_user.id).delete(synchronize_session=False)
                 db.session.commit()
                 flash('Meio de recebimento excluído com sucesso!', 'success')
 

@@ -291,13 +291,23 @@ def previsao_cartoes():
             valor_parcela = despesa.valor / despesa.num_parcelas
             data_base = despesa.data_pagamento
             
-            # Ajustar data inicial baseado no fechamento
-            # Regra: dia > fechamento → já fechou → entra na fatura do mês seguinte (+1)
-            #        dia ≤ fechamento → ainda no período → entra na fatura do mesmo mês (+0)
+            # Regra (labeling por mês de PAGAMENTO):
+            # A "Fatura M" fecha no dia dia_fechamento do mês M-1 e vence no dia vencimento do mês M.
+            # Período de cobrança: (M-2)/dia_fechamento+1 até (M-1)/dia_fechamento.
+            #
+            # Consequência para o algoritmo:
+            #   dia ≤ dia_fechamento → compra ainda dentro do período que fecha este mês
+            #                          → paga no mês seguinte → primeira_fatura = mês_compra + 1
+            #   dia > dia_fechamento → fechamento do mês passou → entra no próximo período
+            #                          → paga daqui a 2 meses → primeira_fatura = mês_compra + 2
+            #
+            # Exemplo Visa (fechamento=28, vencimento=06):
+            #   Compra 05/04: 5 ≤ 28 → +1 → Fatura Maio (fecha 28/04, vence 06/05) ✓
+            #   Compra 29/04: 29 > 28 → +2 → Fatura Junho (fecha 28/05, vence 06/06) ✓
             if data_base.day > dia_fechamento:
-                primeira_fatura = (data_base + relativedelta(months=1)).replace(day=1)
+                primeira_fatura = (data_base + relativedelta(months=2)).replace(day=1)
             else:
-                primeira_fatura = data_base.replace(day=1)
+                primeira_fatura = (data_base + relativedelta(months=1)).replace(day=1)
                 
             # Distribuir parcelas
             for i in range(despesa.num_parcelas):
@@ -430,11 +440,11 @@ def api_fatura_detalhes(cartao_id, mes, ano):
             valor_parcela = d.valor / d.num_parcelas
             data_base = d.data_pagamento
             
-            # Mesma regra: dia > fechamento → fatura mês seguinte (+1); dia ≤ fechamento → mesmo mês (+0)
+            # Mesma regra do forecast builder (labeling por mês de pagamento)
             if data_base.day > dia_fechamento:
-                primeira_fatura = (data_base + relativedelta(months=1)).replace(day=1)
+                primeira_fatura = (data_base + relativedelta(months=2)).replace(day=1)
             else:
-                primeira_fatura = data_base.replace(day=1)
+                primeira_fatura = (data_base + relativedelta(months=1)).replace(day=1)
 
             # Verificar se alguma parcela cai no mês/ano solicitado
             for i in range(d.num_parcelas):

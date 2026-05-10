@@ -714,12 +714,15 @@
     const _modalFaturaEl = document.getElementById('modalDetalhes');
 
     function _calcDataIdeal(fatMes, fatAno, parcelaX) {
-        // Nova regra: dia 1 <= qualquer dia_fechamento → primeira_fatura = mesmo mês (data.replace(day=1))
-        // Para a parcela x cair em invoice_month:
-        //   primeira_fatura = invoice_month - (x-1) meses
-        //   data_compra = 1º do mesmo mês de primeira_fatura (dia 1 <= fechamento → mesmo mês)
-        // Portanto: data_compra = 1º de (invoice_month - (x-1) meses)
-        return new Date(fatAno, fatMes - 1 - (parcelaX - 1), 1);
+        // Algoritmo (labeling por mês de pagamento):
+        //   dia ≤ fechamento → primeira_fatura = mês_compra + 1
+        //   Usando dia=1 (sempre ≤ fechamento):
+        //     primeira_fatura = data_compra_month + 1
+        //   Para parcela x cair em invoice_month:
+        //     data_compra_month + 1 + (x-1) = invoice_month
+        //     data_compra_month = invoice_month - x
+        //   data_compra = 1º de (invoice_month - x meses)
+        return new Date(fatAno, fatMes - 1 - parcelaX, 1);
     }
     function _dateISO(d) {
         return d.getFullYear() + '-' +
@@ -736,7 +739,7 @@
         if (st.mes && st.ano) {
             const ideal = _calcDataIdeal(st.mes, st.ano, x);
             document.getElementById('ndf-data-compra').value = _dateISO(ideal);
-            const pf   = new Date(st.ano, st.mes - 1 - (x - 1), 1); // mesma fórmula de _calcDataIdeal
+            const pf   = new Date(st.ano, st.mes - 1 - (x - 1), 1); // primeira_fatura = invoice_month - (x-1)
             const uf   = new Date(pf.getFullYear(), pf.getMonth() + y - 1, 1);
             const fmt  = d => d.toLocaleDateString('pt-BR', {month:'short', year:'numeric'});
             document.getElementById('ndf-data-hint').textContent =

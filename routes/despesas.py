@@ -200,6 +200,48 @@ def editar(id):
                          filtros=filtros,
                          next_url=next_url)
 
+@despesas_bp.route('/nova-despesa-fatura', methods=['POST'])
+@login_required
+def nova_despesa_fatura():
+    """Cria despesa a partir do modal de detalhes da fatura do cartão (via AJAX)"""
+    try:
+        data = request.get_json()
+
+        cartao_id    = int(data['cartao_id'])
+        categoria_id = int(data['categoria_id'])
+        descricao    = (data.get('descricao') or '').strip()
+        num_parcelas = max(1, int(data.get('num_parcelas', 1)))
+        valor_parcela = float(str(data.get('valor_parcela', 0)).replace(',', '.'))
+        valor_total  = round(valor_parcela * num_parcelas, 2)
+
+        data_pagamento = datetime.strptime(data['data_pagamento'], '%Y-%m-%d').date()
+
+        # Verificar se o cartão pertence ao usuário
+        from models import MeioPagamento
+        cartao = MeioPagamento.query.filter_by(id=cartao_id, user_id=current_user.id).first()
+        if not cartao:
+            return jsonify({'success': False, 'message': 'Cartão não encontrado.'})
+
+        nova = Despesa(
+            descricao=descricao or cartao.nome,
+            valor=valor_total,
+            categoria_id=categoria_id,
+            meio_pagamento_id=cartao_id,
+            num_parcelas=num_parcelas,
+            data_pagamento=data_pagamento,
+            user_id=current_user.id
+        )
+        db.session.add(nova)
+        db.session.commit()
+
+        return jsonify({'success': True, 'id': nova.id,
+                        'message': f'Despesa cadastrada! Valor total: R$ {valor_total:.2f}'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+
 @despesas_bp.route('/<int:id>/excluir', methods=['POST'])
 @login_required
 def excluir(id):

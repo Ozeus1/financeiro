@@ -402,10 +402,14 @@ def previsao_cartoes():
         key=lambda x: (x['ano_int'], x['mes_int'])
     )
 
-    return render_template('relatorios/previsao_cartoes.html', 
+    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id)\
+                                       .order_by(CategoriaDespesa.nome).all()
+
+    return render_template('relatorios/previsao_cartoes.html',
                          previsoes=previsoes,
                          meses_labels=meses_labels,
-                         resumo_global=resumo_global)
+                         resumo_global=resumo_global,
+                         categorias=categorias)
 
 @relatorios_bp.route('/api/fatura-detalhes/<int:cartao_id>/<int:mes>/<int:ano>')
 @login_required

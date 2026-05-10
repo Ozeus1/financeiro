@@ -436,6 +436,9 @@
             </div>
 
             <div class="modal-footer">
+                <button type="button" class="btn btn-success btn-sm" id="btnNovaDespesaFatura">
+                    <i class="bi bi-plus-lg me-1"></i>Nova Despesa
+                </button>
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
                     <i class="bi bi-x-lg me-1"></i>Fechar
                 </button>
@@ -448,6 +451,90 @@
 <form id="formExcluirFatura" method="POST" style="display:none;">
     <input type="hidden" name="next" value="/relatorios/previsao-cartoes">
 </form>
+
+<!-- ─── Modal: Nova Despesa via Fatura ─── -->
+<div class="modal fade" id="modalNovaDespesaFatura" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border:none;border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.15)">
+            <div class="modal-header" style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none">
+                <div>
+                    <h5 class="modal-title mb-0"><i class="bi bi-plus-circle me-2"></i>Nova Despesa</h5>
+                    <small id="ndf-cartao-nome" style="opacity:.8;font-size:.78rem"></small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" id="btnFecharNovaDespesa"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="row g-2">
+
+                    <!-- Descrição -->
+                    <div class="col-12">
+                        <label class="form-label small fw-bold mb-1">Descrição</label>
+                        <input type="text" class="form-control form-control-sm" id="ndf-descricao"
+                               placeholder="Ex: Compra no Mercado Livre">
+                    </div>
+
+                    <!-- Categoria -->
+                    <div class="col-12">
+                        <label class="form-label small fw-bold mb-1">Categoria <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-sm" id="ndf-categoria">
+                            <option value="">Selecione...</option>
+                            {% for cat in categorias %}
+                            <option value="{{ cat.id }}">{{ cat.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Parcela x / y -->
+                    <div class="col-5">
+                        <label class="form-label small fw-bold mb-1">Parcela atual</label>
+                        <input type="number" class="form-control form-control-sm" id="ndf-parcela-x"
+                               value="1" min="1" max="240">
+                        <small class="text-muted" style="font-size:.65rem">Qual parcela é esta?</small>
+                    </div>
+                    <div class="col-2 d-flex align-items-center justify-content-center" style="padding-top:1.5rem">
+                        <span class="text-muted fw-bold">de</span>
+                    </div>
+                    <div class="col-5">
+                        <label class="form-label small fw-bold mb-1">Total de parcelas</label>
+                        <input type="number" class="form-control form-control-sm" id="ndf-parcela-y"
+                               value="1" min="1" max="240">
+                        <small class="text-muted" style="font-size:.65rem">1 = à vista</small>
+                    </div>
+
+                    <!-- Valor por parcela -->
+                    <div class="col-6">
+                        <label class="form-label small fw-bold mb-1">Valor por Parcela (R$) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="ndf-valor-parcela"
+                               placeholder="0,00" inputmode="decimal">
+                    </div>
+
+                    <!-- Valor total (calculado) -->
+                    <div class="col-6">
+                        <label class="form-label small fw-bold mb-1">Valor Total</label>
+                        <input type="text" class="form-control form-control-sm bg-light" id="ndf-valor-total"
+                               readonly placeholder="calculado">
+                    </div>
+
+                    <!-- Data da compra (calculada automaticamente, editável) -->
+                    <div class="col-12">
+                        <label class="form-label small fw-bold mb-1">Data da Compra
+                            <span class="text-muted fw-normal">(calculada para encaixar na fatura)</span>
+                        </label>
+                        <input type="date" class="form-control form-control-sm" id="ndf-data-compra">
+                        <div id="ndf-data-hint" class="text-muted mt-1" style="font-size:.68rem"></div>
+                    </div>
+
+                </div>
+            </div>
+            <div class="modal-footer" style="background:#f8fafc;border-top:1px solid #e2e8f0">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnCancelarNovaDespesa">Cancelar</button>
+                <button type="button" class="btn btn-success btn-sm" id="btnSalvarNovaDespesa">
+                    <i class="bi bi-check-lg me-1"></i>Salvar Despesa
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endif %}
 </div><!-- /container -->
@@ -621,6 +708,108 @@
         });
         return `/relatorios/previsao-cartoes?${p.toString()}`;
     }
+
+    // ── Nova Despesa via Fatura ──────────────────────────────────────────────
+    const _modalNDF   = new bootstrap.Modal(document.getElementById('modalNovaDespesaFatura'), {backdrop:'static'});
+    const _modalFaturaEl = document.getElementById('modalDetalhes');
+
+    function _calcDataIdeal(fatMes, fatAno, parcelaX) {
+        // data_compra = 1st of (invoice_month - x months)
+        // This ensures: 1st day <= dia_fechamento, so primeira_fatura = data_compra + 1 month
+        // and installment x falls in invoice_month
+        return new Date(fatAno, fatMes - 1 - parcelaX, 1);
+    }
+    function _dateISO(d) {
+        return d.getFullYear() + '-' +
+               String(d.getMonth()+1).padStart(2,'0') + '-' +
+               String(d.getDate()).padStart(2,'0');
+    }
+    function _atualizarNDFCalc() {
+        const vP = parseFloat((document.getElementById('ndf-valor-parcela').value||'0').replace(',','.')) || 0;
+        const y  = parseInt(document.getElementById('ndf-parcela-y').value) || 1;
+        const x  = parseInt(document.getElementById('ndf-parcela-x').value) || 1;
+        document.getElementById('ndf-valor-total').value =
+            (vP * y).toLocaleString('pt-BR', {minimumFractionDigits:2});
+        const st = _modalState;
+        if (st.mes && st.ano) {
+            const ideal = _calcDataIdeal(st.mes, st.ano, x);
+            document.getElementById('ndf-data-compra').value = _dateISO(ideal);
+            const pf   = new Date(st.ano, st.mes - 1 - (x - 1), 1);
+            const uf   = new Date(pf.getFullYear(), pf.getMonth() + y - 1, 1);
+            const fmt  = d => d.toLocaleDateString('pt-BR', {month:'short', year:'numeric'});
+            document.getElementById('ndf-data-hint').textContent =
+                `Faturamentos: ${fmt(pf)} → ${fmt(uf)}`;
+        }
+    }
+    ['ndf-valor-parcela','ndf-parcela-x','ndf-parcela-y'].forEach(id =>
+        document.getElementById(id).addEventListener('input', _atualizarNDFCalc)
+    );
+    document.getElementById('ndf-parcela-x').addEventListener('change', function() {
+        const y = parseInt(document.getElementById('ndf-parcela-y').value) || 1;
+        if (parseInt(this.value) > y) this.value = y;
+    });
+
+    document.getElementById('btnNovaDespesaFatura').addEventListener('click', function() {
+        bootstrap.Modal.getInstance(_modalFaturaEl).hide();
+        document.getElementById('ndf-cartao-nome').textContent = 'Cartão: ' + (_modalState.nomeCartao || '');
+        ['ndf-descricao','ndf-valor-parcela','ndf-valor-total','ndf-data-hint'].forEach(id =>
+            document.getElementById(id).value !== undefined
+                ? (document.getElementById(id).value = '')
+                : (document.getElementById(id).textContent = '')
+        );
+        document.getElementById('ndf-categoria').value  = '';
+        document.getElementById('ndf-parcela-x').value  = 1;
+        document.getElementById('ndf-parcela-y').value  = 1;
+        _atualizarNDFCalc();
+        _modalNDF.show();
+    });
+
+    function _cancelarNDF() {
+        _modalNDF.hide();
+        setTimeout(() => verDetalhes(
+            _modalState.cartaoId, _modalState.mes, _modalState.ano,
+            _modalState.nomeCartao, _modalState.mesRef
+        ), 300);
+    }
+    document.getElementById('btnCancelarNovaDespesa').addEventListener('click', _cancelarNDF);
+    document.getElementById('btnFecharNovaDespesa').addEventListener('click',   _cancelarNDF);
+
+    document.getElementById('btnSalvarNovaDespesa').addEventListener('click', function() {
+        const categoriaId  = document.getElementById('ndf-categoria').value;
+        const descricao    = document.getElementById('ndf-descricao').value.trim();
+        const parcelaX     = parseInt(document.getElementById('ndf-parcela-x').value) || 1;
+        const parcelaY     = parseInt(document.getElementById('ndf-parcela-y').value) || 1;
+        const valorParcela = parseFloat((document.getElementById('ndf-valor-parcela').value||'0').replace(',','.')) || 0;
+        const dataCompra   = document.getElementById('ndf-data-compra').value;
+        if (!categoriaId)  { alert('Selecione a categoria.'); return; }
+        if (!valorParcela) { alert('Informe o valor da parcela.'); return; }
+        if (!dataCompra)   { alert('Informe a data da compra.'); return; }
+        if (parcelaX > parcelaY) { alert('Parcela atual não pode ser maior que o total.'); return; }
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Salvando...';
+        fetch('{{ url_for("despesas.nova_despesa_fatura") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                cartao_id: _modalState.cartaoId, categoria_id: categoriaId,
+                descricao, num_parcelas: parcelaY, valor_parcela: valorParcela,
+                data_pagamento: dataCompra
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Salvar Despesa';
+            if (data.success) { alert(data.message); _cancelarNDF(); }
+            else alert('Erro: ' + data.message);
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Salvar Despesa';
+            alert('Erro: ' + err);
+        });
+    });
 
     function excluirDaFatura(id) {
         if (!confirm('Excluir esta despesa? A ação não pode ser desfeita.')) return;

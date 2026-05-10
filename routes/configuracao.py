@@ -653,10 +653,29 @@ def categorias_despesa():
                 status = 'ativada' if categoria.ativo else 'desativada'
                 flash(f'Categoria {status}!', 'success')
 
+        elif action == 'excluir':
+            id = int(request.form.get('id'))
+            transfer_id = request.form.get('transfer_id')
+            categoria = CategoriaDespesa.query.filter_by(id=id, user_id=current_user.id).first()
+            if categoria:
+                count = Despesa.query.filter_by(categoria_id=id, user_id=current_user.id).count()
+                if count > 0 and transfer_id:
+                    Despesa.query.filter_by(categoria_id=id, user_id=current_user.id)\
+                                 .update({'categoria_id': int(transfer_id)})
+                elif count > 0:
+                    flash(f'Selecione uma categoria de destino para as {count} despesas vinculadas.', 'warning')
+                    return redirect(url_for('config.categorias_despesa'))
+                db.session.delete(categoria)
+                db.session.commit()
+                flash('Categoria excluída com sucesso!', 'success')
+
         return redirect(url_for('config.categorias_despesa'))
 
     categorias = CategoriaDespesa.query.filter_by(user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
-    return render_template('config/categorias_despesa.html', categorias=categorias)
+    desp_counts = dict(db.session.query(Despesa.categoria_id, db.func.count(Despesa.id))
+                       .filter(Despesa.user_id == current_user.id)
+                       .group_by(Despesa.categoria_id).all())
+    return render_template('config/categorias_despesa.html', categorias=categorias, desp_counts=desp_counts)
 
 @config_bp.route('/categorias-receita', methods=['GET', 'POST'])
 @login_required
@@ -693,10 +712,29 @@ def categorias_receita():
                 status = 'ativada' if categoria.ativo else 'desativada'
                 flash(f'Categoria {status}!', 'success')
 
+        elif action == 'excluir':
+            id = int(request.form.get('id'))
+            transfer_id = request.form.get('transfer_id')
+            categoria = CategoriaReceita.query.filter_by(id=id, user_id=current_user.id).first()
+            if categoria:
+                count = Receita.query.filter_by(categoria_id=id, user_id=current_user.id).count()
+                if count > 0 and transfer_id:
+                    Receita.query.filter_by(categoria_id=id, user_id=current_user.id)\
+                                 .update({'categoria_id': int(transfer_id)})
+                elif count > 0:
+                    flash(f'Selecione uma categoria de destino para as {count} receitas vinculadas.', 'warning')
+                    return redirect(url_for('config.categorias_receita'))
+                db.session.delete(categoria)
+                db.session.commit()
+                flash('Categoria excluída com sucesso!', 'success')
+
         return redirect(url_for('config.categorias_receita'))
 
     categorias = CategoriaReceita.query.filter_by(user_id=current_user.id).order_by(CategoriaReceita.nome).all()
-    return render_template('config/categorias_receita.html', categorias=categorias)
+    rec_counts = dict(db.session.query(Receita.categoria_id, db.func.count(Receita.id))
+                      .filter(Receita.user_id == current_user.id)
+                      .group_by(Receita.categoria_id).all())
+    return render_template('config/categorias_receita.html', categorias=categorias, rec_counts=rec_counts)
 
 @config_bp.route('/meios-pagamento', methods=['GET', 'POST'])
 @login_required
@@ -736,10 +774,29 @@ def meios_pagamento():
                 status = 'ativado' if meio.ativo else 'desativado'
                 flash(f'Meio de pagamento {status}!', 'success')
 
+        elif action == 'excluir':
+            id = int(request.form.get('id'))
+            transfer_id = request.form.get('transfer_id')
+            meio = MeioPagamento.query.filter_by(id=id, user_id=current_user.id).first()
+            if meio:
+                count = Despesa.query.filter_by(meio_pagamento_id=id, user_id=current_user.id).count()
+                if count > 0 and transfer_id:
+                    Despesa.query.filter_by(meio_pagamento_id=id, user_id=current_user.id)\
+                                 .update({'meio_pagamento_id': int(transfer_id)})
+                elif count > 0:
+                    flash(f'Selecione um meio de destino para as {count} despesas vinculadas.', 'warning')
+                    return redirect(url_for('config.meios_pagamento'))
+                db.session.delete(meio)
+                db.session.commit()
+                flash('Meio de pagamento excluído com sucesso!', 'success')
+
         return redirect(url_for('config.meios_pagamento'))
 
     meios = MeioPagamento.query.filter_by(user_id=current_user.id).order_by(MeioPagamento.nome).all()
-    return render_template('config/meios_pagamento.html', meios=meios)
+    desp_counts = dict(db.session.query(Despesa.meio_pagamento_id, db.func.count(Despesa.id))
+                       .filter(Despesa.user_id == current_user.id)
+                       .group_by(Despesa.meio_pagamento_id).all())
+    return render_template('config/meios_pagamento.html', meios=meios, desp_counts=desp_counts)
 
 @config_bp.route('/meios-recebimento', methods=['GET', 'POST'])
 @login_required
@@ -776,10 +833,29 @@ def meios_recebimento():
                 status = 'ativado' if meio.ativo else 'desativado'
                 flash(f'Meio de recebimento {status}!', 'success')
 
+        elif action == 'excluir':
+            id = int(request.form.get('id'))
+            transfer_id = request.form.get('transfer_id')
+            meio = MeioRecebimento.query.filter_by(id=id, user_id=current_user.id).first()
+            if meio:
+                count = Receita.query.filter_by(meio_recebimento_id=id, user_id=current_user.id).count()
+                if count > 0 and transfer_id:
+                    Receita.query.filter_by(meio_recebimento_id=id, user_id=current_user.id)\
+                                 .update({'meio_recebimento_id': int(transfer_id)})
+                elif count > 0:
+                    flash(f'Selecione um meio de destino para as {count} receitas vinculadas.', 'warning')
+                    return redirect(url_for('config.meios_recebimento'))
+                db.session.delete(meio)
+                db.session.commit()
+                flash('Meio de recebimento excluído com sucesso!', 'success')
+
         return redirect(url_for('config.meios_recebimento'))
 
     meios = MeioRecebimento.query.filter_by(user_id=current_user.id).order_by(MeioRecebimento.nome).all()
-    return render_template('config/meios_recebimento.html', meios=meios)
+    rec_counts = dict(db.session.query(Receita.meio_recebimento_id, db.func.count(Receita.id))
+                      .filter(Receita.user_id == current_user.id)
+                      .group_by(Receita.meio_recebimento_id).all())
+    return render_template('config/meios_recebimento.html', meios=meios, rec_counts=rec_counts)
 
 @config_bp.route('/usuarios', methods=['GET', 'POST'])
 @login_required

@@ -64,6 +64,12 @@
                                         <i class="bi bi-pencil"></i>
                                     </button>
 
+                                    <!-- Excluir -->
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal"
+                                        data-bs-target="#delMeio{{ meio.id }}" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+
                                     <!-- Modal de Edição -->
                                     <div class="modal fade" id="editarModal{{ meio.id }}" tabindex="-1">
                                         <div class="modal-dialog">
@@ -91,6 +97,42 @@
                                                 </form>
                                             </div>
                                         </div>
+                                    </div>
+                                    <!-- Modal Excluir Meio Recebimento -->
+                                    {% set count = rec_counts.get(meio.id, 0) %}
+                                    <div class="modal fade" id="delMeio{{ meio.id }}" tabindex="-1">
+                                        <div class="modal-dialog"><div class="modal-content">
+                                            <form method="POST">
+                                                <div class="modal-header bg-danger text-white">
+                                                    <h5 class="modal-title"><i class="bi bi-trash me-2"></i>Excluir Meio</h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <input type="hidden" name="action" value="excluir">
+                                                    <input type="hidden" name="id" value="{{ meio.id }}">
+                                                    <p>Excluir <strong>{{ meio.nome }}</strong>?</p>
+                                                    {% if count > 0 %}
+                                                    <div class="alert alert-warning py-2 small">
+                                                        <i class="bi bi-exclamation-triangle me-1"></i>
+                                                        <strong>{{ count }} receita{{ 's' if count != 1 }}</strong> vinculada{{ 's' if count != 1 }}.
+                                                        Selecione para onde transferir:
+                                                    </div>
+                                                    <select class="form-select form-select-sm" name="transfer_id" required>
+                                                        <option value="">Selecione...</option>
+                                                        {% for o in meios if o.id != meio.id %}
+                                                        <option value="{{ o.id }}">{{ o.nome }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    {% else %}
+                                                    <p class="text-muted small mb-0">Nenhuma receita vinculada. A exclusão é definitiva.</p>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                                    <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash me-1"></i>Excluir</button>
+                                                </div>
+                                            </form>
+                                        </div></div>
                                     </div>
                                 </td>
                             </tr>

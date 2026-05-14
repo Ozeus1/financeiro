@@ -66,6 +66,7 @@
                             <table class="table table-striped table-hover">
                                 <thead class="table-dark">
                                     <tr>
+                                        <th>Cód. API</th>
                                         <th>Nome</th>
                                         <th>Tipo</th>
                                         <th class="text-center">Status</th>
@@ -75,6 +76,7 @@
                                 <tbody>
                                     {% for meio in meios %}
                                     <tr>
+                                        <td><code class="text-primary small">{{ meio.id }}</code></td>
                                         <td>
                                             <i
                                                 class="bi bi-{% if meio.tipo == 'cartao' %}credit-card{% elif meio.tipo == 'dinheiro' %}cash{% elif meio.tipo == 'pix' %}qr-code{% else %}wallet2{% endif %}"></i>

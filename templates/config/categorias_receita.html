@@ -28,11 +28,12 @@
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
             <thead class="table-dark">
-              <tr><th>Categoria</th><th class="text-center">Status</th><th class="text-center">Ações</th></tr>
+              <tr><th>Cód. API</th><th>Categoria</th><th class="text-center">Status</th><th class="text-center">Ações</th></tr>
             </thead>
             <tbody>
               {% for c in categorias %}
               <tr>
+                <td><code class="text-primary small">{{ c.id }}</code></td>
                 <td><i class="bi bi-tag me-1 text-success"></i>{{ c.nome }}</td>
                 <td class="text-center">
                   <span class="badge bg-{% if c.ativo %}success{% else %}secondary{% endif %}">

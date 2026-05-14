@@ -2,6 +2,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import secrets
+import hashlib
 
 db = SQLAlchemy()
 
@@ -286,13 +288,53 @@ class EventoCaixaAvulso(db.Model):
 class Configuracao(db.Model):
     """Tabela para armazenar configurações do sistema (chave-valor)"""
     __tablename__ = 'configuracoes'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     chave = db.Column(db.String(50), unique=True, nullable=False)
     valor = db.Column(db.Text, nullable=True)
-    
+
     def __repr__(self):
         return f'<Configuracao {self.chave}>'
+
+
+class ApiKey(db.Model):
+    """API Keys individuais para acesso externo via REST API"""
+    __tablename__ = 'api_keys'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
+    key_hash = db.Column(db.String(64), unique=True, nullable=False)
+    key_prefix = db.Column(db.String(16), nullable=False)
+    descricao = db.Column(db.String(200), nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    data_ultimo_uso = db.Column(db.DateTime, nullable=True)
+    total_requests = db.Column(db.Integer, default=0, nullable=False)
+
+    usuario = db.relationship('User', backref='api_key', uselist=False)
+
+    @staticmethod
+    def gerar_chave():
+        """Retorna (raw_key, key_hash, key_prefix)"""
+        raw = 'fn_' + secrets.token_urlsafe(40)
+        key_hash = hashlib.sha256(raw.encode()).hexdigest()
+        prefix = raw[:16]
+        return raw, key_hash, prefix
+
+    @staticmethod
+    def verificar(raw_key):
+        """Retorna (usuario, api_key) se válida, caso contrário (None, None)"""
+        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+        ak = ApiKey.query.filter_by(key_hash=key_hash, ativo=True).first()
+        if ak:
+            ak.data_ultimo_uso = datetime.utcnow()
+            ak.total_requests = (ak.total_requests or 0) + 1
+            db.session.commit()
+            return ak.usuario, ak
+        return None, None
+
+    def __repr__(self):
+        return f'<ApiKey {self.key_prefix}... (User: {self.user_id})>'
 
 
 def init_db(app):

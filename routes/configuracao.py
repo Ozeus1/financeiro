@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
 from flask_login import login_required, current_user
 from routes.auth import admin_required, gerente_required
-from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa, Receita, BalancoMensal, EventoCaixaAvulso, ConfigSistema
+from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa, Receita, BalancoMensal, EventoCaixaAvulso, ConfigSistema, ApiKey
 from utils.supabase_client import SupabaseClient
 import json
 from datetime import datetime
@@ -1156,6 +1156,69 @@ def orcamento():
     return render_template('config/orcamento.html',
                           categorias=categorias,
                           orcamentos_map=orcamentos_map)
+
+
+# ─── API Key management ───────────────────────────────────────────────────────
+
+@config_bp.route('/api-key', methods=['GET', 'POST'])
+@login_required
+def api_key():
+    """Página de gerenciamento da API key do usuário atual."""
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action == 'gerar':
+            raw, key_hash, prefix = ApiKey.gerar_chave()
+            ak = ApiKey.query.filter_by(user_id=current_user.id).first()
+            if ak:
+                ak.key_hash = key_hash
+                ak.key_prefix = prefix
+                ak.ativo = True
+                ak.data_criacao = __import__('datetime').datetime.utcnow()
+                ak.total_requests = 0
+                ak.data_ultimo_uso = None
+            else:
+                ak = ApiKey(
+                    user_id=current_user.id,
+                    key_hash=key_hash,
+                    key_prefix=prefix,
+                    ativo=True,
+                )
+                db.session.add(ak)
+            db.session.commit()
+            flash(f'Chave gerada com sucesso! Copie agora — ela não será exibida novamente.', 'success')
+            # Exibe a chave raw UMA vez via sessão
+            from flask import session as flask_session
+            flask_session['api_key_raw'] = raw
+            return redirect(url_for('config.api_key'))
+
+        elif action == 'revogar':
+            ak = ApiKey.query.filter_by(user_id=current_user.id).first()
+            if ak:
+                ak.ativo = False
+                db.session.commit()
+                flash('API key revogada. Gere uma nova quando precisar.', 'warning')
+            return redirect(url_for('config.api_key'))
+
+    from flask import session as flask_session
+    raw_exibir = flask_session.pop('api_key_raw', None)
+    ak = ApiKey.query.filter_by(user_id=current_user.id).first()
+
+    # Catálogos para a página de docs
+    cat_despesas = CategoriaDespesa.query.filter_by(user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
+    cat_receitas = CategoriaReceita.query.filter_by(user_id=current_user.id).order_by(CategoriaReceita.nome).all()
+    meios_pag = MeioPagamento.query.filter_by(user_id=current_user.id).order_by(MeioPagamento.nome).all()
+    meios_rec = MeioRecebimento.query.filter_by(user_id=current_user.id).order_by(MeioRecebimento.nome).all()
+
+    return render_template(
+        'config/api_keys.html',
+        ak=ak,
+        raw_exibir=raw_exibir,
+        cat_despesas=cat_despesas,
+        cat_receitas=cat_receitas,
+        meios_pag=meios_pag,
+        meios_rec=meios_rec,
+    )
 
 @config_bp.route('/cartoes', methods=['GET', 'POST'])
 @login_required

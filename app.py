@@ -53,6 +53,19 @@ def create_app(config_name='default'):
                 for col, col_type in [('nome', 'VARCHAR(150)'), ('whatsapp', 'VARCHAR(20)'), ('foto_perfil', 'VARCHAR(255)')]:
                     conn.execute(text(f'ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {col_type}'))
                 conn.execute(text('CREATE TABLE IF NOT EXISTS config_sistema (id SERIAL PRIMARY KEY, chave VARCHAR(80) UNIQUE NOT NULL, valor TEXT)'))
+                conn.execute(text('''
+                    CREATE TABLE IF NOT EXISTS api_keys (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+                        key_hash VARCHAR(64) NOT NULL UNIQUE,
+                        key_prefix VARCHAR(16) NOT NULL,
+                        descricao VARCHAR(200),
+                        ativo BOOLEAN NOT NULL DEFAULT TRUE,
+                        data_criacao TIMESTAMP DEFAULT NOW(),
+                        data_ultimo_uso TIMESTAMP,
+                        total_requests INTEGER NOT NULL DEFAULT 0
+                    )
+                '''))
                 conn.commit()
         except Exception:
             pass
@@ -66,6 +79,7 @@ def create_app(config_name='default'):
     from routes.relatorios import relatorios_bp
     from routes.fluxo_caixa import fluxo_caixa_bp
     from routes.upload_database import bp as upload_database_bp
+    from routes.api_v1 import api_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -75,6 +89,7 @@ def create_app(config_name='default'):
     app.register_blueprint(relatorios_bp, url_prefix='/relatorios')
     app.register_blueprint(fluxo_caixa_bp)
     app.register_blueprint(upload_database_bp)
+    app.register_blueprint(api_bp, url_prefix='/api/v1')
     
     return app
 

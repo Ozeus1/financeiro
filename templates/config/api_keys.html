@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+{% block title %}API REST — FiNan{% endblock %}
+{% block extra_css %}
+<style>
+.api-hero{background:linear-gradient(135deg,#0d1b2a 0%,#1a3050 100%);color:#fff;border-radius:12px;padding:2rem 2rem 1.5rem}
+.api-hero h1{font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
+.api-hero .badge-version{background:rgba(76,201,240,.2);color:#4cc9f0;border:1px solid rgba(76,201,240,.4);font-size:.7rem;padding:.25em .6em;border-radius:6px;font-weight:700;vertical-align:middle}
+.key-box{font-family:monospace;font-size:.92rem;background:#0d1b2a;color:#4cc9f0;border:1px solid #1e3a5f;padding:.6rem 1rem;border-radius:8px;word-break:break-all;letter-spacing:.03em}
+.key-masked{color:#94a3b8}
+.endpoint-card{border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:1rem}
+.endpoint-header{display:flex;align-items:center;gap:.6rem;padding:.65rem 1rem;background:#f8fafc;cursor:pointer;border-bottom:1px solid #e2e8f0}
+.endpoint-header:hover{background:#f1f5f9}
+.endpoint-body{padding:1rem}
+.method{font-weight:700;font-size:.75rem;padding:.22em .6em;border-radius:5px;min-width:52px;text-align:center}
+.method-get{background:#d1fae5;color:#065f46}
+.method-post{background:#dbeafe;color:#1e40af}
+.method-put{background:#fef3c7;color:#92400e}
+.method-delete{background:#fee2e2;color:#991b1b}
+.endpoint-path{font-family:monospace;font-size:.85rem;color:#1e293b;font-weight:600}
+.param-table th{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:600}
+.param-table td{font-size:.82rem;vertical-align:top}
+.param-required{color:#dc2626;font-size:.7rem;font-weight:700}
+.param-optional{color:#64748b;font-size:.7rem}
+.code-block{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:1rem;font-family:monospace;font-size:.8rem;overflow-x:auto;white-space:pre}
+.code-block .hl-key{color:#4cc9f0}
+.code-block .hl-val{color:#a3e635}
+.code-block .hl-str{color:#fbbf24}
+.code-block .hl-url{color:#c084fc}
+.stat-pill{background:#f1f5f9;border-radius:8px;padding:.5rem .85rem;text-align:center}
+.stat-pill .num{font-size:1.25rem;font-weight:800;color:#0d1b2a}
+.stat-pill .lbl{font-size:.7rem;color:#64748b;text-transform:uppercase;letter-spacing:.04em}
+.catalog-table td,
+.catalog-table th{font-size:.82rem;padding:.4rem .6rem}
+.nav-tab-api .nav-link{font-size:.85rem;border-radius:8px 8px 0 0}
+.nav-tab-api .nav-link.active{background:#0d1b2a;color:#4cc9f0;border-color:#0d1b2a #0d1b2a #fff}
+.alert-key{background:#fffbeb;border:1px solid #f59e0b;border-radius:10px;color:#78350f}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  {# ── Hero ── #}
+  <div class="api-hero mb-4">
+    <div class="d-flex align-items-start gap-3">
+      <div class="fs-2 mt-1"><i class="bi bi-code-square"></i></div>
+      <div>
+        <h1 class="mb-1">API REST <span class="badge-version">v1</span></h1>
+        <p class="mb-0 opacity-75" style="font-size:.9rem">
+          Acesse seus dados financeiros programaticamente com sua API key individual.
+          Todos os endpoints retornam apenas <strong>seus próprios dados</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-3 d-flex gap-2 flex-wrap">
+      <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Leitura</span>
+      <span class="badge bg-primary"><i class="bi bi-pencil me-1"></i>Escrita</span>
+      <span class="badge bg-secondary"><i class="bi bi-shield-lock me-1"></i>Isolamento por usuário</span>
+      <span class="badge" style="background:#4cc9f0;color:#0d1b2a"><i class="bi bi-json me-1"></i>JSON</span>
+    </div>
+  </div>
+
+  {# ── Base URL ── #}
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-body py-2 d-flex align-items-center gap-3 flex-wrap">
+          <span class="text-muted small fw-bold">BASE URL:</span>
+          <code id="baseUrl" class="text-primary" style="font-size:.9rem">{{ request.host_url.rstrip('/') }}/api/v1</code>
+          <button class="btn btn-outline-secondary btn-sm" onclick="copyText('baseUrl')">
+            <i class="bi bi-clipboard"></i> Copiar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Tabs ── #}
+  <ul class="nav nav-tabs nav-tab-api mb-0" id="apiTabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabKey"><i class="bi bi-key me-1"></i>Minha API Key</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDocs"><i class="bi bi-book me-1"></i>Documentação</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCatalog"><i class="bi bi-list-ul me-1"></i>Catálogos</button></li>
+  </ul>
+
+  <div class="tab-content border border-top-0 rounded-bottom p-4 shadow-sm bg-white" id="apiTabContent">
+
+    {# ══════════════════════════════════════════════ TAB KEY ══ #}
+    <div class="tab-pane fade show active" id="tabKey">
+
+      {% if raw_exibir %}
+      <div class="alert-key p-3 mb-4 d-flex gap-3 align-items-start">
+        <i class="bi bi-exclamation-triangle-fill fs-5 mt-1 text-warning flex-shrink-0"></i>
+        <div class="w-100">
+          <strong>Salve sua chave agora!</strong> Por segurança ela não será exibida novamente.
+          <div class="key-box mt-2" id="rawKey">{{ raw_exibir }}</div>
+          <button class="btn btn-sm btn-warning mt-2" onclick="copyText('rawKey')">
+            <i class="bi bi-clipboard me-1"></i>Copiar chave
+          </button>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if ak %}
+      <div class="row g-3 mb-4">
+        <div class="col-sm-4">
+          <div class="stat-pill">
+            <div class="num">{{ ak.total_requests or 0 }}</div>
+            <div class="lbl">Requisições</div>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="stat-pill">
+            <div class="num" style="font-size:.9rem">
+              {% if ak.data_ultimo_uso %}{{ ak.data_ultimo_uso.strftime('%d/%m/%Y %H:%M') }}{% else %}—{% endif %}
+            </div>
+            <div class="lbl">Último uso</div>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="stat-pill">
+            <div class="num"><span class="badge {% if ak.ativo %}bg-success{% else %}bg-secondary{% endif %}">{% if ak.ativo %}Ativa{% else %}Revogada{% endif %}</span></div>
+            <div class="lbl">Status</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label small fw-bold text-muted">Prefixo da chave (identificação)</label>
+        <div class="key-box">{{ ak.key_prefix }}<span class="key-masked">••••••••••••••••••••••••••••••••••••</span></div>
+        <div class="form-text">Criada em {{ ak.data_criacao.strftime('%d/%m/%Y às %H:%M') }}</div>
+      </div>
+      {% else %}
+      <div class="text-center py-4 text-muted">
+        <i class="bi bi-key fs-1 d-block mb-2"></i>
+        <p class="mb-1">Você ainda não possui uma API key.</p>
+        <p class="small">Gere uma para começar a usar a API.</p>
+      </div>
+      {% endif %}
+
+      <div class="d-flex gap-2 flex-wrap">
+        <form method="POST">
+          <input type="hidden" name="action" value="gerar">
+          <button type="submit" class="btn btn-primary"
+            onclick="return confirm('{% if ak %}Isso irá INVALIDAR a chave atual. Continuar?{% else %}true{% endif %}')">
+            <i class="bi bi-plus-circle me-1"></i>
+            {% if ak %}Gerar nova chave{% else %}Gerar API key{% endif %}
+          </button>
+        </form>
+        {% if ak and ak.ativo %}
+        <form method="POST" onsubmit="return confirm('Deseja revogar a API key atual?')">
+          <input type="hidden" name="action" value="revogar">
+          <button type="submit" class="btn btn-outline-danger">
+            <i class="bi bi-x-circle me-1"></i>Revogar
+          </button>
+        </form>
+        {% endif %}
+      </div>
+
+      <hr class="my-4">
+      <h6 class="fw-bold mb-3"><i class="bi bi-shield-lock me-2 text-primary"></i>Regras de acesso e segurança</h6>
+      <ul class="small text-muted lh-lg mb-0">
+        <li>Cada usuário possui <strong>uma única API key</strong>. Gerar uma nova invalida a anterior imediatamente.</li>
+        <li>A chave só é exibida <strong>uma vez</strong> no momento da criação. Guarde-a em local seguro.</li>
+        <li>Envie a chave no header HTTP: <code>X-API-Key: &lt;sua_chave&gt;</code></li>
+        <li>Você só pode ler e modificar <strong>seus próprios dados</strong>. Outros usuários são completamente isolados.</li>
+        <li>A API registra a data e hora de cada uso. Monitore o contador de requisições para detectar uso indevido.</li>
+        <li>Em caso de comprometimento, revogue a chave e gere uma nova imediatamente.</li>
+        <li>Não inclua a chave em código-fonte público (GitHub, etc). Use variáveis de ambiente.</li>
+        <li>A chave não tem prazo de validade, mas fica inativa se o usuário for desativado no sistema.</li>
+      </ul>
+    </div>
+
+    {# ══════════════════════════════════════════════ TAB DOCS ══ #}
+    <div class="tab-pane fade" id="tabDocs">
+
+      {# Auth #}
+      <div class="mb-4">
+        <h5 class="fw-bold"><i class="bi bi-shield-check me-2 text-primary"></i>Autenticação</h5>
+        <p class="text-muted small mb-2">Inclua sua API key em <strong>todas</strong> as requisições via header HTTP:</p>
+        <div class="code-block">GET /api/v1/despesas
+<span class="hl-key">X-API-Key:</span> <span class="hl-str">fn_SuaChaveAqui...</span></div>
+        <p class="text-muted small mt-2 mb-0">Alternativamente, via query param: <code>?api_key=fn_SuaChaveAqui...</code> (não recomendado em produção)</p>
+      </div>
+
+      {# Códigos HTTP #}
+      <div class="mb-4">
+        <h5 class="fw-bold"><i class="bi bi-info-circle me-2 text-primary"></i>Códigos de resposta</h5>
+        <table class="table table-sm table-bordered" style="font-size:.82rem;width:auto">
+          <tr><td class="fw-bold text-success">200</td><td>Sucesso (GET, PUT)</td></tr>
+          <tr><td class="fw-bold text-success">201</td><td>Criado (POST)</td></tr>
+          <tr><td class="fw-bold text-danger">400</td><td>JSON inválido / ausente</td></tr>
+          <tr><td class="fw-bold text-danger">401</td><td>API key ausente ou inválida</td></tr>
+          <tr><td class="fw-bold text-danger">403</td><td>Usuário inativo</td></tr>
+          <tr><td class="fw-bold text-danger">404</td><td>Registro não encontrado</td></tr>
+          <tr><td class="fw-bold text-danger">422</td><td>Dados inválidos (detalhes no JSON)</td></tr>
+        </table>
+      </div>
+
+      {# ── Endpoints ── #}
+      <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2 text-primary"></i>Endpoints</h5>
+
+      {# helper macro #}
+      {% macro ep(method, path, desc, id) %}
+      <div class="endpoint-card">
+        <div class="endpoint-header" data-bs-toggle="collapse" data-bs-target="#ep{{ id }}">
+          <span class="method method-{{ method|lower }}">{{ method }}</span>
+          <span class="endpoint-path">/api/v1{{ path }}</span>
+          <span class="text-muted small ms-auto">{{ desc }}</span>
+          <i class="bi bi-chevron-down ms-2 text-muted" style="font-size:.75rem"></i>
+        </div>
+        <div id="ep{{ id }}" class="collapse endpoint-body">
+          {{ caller() }}
+        </div>
+      </div>
+      {% endmacro %}
+
+      {# ─ Catálogos ─ #}
+      <p class="small fw-bold text-uppercase text-muted mb-2 mt-3">Catálogos (referência)</p>
+
+      {% call ep('GET', '/categorias/despesas', 'Lista categorias de despesa com códigos', 'cd') %}
+      <p class="text-muted small mb-2">Query params opcionais: <code>ativo=true</code> (filtra apenas ativas)</p>
+      <div class="code-block">[
+  { <span class="hl-key">"codigo"</span>: <span class="hl-val">4</span>, <span class="hl-key">"nome"</span>: <span class="hl-str">"Alimentação"</span>, <span class="hl-key">"ativo"</span>: <span class="hl-val">true</span> },
+  { <span class="hl-key">"codigo"</span>: <span class="hl-val">7</span>, <span class="hl-key">"nome"</span>: <span class="hl-str">"Educação"</span>,   <span class="hl-key">"ativo"</span>: <span class="hl-val">true</span> }
+]</div>
+      {% endcall %}
+
+      {% call ep('GET', '/categorias/receitas', 'Lista categorias de receita com códigos', 'cr') %}
+      <p class="text-muted small mb-2">Query params opcionais: <code>ativo=true</code></p>
+      <div class="code-block">[
+  { <span class="hl-key">"codigo"</span>: <span class="hl-val">1</span>, <span class="hl-key">"nome"</span>: <span class="hl-str">"Salário"</span>, <span class="hl-key">"ativo"</span>: <span class="hl-val">true</span> }
+]</div>
+      {% endcall %}
+
+      {% call ep('GET', '/meios-pagamento', 'Lista meios de pagamento com códigos', 'mp') %}
+      <p class="text-muted small mb-2">Query params opcionais: <code>ativo=true</code></p>
+      <div class="code-block">[
+  { <span class="hl-key">"codigo"</span>: <span class="hl-val">3</span>, <span class="hl-key">"nome"</span>: <span class="hl-str">"Cartão Nubank"</span>, <span class="hl-key">"tipo"</span>: <span class="hl-str">"cartao"</span>, <span class="hl-key">"ativo"</span>: <span class="hl-val">true</span> }
+]</div>
+      {% endcall %}
+
+      {% call ep('GET', '/meios-recebimento', 'Lista meios de recebimento com códigos', 'mr') %}
+      <p class="text-muted small mb-2">Query params opcionais: <code>ativo=true</code></p>
+      <div class="code-block">[
+  { <span class="hl-key">"codigo"</span>: <span class="hl-val">2</span>, <span class="hl-key">"nome"</span>: <span class="hl-str">"PIX"</span>, <span class="hl-key">"ativo"</span>: <span class="hl-val">true</span> }
+]</div>
+      {% endcall %}
+
+      {# ─ Despesas ─ #}
+      <p class="small fw-bold text-uppercase text-muted mb-2 mt-4">Despesas</p>
+
+      {% call ep('GET', '/despesas', 'Lista despesas com paginação e filtros', 'd1') %}
+      <p class="text-muted small mb-2">Query params opcionais:</p>
+      <table class="table table-sm param-table mb-2">
+        <thead><tr><th>Parâmetro</th><th>Tipo</th><th>Descrição</th></tr></thead>
+        <tbody>
+          <tr><td><code>mes</code></td><td>int</td><td>Mês (1-12)</td></tr>
+          <tr><td><code>ano</code></td><td>int</td><td>Ano (ex: 2025)</td></tr>
+          <tr><td><code>categoria_codigo</code></td><td>int</td><td>Código da categoria</td></tr>
+          <tr><td><code>meio_pagamento_codigo</code></td><td>int</td><td>Código do meio de pagamento</td></tr>
+          <tr><td><code>pagina</code></td><td>int</td><td>Página (padrão: 1)</td></tr>
+          <tr><td><code>por_pagina</code></td><td>int</td><td>Itens por página (máx: 200, padrão: 50)</td></tr>
+        </tbody>
+      </table>
+      <div class="code-block">{
+  <span class="hl-key">"total"</span>: <span class="hl-val">142</span>, <span class="hl-key">"pagina"</span>: <span class="hl-val">1</span>, <span class="hl-key">"por_pagina"</span>: <span class="hl-val">50</span>, <span class="hl-key">"paginas"</span>: <span class="hl-val">3</span>,
+  <span class="hl-key">"dados"</span>: [
+    {
+      <span class="hl-key">"id"</span>: <span class="hl-val">55</span>, <span class="hl-key">"descricao"</span>: <span class="hl-str">"Mercado"</span>, <span class="hl-key">"valor"</span>: <span class="hl-val">320.50</span>,
+      <span class="hl-key">"num_parcelas"</span>: <span class="hl-val">1</span>, <span class="hl-key">"data_pagamento"</span>: <span class="hl-str">"2025-05-10"</span>,
+      <span class="hl-key">"categoria_codigo"</span>: <span class="hl-val">4</span>, <span class="hl-key">"categoria_nome"</span>: <span class="hl-str">"Alimentação"</span>,
+      <span class="hl-key">"meio_pagamento_codigo"</span>: <span class="hl-val">3</span>, <span class="hl-key">"meio_pagamento_nome"</span>: <span class="hl-str">"Cartão Nubank"</span>
+    }
+  ]
+}</div>
+      {% endcall %}
+
+      {% call ep('GET', '/despesas/{id}', 'Retorna uma despesa pelo ID', 'd2') %}
+      <div class="code-block">GET <span class="hl-url">/api/v1/despesas/55</span></div>
+      {% endcall %}
+
+      {% call ep('POST', '/despesas', 'Cria uma nova despesa', 'd3') %}
+      <p class="text-muted small mb-2">Corpo JSON:</p>
+      <table class="table table-sm param-table mb-2">
+        <thead><tr><th>Campo</th><th>Tipo</th><th>Obrigatório</th><th>Descrição</th></tr></thead>
+        <tbody>
+          <tr><td><code>descricao</code></td><td>string</td><td><span class="param-required">SIM</span></td><td>Descrição da despesa</td></tr>
+          <tr><td><code>valor</code></td><td>number</td><td><span class="param-required">SIM</span></td><td>Valor positivo (ex: 150.00)</td></tr>
+          <tr><td><code>data_pagamento</code></td><td>string</td><td><span class="param-required">SIM</span></td><td>Formato YYYY-MM-DD</td></tr>
+          <tr><td><code>categoria_codigo</code></td><td>int</td><td><span class="param-required">SIM</span></td><td>Código da categoria (ver catálogo)</td></tr>
+          <tr><td><code>meio_pagamento_codigo</code></td><td>int</td><td><span class="param-required">SIM</span></td><td>Código do meio de pagamento</td></tr>
+          <tr><td><code>num_parcelas</code></td><td>int</td><td><span class="param-optional">não</span></td><td>Número de parcelas (padrão: 1)</td></tr>
+        </tbody>
+      </table>
+      <div class="code-block">{
+  <span class="hl-key">"descricao"</span>: <span class="hl-str">"Supermercado"</span>,
+  <span class="hl-key">"valor"</span>: <span class="hl-val">450.80</span>,
+  <span class="hl-key">"data_pagamento"</span>: <span class="hl-str">"2025-05-15"</span>,
+  <span class="hl-key">"categoria_codigo"</span>: <span class="hl-val">4</span>,
+  <span class="hl-key">"meio_pagamento_codigo"</span>: <span class="hl-val">3</span>
+}</div>
+      <p class="text-muted small mt-2 mb-1">Retorno (201 Created):</p>
+      <div class="code-block">{ <span class="hl-key">"mensagem"</span>: <span class="hl-str">"Despesa criada com sucesso"</span>, <span class="hl-key">"id"</span>: <span class="hl-val">56</span>, ... }</div>
+      {% endcall %}
+
+      {% call ep('PUT', '/despesas/{id}', 'Atualiza campos de uma despesa', 'd4') %}
+      <p class="text-muted small mb-2">Envie apenas os campos que deseja alterar (PATCH semântico):</p>
+      <div class="code-block">{
+  <span class="hl-key">"valor"</span>: <span class="hl-val">490.00</span>,
+  <span class="hl-key">"descricao"</span>: <span class="hl-str">"Supermercado corrigido"</span>
+}</div>
+      {% endcall %}
+
+      {% call ep('DELETE', '/despesas/{id}', 'Exclui uma despesa', 'd5') %}
+      <div class="code-block">DELETE <span class="hl-url">/api/v1/despesas/56</span>
+<span class="text-muted"># Retorno: { "mensagem": "Despesa excluída com sucesso", "id": 56 }</span></div>
+      {% endcall %}
+
+      {# ─ Receitas ─ #}
+      <p class="small fw-bold text-uppercase text-muted mb-2 mt-4">Receitas</p>
+
+      {% call ep('GET', '/receitas', 'Lista receitas com paginação e filtros', 'r1') %}
+      <p class="text-muted small mb-2">Query params opcionais:</p>
+      <table class="table table-sm param-table mb-2">
+        <thead><tr><th>Parâmetro</th><th>Tipo</th><th>Descrição</th></tr></thead>
+        <tbody>
+          <tr><td><code>mes</code></td><td>int</td><td>Mês (1-12)</td></tr>
+          <tr><td><code>ano</code></td><td>int</td><td>Ano (ex: 2025)</td></tr>
+          <tr><td><code>categoria_codigo</code></td><td>int</td><td>Código da categoria de receita</td></tr>
+          <tr><td><code>meio_recebimento_codigo</code></td><td>int</td><td>Código do meio de recebimento</td></tr>
+          <tr><td><code>pagina</code></td><td>int</td><td>Página (padrão: 1)</td></tr>
+          <tr><td><code>por_pagina</code></td><td>int</td><td>Itens por página (máx: 200, padrão: 50)</td></tr>
+        </tbody>
+      </table>
+      <div class="code-block">{
+  <span class="hl-key">"total"</span>: <span class="hl-val">12</span>, <span class="hl-key">"pagina"</span>: <span class="hl-val">1</span>, <span class="hl-key">"por_pagina"</span>: <span class="hl-val">50</span>, <span class="hl-key">"paginas"</span>: <span class="hl-val">1</span>,
+  <span class="hl-key">"dados"</span>: [
+    {
+      <span class="hl-key">"id"</span>: <span class="hl-val">10</span>, <span class="hl-key">"descricao"</span>: <span class="hl-str">"Salário maio"</span>, <span class="hl-key">"valor"</span>: <span class="hl-val">5000.00</span>,
+      <span class="hl-key">"data_recebimento"</span>: <span class="hl-str">"2025-05-05"</span>,
+      <span class="hl-key">"categoria_codigo"</span>: <span class="hl-val">1</span>, <span class="hl-key">"categoria_nome"</span>: <span class="hl-str">"Salário"</span>,
+      <span class="hl-key">"meio_recebimento_codigo"</span>: <span class="hl-val">2</span>, <span class="hl-key">"meio_recebimento_nome"</span>: <span class="hl-str">"PIX"</span>
+    }
+  ]
+}</div>
+      {% endcall %}
+
+      {% call ep('GET', '/receitas/{id}', 'Retorna uma receita pelo ID', 'r2') %}
+      <div class="code-block">GET <span class="hl-url">/api/v1/receitas/10</span></div>
+      {% endcall %}
+
+      {% call ep('POST', '/receitas', 'Cria uma nova receita', 'r3') %}
+      <table class="table table-sm param-table mb-2">
+        <thead><tr><th>Campo</th><th>Tipo</th><th>Obrigatório</th><th>Descrição</th></tr></thead>
+        <tbody>
+          <tr><td><code>descricao</code></td><td>string</td><td><span class="param-required">SIM</span></td><td>Descrição da receita</td></tr>
+          <tr><td><code>valor</code></td><td>number</td><td><span class="param-required">SIM</span></td><td>Valor positivo</td></tr>
+          <tr><td><code>data_recebimento</code></td><td>string</td><td><span class="param-required">SIM</span></td><td>Formato YYYY-MM-DD</td></tr>
+          <tr><td><code>categoria_codigo</code></td><td>int</td><td><span class="param-required">SIM</span></td><td>Código da categoria (ver catálogo)</td></tr>
+          <tr><td><code>meio_recebimento_codigo</code></td><td>int</td><td><span class="param-required">SIM</span></td><td>Código do meio de recebimento</td></tr>
+          <tr><td><code>num_parcelas</code></td><td>int</td><td><span class="param-optional">não</span></td><td>Número de parcelas (padrão: 1)</td></tr>
+        </tbody>
+      </table>
+      <div class="code-block">{
+  <span class="hl-key">"descricao"</span>: <span class="hl-str">"Salário junho"</span>,
+  <span class="hl-key">"valor"</span>: <span class="hl-val">5000.00</span>,
+  <span class="hl-key">"data_recebimento"</span>: <span class="hl-str">"2025-06-05"</span>,
+  <span class="hl-key">"categoria_codigo"</span>: <span class="hl-val">1</span>,
+  <span class="hl-key">"meio_recebimento_codigo"</span>: <span class="hl-val">2</span>
+}</div>
+      {% endcall %}
+
+      {% call ep('PUT', '/receitas/{id}', 'Atualiza campos de uma receita', 'r4') %}
+      <p class="text-muted small mb-2">Envie apenas os campos que deseja alterar:</p>
+      <div class="code-block">{ <span class="hl-key">"valor"</span>: <span class="hl-val">5200.00</span> }</div>
+      {% endcall %}
+
+      {% call ep('DELETE', '/receitas/{id}', 'Exclui uma receita', 'r5') %}
+      <div class="code-block">DELETE <span class="hl-url">/api/v1/receitas/10</span></div>
+      {% endcall %}
+
+      {# Exemplo cURL #}
+      <hr class="my-4">
+      <h5 class="fw-bold"><i class="bi bi-terminal me-2 text-primary"></i>Exemplo com cURL</h5>
+      <div class="code-block"><span class="text-muted"># Listar despesas de maio/2025</span>
+curl -X GET "{{ request.host_url.rstrip('/') }}/api/v1/despesas?mes=5&ano=2025" \
+  -H "X-API-Key: fn_SuaChaveAqui..."
+
+<span class="text-muted"># Criar despesa</span>
+curl -X POST "{{ request.host_url.rstrip('/') }}/api/v1/despesas" \
+  -H "X-API-Key: fn_SuaChaveAqui..." \
+  -H "Content-Type: application/json" \
+  -d '{"descricao":"Mercado","valor":320.50,"data_pagamento":"2025-05-15","categoria_codigo":4,"meio_pagamento_codigo":3}'</div>
+
+      <h5 class="fw-bold mt-4"><i class="bi bi-filetype-py me-2 text-primary"></i>Exemplo Python</h5>
+      <div class="code-block">import requests
+
+API_KEY = "fn_SuaChaveAqui..."
+BASE    = "{{ request.host_url.rstrip('/') }}/api/v1"
+headers = {"X-API-Key": API_KEY}
+
+<span class="text-muted"># Listar categorias</span>
+cats = requests.get(f"{BASE}/categorias/despesas", headers=headers).json()
+
+<span class="text-muted"># Registrar despesa</span>
+resp = requests.post(f"{BASE}/despesas", headers=headers, json={
+    "descricao": "Mercado",
+    "valor": 320.50,
+    "data_pagamento": "2025-05-15",
+    "categoria_codigo": cats[0]["codigo"],
+    "meio_pagamento_codigo": 3
+})
+print(resp.status_code, resp.json())</div>
+    </div>
+
+    {# ══════════════════════════════════════════════ TAB CATALOG ══ #}
+    <div class="tab-pane fade" id="tabCatalog">
+      <p class="text-muted small mb-3">
+        Use os <strong>códigos</strong> abaixo nos campos <code>categoria_codigo</code>,
+        <code>meio_pagamento_codigo</code> e <code>meio_recebimento_codigo</code> ao criar ou filtrar registros.
+        Novos itens adicionados nas páginas de configuração recebem código automaticamente.
+      </p>
+
+      <div class="row g-4">
+        <div class="col-md-6">
+          <h6 class="fw-bold"><i class="bi bi-tags me-1 text-danger"></i>Categorias de Despesa</h6>
+          <table class="table table-sm table-hover catalog-table">
+            <thead class="table-dark"><tr><th>Código</th><th>Nome</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for c in cat_despesas %}
+              <tr>
+                <td><code>{{ c.id }}</code></td>
+                <td>{{ c.nome }}</td>
+                <td><span class="badge {% if c.ativo %}bg-success{% else %}bg-secondary{% endif %}" style="font-size:.65rem">{% if c.ativo %}Ativa{% else %}Inativa{% endif %}</span></td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="text-muted text-center">Nenhuma categoria cadastrada</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="col-md-6">
+          <h6 class="fw-bold"><i class="bi bi-tags me-1 text-success"></i>Categorias de Receita</h6>
+          <table class="table table-sm table-hover catalog-table">
+            <thead class="table-dark"><tr><th>Código</th><th>Nome</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for c in cat_receitas %}
+              <tr>
+                <td><code>{{ c.id }}</code></td>
+                <td>{{ c.nome }}</td>
+                <td><span class="badge {% if c.ativo %}bg-success{% else %}bg-secondary{% endif %}" style="font-size:.65rem">{% if c.ativo %}Ativa{% else %}Inativa{% endif %}</span></td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="text-muted text-center">Nenhuma categoria cadastrada</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="col-md-6">
+          <h6 class="fw-bold"><i class="bi bi-credit-card me-1 text-primary"></i>Meios de Pagamento</h6>
+          <table class="table table-sm table-hover catalog-table">
+            <thead class="table-dark"><tr><th>Código</th><th>Nome</th><th>Tipo</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for m in meios_pag %}
+              <tr>
+                <td><code>{{ m.id }}</code></td>
+                <td>{{ m.nome }}</td>
+                <td><span class="text-muted small">{{ m.tipo or '—' }}</span></td>
+                <td><span class="badge {% if m.ativo %}bg-success{% else %}bg-secondary{% endif %}" style="font-size:.65rem">{% if m.ativo %}Ativo{% else %}Inativo{% endif %}</span></td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" class="text-muted text-center">Nenhum meio cadastrado</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="col-md-6">
+          <h6 class="fw-bold"><i class="bi bi-wallet2 me-1 text-warning"></i>Meios de Recebimento</h6>
+          <table class="table table-sm table-hover catalog-table">
+            <thead class="table-dark"><tr><th>Código</th><th>Nome</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for m in meios_rec %}
+              <tr>
+                <td><code>{{ m.id }}</code></td>
+                <td>{{ m.nome }}</td>
+                <td><span class="badge {% if m.ativo %}bg-success{% else %}bg-secondary{% endif %}" style="font-size:.65rem">{% if m.ativo %}Ativo{% else %}Inativo{% endif %}</span></td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="text-muted text-center">Nenhum meio cadastrado</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>{# /tab-content #}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copyText(id) {
+  const el = document.getElementById(id);
+  const text = el.innerText || el.textContent;
+  navigator.clipboard.writeText(text.trim()).then(() => {
+    const btn = event.target.closest('button');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check me-1"></i>Copiado!';
+    btn.classList.add('btn-success');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('btn-success'); }, 2000);
+  });
+}
+</script>
+{% endblock %}

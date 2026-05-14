@@ -8,11 +8,15 @@ from functools import wraps
 from datetime import date, datetime
 from sqlalchemy import extract
 
+import calendar
+from datetime import date as _date, timedelta
+
 from models import (
     db, ApiKey,
     Despesa, Receita,
     CategoriaDespesa, CategoriaReceita,
     MeioPagamento, MeioRecebimento,
+    Orcamento,
 )
 
 api_bp = Blueprint('api_v1', __name__)
@@ -503,3 +507,285 @@ def excluir_receita(usuario, receita_id):
     db.session.delete(r)
     db.session.commit()
     return jsonify({'mensagem': 'Receita excluída com sucesso', 'id': receita_id})
+
+
+# ── Helpers de período ─────────────────────────────────────────────────────────
+
+def _periodo_from_args():
+    """Resolve (dt_ini, dt_fim) a partir dos query params da request atual."""
+    hoje = _date.today()
+    ini_str = request.args.get('data_inicio')
+    fim_str = request.args.get('data_fim')
+    mes = request.args.get('mes', type=int) or hoje.month
+    ano = request.args.get('ano', type=int) or hoje.year
+
+    if ini_str or fim_str:
+        dt_ini = _parse_date(ini_str) if ini_str else _date(ano, mes, 1)
+        dt_fim = _parse_date(fim_str) if fim_str else hoje
+    else:
+        dt_ini = _date(ano, mes, 1)
+        dt_fim = _date(ano, mes, calendar.monthrange(ano, mes)[1])
+    return dt_ini, dt_fim
+
+
+# ── 1. Ranking de gastos por categoria ────────────────────────────────────────
+
+@api_bp.route('/resumo/categorias', methods=['GET'])
+@api_key_required
+def resumo_categorias(usuario):
+    """
+    Ranking de gastos por categoria no período informado.
+    Query params: mes, ano  OU  data_inicio, data_fim
+    Retorna lista ordenada por valor, % do total e variação vs período anterior.
+    """
+    try:
+        dt_ini, dt_fim = _periodo_from_args()
+    except (ValueError, TypeError):
+        return jsonify({'erro': 'Data inválida. Use YYYY-MM-DD'}), 422
+
+    rows = (
+        db.session.query(
+            Despesa.categoria_id,
+            db.func.sum(Despesa.valor).label('total'),
+            db.func.count(Despesa.id).label('qtd'),
+        )
+        .filter(
+            Despesa.user_id == usuario.id,
+            Despesa.data_pagamento >= dt_ini,
+            Despesa.data_pagamento <= dt_fim,
+        )
+        .group_by(Despesa.categoria_id)
+        .order_by(db.desc('total'))
+        .all()
+    )
+
+    total_geral = sum(r.total for r in rows) or 0
+
+    # Período anterior de mesmo tamanho
+    delta = (dt_fim - dt_ini).days + 1
+    dt_ini_ant = dt_ini - timedelta(days=delta)
+    dt_fim_ant = dt_ini - timedelta(days=1)
+    ant_rows = (
+        db.session.query(Despesa.categoria_id, db.func.sum(Despesa.valor).label('total'))
+        .filter(
+            Despesa.user_id == usuario.id,
+            Despesa.data_pagamento >= dt_ini_ant,
+            Despesa.data_pagamento <= dt_fim_ant,
+        )
+        .group_by(Despesa.categoria_id)
+        .all()
+    )
+    ant_map = {r.categoria_id: round(r.total, 2) for r in ant_rows}
+
+    cat_ids = [r.categoria_id for r in rows]
+    cats = {c.id: c.nome for c in CategoriaDespesa.query.filter(CategoriaDespesa.id.in_(cat_ids)).all()}
+
+    dados = []
+    for r in rows:
+        total = round(r.total, 2)
+        ant_val = ant_map.get(r.categoria_id, 0)
+        variacao = round((total - ant_val) / ant_val * 100, 1) if ant_val else None
+        dados.append({
+            'categoria_codigo': r.categoria_id,
+            'categoria_nome': cats.get(r.categoria_id, '?'),
+            'total': total,
+            'qtd_transacoes': r.qtd,
+            'percentual_do_total': round(total / total_geral * 100, 1) if total_geral else 0,
+            'periodo_anterior': ant_val,
+            'variacao_percentual': variacao,
+        })
+
+    return jsonify({
+        'periodo': {'inicio': dt_ini.isoformat(), 'fim': dt_fim.isoformat()},
+        'total_geral': round(total_geral, 2),
+        'categorias': dados,
+    })
+
+
+# ── 2. Status do orçamento ────────────────────────────────────────────────────
+
+@api_bp.route('/orcamento/status', methods=['GET'])
+@api_key_required
+def orcamento_status(usuario):
+    """
+    Status do orçamento por categoria no mês informado.
+    Query params: mes, ano (padrão: mês atual)
+    Alertas: EXCEDIDO (>=100%), ATENCAO (>=80%), PROJECAO_EXCEDE (projeção > orçado)
+    """
+    hoje = _date.today()
+    mes = request.args.get('mes', type=int) or hoje.month
+    ano = request.args.get('ano', type=int) or hoje.year
+
+    dt_ini = _date(ano, mes, 1)
+    dias_mes = calendar.monthrange(ano, mes)[1]
+    dt_fim = _date(ano, mes, dias_mes)
+
+    orcamentos = Orcamento.query.filter_by(user_id=usuario.id).all()
+    if not orcamentos:
+        return jsonify({'mensagem': 'Nenhum orçamento cadastrado', 'categorias': []}), 200
+
+    gastos_rows = (
+        db.session.query(Despesa.categoria_id, db.func.sum(Despesa.valor).label('total'))
+        .filter(
+            Despesa.user_id == usuario.id,
+            Despesa.data_pagamento >= dt_ini,
+            Despesa.data_pagamento <= dt_fim,
+        )
+        .group_by(Despesa.categoria_id)
+        .all()
+    )
+    gastos_map = {g.categoria_id: round(g.total, 2) for g in gastos_rows}
+
+    dias_passados = hoje.day if (mes == hoje.month and ano == hoje.year) else dias_mes
+    dias_restantes = max(0, dias_mes - dias_passados)
+
+    resultado = []
+    for orc in sorted(orcamentos, key=lambda o: o.categoria.nome if o.categoria else ''):
+        gasto = gastos_map.get(orc.categoria_id, 0)
+        saldo = round(orc.valor_orcado - gasto, 2)
+        pct = round(gasto / orc.valor_orcado * 100, 1) if orc.valor_orcado else 0
+        projecao = round(gasto / dias_passados * dias_mes, 2) if dias_passados else gasto
+
+        if pct >= 100:
+            alerta = 'EXCEDIDO'
+        elif pct >= 80:
+            alerta = 'ATENCAO'
+        elif projecao > orc.valor_orcado:
+            alerta = 'PROJECAO_EXCEDE'
+        else:
+            alerta = None
+
+        resultado.append({
+            'categoria_codigo': orc.categoria_id,
+            'categoria_nome': orc.categoria.nome if orc.categoria else '?',
+            'orcado': round(orc.valor_orcado, 2),
+            'gasto': gasto,
+            'saldo': saldo,
+            'percentual_utilizado': pct,
+            'projecao_mensal': projecao,
+            'alerta': alerta,
+        })
+
+    return jsonify({
+        'periodo': {'mes': mes, 'ano': ano, 'dias_passados': dias_passados, 'dias_restantes': dias_restantes},
+        'total_orcado': round(sum(o.valor_orcado for o in orcamentos), 2),
+        'total_gasto': round(sum(gastos_map.values()), 2),
+        'categorias': resultado,
+    })
+
+
+# ── 3. Comparativo mensal ─────────────────────────────────────────────────────
+
+@api_bp.route('/resumo/mensal', methods=['GET'])
+@api_key_required
+def resumo_mensal(usuario):
+    """
+    Comparativo de despesas e receitas mês a mês.
+    Query params: meses (int, padrão 6, máx 24)
+    Retorna: por mês: total_despesas, total_receitas, saldo, variacao_despesas_pct
+    """
+    hoje = _date.today()
+    n_meses = min(request.args.get('meses', 6, type=int), 24)
+
+    meses = []
+    for i in range(n_meses - 1, -1, -1):
+        m = hoje.month - i
+        a = hoje.year
+        while m <= 0:
+            m += 12
+            a -= 1
+        dt_ini = _date(a, m, 1)
+        dt_fim = _date(a, m, calendar.monthrange(a, m)[1])
+
+        desp = db.session.query(db.func.sum(Despesa.valor)).filter(
+            Despesa.user_id == usuario.id,
+            Despesa.data_pagamento >= dt_ini,
+            Despesa.data_pagamento <= dt_fim,
+        ).scalar() or 0
+
+        rec = db.session.query(db.func.sum(Receita.valor)).filter(
+            Receita.user_id == usuario.id,
+            Receita.data_recebimento >= dt_ini,
+            Receita.data_recebimento <= dt_fim,
+        ).scalar() or 0
+
+        meses.append({
+            'mes': m,
+            'ano': a,
+            'mes_ano': f"{m:02d}/{a}",
+            'total_despesas': round(desp, 2),
+            'total_receitas': round(rec, 2),
+            'saldo': round(rec - desp, 2),
+            'variacao_despesas_pct': None,
+        })
+
+    for i in range(1, len(meses)):
+        ant = meses[i - 1]['total_despesas']
+        atual = meses[i]['total_despesas']
+        meses[i]['variacao_despesas_pct'] = round((atual - ant) / ant * 100, 1) if ant else None
+
+    media_desp = round(sum(m['total_despesas'] for m in meses) / len(meses), 2) if meses else 0
+    media_rec = round(sum(m['total_receitas'] for m in meses) / len(meses), 2) if meses else 0
+
+    return jsonify({
+        'meses': meses,
+        'media_mensal_despesas': media_desp,
+        'media_mensal_receitas': media_rec,
+    })
+
+
+# ── 4. Gastos por meio de pagamento (cartões) ─────────────────────────────────
+
+@api_bp.route('/resumo/cartoes', methods=['GET'])
+@api_key_required
+def resumo_cartoes(usuario):
+    """
+    Gastos agrupados por meio de pagamento no período informado.
+    Query params: mes, ano  OU  data_inicio, data_fim
+    """
+    try:
+        dt_ini, dt_fim = _periodo_from_args()
+    except (ValueError, TypeError):
+        return jsonify({'erro': 'Data inválida. Use YYYY-MM-DD'}), 422
+
+    rows = (
+        db.session.query(
+            Despesa.meio_pagamento_id,
+            db.func.sum(Despesa.valor).label('total'),
+            db.func.count(Despesa.id).label('qtd'),
+        )
+        .filter(
+            Despesa.user_id == usuario.id,
+            Despesa.data_pagamento >= dt_ini,
+            Despesa.data_pagamento <= dt_fim,
+        )
+        .group_by(Despesa.meio_pagamento_id)
+        .order_by(db.desc('total'))
+        .all()
+    )
+
+    total_geral = sum(r.total for r in rows) or 0
+    meio_ids = [r.meio_pagamento_id for r in rows]
+    meios = {
+        m.id: {'nome': m.nome, 'tipo': m.tipo}
+        for m in MeioPagamento.query.filter(MeioPagamento.id.in_(meio_ids)).all()
+    }
+
+    dados = []
+    for r in rows:
+        total = round(r.total, 2)
+        info = meios.get(r.meio_pagamento_id, {'nome': '?', 'tipo': '?'})
+        dados.append({
+            'meio_pagamento_codigo': r.meio_pagamento_id,
+            'meio_pagamento_nome': info['nome'],
+            'tipo': info['tipo'],
+            'total': total,
+            'qtd_transacoes': r.qtd,
+            'percentual_do_total': round(total / total_geral * 100, 1) if total_geral else 0,
+        })
+
+    return jsonify({
+        'periodo': {'inicio': dt_ini.isoformat(), 'fim': dt_fim.isoformat()},
+        'total_geral': round(total_geral, 2),
+        'meios_pagamento': dados,
+    })

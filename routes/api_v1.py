@@ -40,8 +40,10 @@ def api_key_required(f):
 
 
 def _parse_date(s):
-    """Converte string YYYY-MM-DD para date, levanta ValueError se inválido."""
-    return date.fromisoformat(s)
+    """Converte string YYYY-MM-DD para date. Aceita datetime ISO e remove hora se vier junto."""
+    from datetime import datetime as _dt
+    s = str(s).strip()[:10]
+    return _dt.strptime(s, '%Y-%m-%d').date()
 
 
 def _despesa_dict(d):
@@ -194,11 +196,17 @@ def criar_despesa(usuario):
     if erros:
         return jsonify({'erro': 'Dados inválidos', 'detalhes': erros}), 422
 
-    categoria = CategoriaDespesa.query.filter_by(id=data['categoria_codigo'], user_id=usuario.id).first()
+    try:
+        cat_id = int(data['categoria_codigo'])
+        meio_id = int(data['meio_pagamento_codigo'])
+    except (ValueError, TypeError):
+        return jsonify({'erro': 'categoria_codigo e meio_pagamento_codigo devem ser números inteiros'}), 422
+
+    categoria = CategoriaDespesa.query.filter_by(id=cat_id, user_id=usuario.id).first()
     if not categoria:
         return jsonify({'erro': 'categoria_codigo inválido ou não pertence ao usuário'}), 422
 
-    meio = MeioPagamento.query.filter_by(id=data['meio_pagamento_codigo'], user_id=usuario.id).first()
+    meio = MeioPagamento.query.filter_by(id=meio_id, user_id=usuario.id).first()
     if not meio:
         return jsonify({'erro': 'meio_pagamento_codigo inválido ou não pertence ao usuário'}), 422
 
@@ -208,7 +216,7 @@ def criar_despesa(usuario):
         return jsonify({'erro': 'data_pagamento inválida. Use YYYY-MM-DD'}), 422
 
     try:
-        valor = float(data['valor'])
+        valor = float(str(data['valor']).replace(',', '.'))
         if valor <= 0:
             raise ValueError
     except (ValueError, TypeError):
@@ -353,11 +361,17 @@ def criar_receita(usuario):
     if erros:
         return jsonify({'erro': 'Dados inválidos', 'detalhes': erros}), 422
 
-    categoria = CategoriaReceita.query.filter_by(id=data['categoria_codigo'], user_id=usuario.id).first()
+    try:
+        cat_id = int(data['categoria_codigo'])
+        meio_id = int(data['meio_recebimento_codigo'])
+    except (ValueError, TypeError):
+        return jsonify({'erro': 'categoria_codigo e meio_recebimento_codigo devem ser números inteiros'}), 422
+
+    categoria = CategoriaReceita.query.filter_by(id=cat_id, user_id=usuario.id).first()
     if not categoria:
         return jsonify({'erro': 'categoria_codigo inválido ou não pertence ao usuário'}), 422
 
-    meio = MeioRecebimento.query.filter_by(id=data['meio_recebimento_codigo'], user_id=usuario.id).first()
+    meio = MeioRecebimento.query.filter_by(id=meio_id, user_id=usuario.id).first()
     if not meio:
         return jsonify({'erro': 'meio_recebimento_codigo inválido ou não pertence ao usuário'}), 422
 
@@ -367,7 +381,7 @@ def criar_receita(usuario):
         return jsonify({'erro': 'data_recebimento inválida. Use YYYY-MM-DD'}), 422
 
     try:
-        valor = float(data['valor'])
+        valor = float(str(data['valor']).replace(',', '.'))
         if valor <= 0:
             raise ValueError
     except (ValueError, TypeError):

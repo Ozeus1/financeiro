@@ -133,16 +133,37 @@ def listar_meios_rec(usuario):
 def listar_despesas(usuario):
     """
     Lista despesas com filtros opcionais.
-    Query params: mes, ano, categoria_codigo, meio_pagamento_codigo, pagina, por_pagina
+    Query params:
+      mes, ano                       — filtra por mês/ano
+      data_inicio, data_fim          — filtra por intervalo YYYY-MM-DD (substitui mes/ano)
+      categoria_codigo               — filtra por categoria
+      meio_pagamento_codigo          — filtra por meio de pagamento
+      pagina, por_pagina             — paginação (máx 200)
+    Retorna também total_registros e total_valor (soma dos valores filtrados).
     """
     q = Despesa.query.filter_by(user_id=usuario.id)
 
-    mes = request.args.get('mes', type=int)
-    ano = request.args.get('ano', type=int)
-    if ano:
-        q = q.filter(extract('year', Despesa.data_pagamento) == ano)
-    if mes:
-        q = q.filter(extract('month', Despesa.data_pagamento) == mes)
+    # Filtro por intervalo de datas (tem precedência sobre mes/ano)
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    if data_inicio or data_fim:
+        if data_inicio:
+            try:
+                q = q.filter(Despesa.data_pagamento >= _parse_date(data_inicio))
+            except (ValueError, TypeError):
+                return jsonify({'erro': 'data_inicio inválida. Use YYYY-MM-DD'}), 422
+        if data_fim:
+            try:
+                q = q.filter(Despesa.data_pagamento <= _parse_date(data_fim))
+            except (ValueError, TypeError):
+                return jsonify({'erro': 'data_fim inválida. Use YYYY-MM-DD'}), 422
+    else:
+        mes = request.args.get('mes', type=int)
+        ano = request.args.get('ano', type=int)
+        if ano:
+            q = q.filter(extract('year', Despesa.data_pagamento) == ano)
+        if mes:
+            q = q.filter(extract('month', Despesa.data_pagamento) == mes)
 
     cat_cod = request.args.get('categoria_codigo', type=int)
     meio_cod = request.args.get('meio_pagamento_codigo', type=int)
@@ -151,7 +172,10 @@ def listar_despesas(usuario):
     if meio_cod:
         q = q.filter_by(meio_pagamento_id=meio_cod)
 
-    total = q.count()
+    total_registros = q.count()
+    total_valor = round(db.session.query(db.func.sum(Despesa.valor))
+                        .filter(Despesa.id.in_([d.id for d in q.with_entities(Despesa.id)])).scalar() or 0, 2)
+
     pagina = max(1, request.args.get('pagina', 1, type=int))
     por_pagina = min(request.args.get('por_pagina', 50, type=int), 200)
     despesas = (q.order_by(Despesa.data_pagamento.desc())
@@ -159,10 +183,11 @@ def listar_despesas(usuario):
                  .limit(por_pagina).all())
 
     return jsonify({
-        'total': total,
+        'total_registros': total_registros,
+        'total_valor': total_valor,
         'pagina': pagina,
         'por_pagina': por_pagina,
-        'paginas': max(1, (total + por_pagina - 1) // por_pagina),
+        'paginas': max(1, (total_registros + por_pagina - 1) // por_pagina),
         'dados': [_despesa_dict(d) for d in despesas],
     })
 
@@ -298,16 +323,36 @@ def excluir_despesa(usuario, despesa_id):
 def listar_receitas(usuario):
     """
     Lista receitas com filtros opcionais.
-    Query params: mes, ano, categoria_codigo, meio_recebimento_codigo, pagina, por_pagina
+    Query params:
+      mes, ano                       — filtra por mês/ano
+      data_inicio, data_fim          — filtra por intervalo YYYY-MM-DD
+      categoria_codigo               — filtra por categoria
+      meio_recebimento_codigo        — filtra por meio de recebimento
+      pagina, por_pagina             — paginação (máx 200)
+    Retorna também total_registros e total_valor.
     """
     q = Receita.query.filter_by(user_id=usuario.id)
 
-    mes = request.args.get('mes', type=int)
-    ano = request.args.get('ano', type=int)
-    if ano:
-        q = q.filter(extract('year', Receita.data_recebimento) == ano)
-    if mes:
-        q = q.filter(extract('month', Receita.data_recebimento) == mes)
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    if data_inicio or data_fim:
+        if data_inicio:
+            try:
+                q = q.filter(Receita.data_recebimento >= _parse_date(data_inicio))
+            except (ValueError, TypeError):
+                return jsonify({'erro': 'data_inicio inválida. Use YYYY-MM-DD'}), 422
+        if data_fim:
+            try:
+                q = q.filter(Receita.data_recebimento <= _parse_date(data_fim))
+            except (ValueError, TypeError):
+                return jsonify({'erro': 'data_fim inválida. Use YYYY-MM-DD'}), 422
+    else:
+        mes = request.args.get('mes', type=int)
+        ano = request.args.get('ano', type=int)
+        if ano:
+            q = q.filter(extract('year', Receita.data_recebimento) == ano)
+        if mes:
+            q = q.filter(extract('month', Receita.data_recebimento) == mes)
 
     cat_cod = request.args.get('categoria_codigo', type=int)
     meio_cod = request.args.get('meio_recebimento_codigo', type=int)
@@ -316,7 +361,10 @@ def listar_receitas(usuario):
     if meio_cod:
         q = q.filter_by(meio_recebimento_id=meio_cod)
 
-    total = q.count()
+    total_registros = q.count()
+    total_valor = round(db.session.query(db.func.sum(Receita.valor))
+                        .filter(Receita.id.in_([r.id for r in q.with_entities(Receita.id)])).scalar() or 0, 2)
+
     pagina = max(1, request.args.get('pagina', 1, type=int))
     por_pagina = min(request.args.get('por_pagina', 50, type=int), 200)
     receitas = (q.order_by(Receita.data_recebimento.desc())
@@ -324,10 +372,11 @@ def listar_receitas(usuario):
                   .limit(por_pagina).all())
 
     return jsonify({
-        'total': total,
+        'total_registros': total_registros,
+        'total_valor': total_valor,
         'pagina': pagina,
         'por_pagina': por_pagina,
-        'paginas': max(1, (total + por_pagina - 1) // por_pagina),
+        'paginas': max(1, (total_registros + por_pagina - 1) // por_pagina),
         'dados': [_receita_dict(r) for r in receitas],
     })
 

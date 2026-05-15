@@ -22,18 +22,18 @@ def calcular_primeira_fatura(data_compra, dia_fechamento, dia_vencimento):
 @relatorios_bp.route('/balanco')
 @login_required
 def balanco():
-    """Relatório de balanço mensal (receitas vs despesas)"""
-    # Obter período do filtro ou usar últimos 12 meses
-    meses = request.args.get('meses', 12, type=int)
+    """Relatório de balanço mensal (receitas vs despesas) — últimos 12 meses"""
+    hoje = datetime.now()
+    data_inicio_12m = (hoje - relativedelta(months=11)).replace(day=1).date()
 
-    # Agrupar por mês - sempre filtrar por usuário
     despesas_mensais = db.session.query(
         extract('year', Despesa.data_pagamento).label('ano'),
         extract('month', Despesa.data_pagamento).label('mes'),
         func.sum(Despesa.valor).label('total')
     ).join(Despesa.categoria).filter(
         func.lower(CategoriaDespesa.nome) != 'pagamentos',
-        Despesa.user_id == current_user.id
+        Despesa.user_id == current_user.id,
+        Despesa.data_pagamento >= data_inicio_12m,
     ).group_by('ano', 'mes').order_by('ano', 'mes').all()
 
     receitas_mensais = db.session.query(
@@ -41,7 +41,8 @@ def balanco():
         extract('month', Receita.data_recebimento).label('mes'),
         func.sum(Receita.valor).label('total')
     ).filter(
-        Receita.user_id == current_user.id
+        Receita.user_id == current_user.id,
+        Receita.data_recebimento >= data_inicio_12m,
     ).group_by('ano', 'mes').order_by('ano', 'mes').all()
 
     return render_template('relatorios/balanco.html',

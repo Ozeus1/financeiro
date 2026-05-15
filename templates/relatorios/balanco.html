@@ -95,14 +95,15 @@ document.addEventListener('DOMContentLoaded', function () {
     fetch('/relatorios/api/graficos/balanco-mensal')
         .then(r => r.json())
         .then(data => {
-            new Chart(document.getElementById('graficoBalanco').getContext('2d'), {
+            const canvas = document.getElementById('graficoBalanco');
+            const chart = new Chart(canvas.getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: data.labels,
                     datasets: [
                         { label:'Receitas', data:data.receitas, backgroundColor:'rgba(16,185,129,.65)', borderColor:'rgba(16,185,129,1)', borderWidth:1, borderRadius:4, order:2 },
                         { label:'Despesas', data:data.despesas, backgroundColor:'rgba(239,68,68,.65)', borderColor:'rgba(239,68,68,1)', borderWidth:1, borderRadius:4, order:3 },
-                        { label:'Saldo', data:data.saldos, type:'line', borderColor:'rgba(67,97,238,1)', backgroundColor:'rgba(67,97,238,.08)', borderWidth:2, fill:false, tension:.3, order:1, pointRadius:4, pointHoverRadius:6 }
+                        { label:'Saldo',    data:data.saldos,   type:'line', borderColor:'rgba(67,97,238,1)', backgroundColor:'rgba(67,97,238,.08)', borderWidth:2, fill:false, tension:.3, order:1, pointRadius:4, pointHoverRadius:6 }
                     ]
                 },
                 options: {
@@ -110,12 +111,39 @@ document.addEventListener('DOMContentLoaded', function () {
                     interaction:{ mode:'index', intersect:false },
                     plugins: {
                         legend:{ position:'top' },
-                        tooltip:{ callbacks:{ label: c => (c.dataset.label||'') + ': R$ ' + c.parsed.y.toLocaleString('pt-BR',{minimumFractionDigits:2}) } }
+                        tooltip:{
+                            callbacks:{
+                                label: c => (c.dataset.label||'') + ': R$ ' + c.parsed.y.toLocaleString('pt-BR',{minimumFractionDigits:2}),
+                                footer: () => '🖱 Clique para ver detalhes'
+                            }
+                        }
                     },
                     scales: {
                         y:{ beginAtZero:true, ticks:{ callback: v => 'R$ ' + (v>=1000?(v/1000).toFixed(0)+'k':v) } }
+                    },
+                    onClick(evt, elements) {
+                        if (!elements.length) return;
+                        const idx         = elements[0].index;
+                        const datasetIdx  = elements[0].datasetIndex;
+                        const label       = data.labels[idx];          // "MM/YYYY"
+                        const [mm, yyyy]  = label.split('/');
+                        const mes  = parseInt(mm,  10);
+                        const ano  = parseInt(yyyy, 10);
+
+                        // dataset 0 = Receitas, 1 = Despesas, 2 = Saldo (linha)
+                        if (datasetIdx === 0) {
+                            window.location.href = `/relatorios/receitas-mensal?mes=${mes}&ano=${ano}`;
+                        } else if (datasetIdx === 1) {
+                            window.location.href = `/relatorios/despesas-mensal?mes=${mes}&ano=${ano}`;
+                        }
                     }
                 }
+            });
+
+            // Cursor pointer ao passar sobre barras clicáveis
+            canvas.addEventListener('mousemove', evt => {
+                const pts = chart.getElementsAtEventForMode(evt, 'nearest', {intersect:true}, true);
+                canvas.style.cursor = pts.length && pts[0].datasetIndex < 2 ? 'pointer' : 'default';
             });
         })
         .catch(e => console.error(e));

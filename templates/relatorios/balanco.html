@@ -114,35 +114,37 @@ document.addEventListener('DOMContentLoaded', function () {
                         tooltip:{
                             callbacks:{
                                 label: c => (c.dataset.label||'') + ': R$ ' + c.parsed.y.toLocaleString('pt-BR',{minimumFractionDigits:2}),
-                                footer: () => '🖱 Clique para ver detalhes'
+                                footer: () => '🖱 Clique na barra para ver detalhes'
                             }
                         }
                     },
                     scales: {
                         y:{ beginAtZero:true, ticks:{ callback: v => 'R$ ' + (v>=1000?(v/1000).toFixed(0)+'k':v) } }
-                    },
-                    onClick(evt, elements) {
-                        if (!elements.length) return;
-                        const idx         = elements[0].index;
-                        const datasetIdx  = elements[0].datasetIndex;
-                        const label       = data.labels[idx];          // "MM/YYYY"
-                        const [mm, yyyy]  = label.split('/');
-                        const mes  = parseInt(mm,  10);
-                        const ano  = parseInt(yyyy, 10);
-
-                        // dataset 0 = Receitas, 1 = Despesas, 2 = Saldo (linha)
-                        if (datasetIdx === 0) {
-                            window.location.href = `/relatorios/receitas-mensal?mes=${mes}&ano=${ano}`;
-                        } else if (datasetIdx === 1) {
-                            window.location.href = `/relatorios/despesas-mensal?mes=${mes}&ano=${ano}`;
-                        }
                     }
                 }
             });
 
-            // Cursor pointer ao passar sobre barras clicáveis
+            function getMesAno(idx) {
+                const [mm, yyyy] = data.labels[idx].split('/');
+                return { mes: parseInt(mm, 10), ano: parseInt(yyyy, 10) };
+            }
+
+            // Clique nas barras — usa intersect:true para pegar exatamente a barra clicada
+            canvas.addEventListener('click', evt => {
+                const pts = chart.getElementsAtEventForMode(evt, 'nearest', {intersect: true}, false);
+                if (!pts.length) return;
+                const {datasetIndex, index} = pts[0];
+                const {mes, ano} = getMesAno(index);
+                if (datasetIndex === 0) {
+                    window.location.href = `/relatorios/receitas-mensal?mes=${mes}&ano=${ano}`;
+                } else if (datasetIndex === 1) {
+                    window.location.href = `/relatorios/despesas-mensal?mes=${mes}&ano=${ano}`;
+                }
+            });
+
+            // Cursor pointer sobre barras clicáveis
             canvas.addEventListener('mousemove', evt => {
-                const pts = chart.getElementsAtEventForMode(evt, 'nearest', {intersect:true}, true);
+                const pts = chart.getElementsAtEventForMode(evt, 'nearest', {intersect: true}, false);
                 canvas.style.cursor = pts.length && pts[0].datasetIndex < 2 ? 'pointer' : 'default';
             });
         })

@@ -25,6 +25,7 @@ def balanco():
     """Relatório de balanço mensal (receitas vs despesas) — últimos 12 meses"""
     hoje = datetime.now()
     data_inicio_12m = (hoje - relativedelta(months=11)).replace(day=1).date()
+    ultimo_dia_mes = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
 
     despesas_mensais = db.session.query(
         extract('year', Despesa.data_pagamento).label('ano'),
@@ -34,6 +35,7 @@ def balanco():
         func.lower(CategoriaDespesa.nome) != 'pagamentos',
         Despesa.user_id == current_user.id,
         Despesa.data_pagamento >= data_inicio_12m,
+        Despesa.data_pagamento <= ultimo_dia_mes,
     ).group_by('ano', 'mes').order_by('ano', 'mes').all()
 
     receitas_mensais = db.session.query(
@@ -43,6 +45,7 @@ def balanco():
     ).filter(
         Receita.user_id == current_user.id,
         Receita.data_recebimento >= data_inicio_12m,
+        Receita.data_recebimento <= ultimo_dia_mes,
     ).group_by('ano', 'mes').order_by('ano', 'mes').all()
 
     return render_template('relatorios/balanco.html',

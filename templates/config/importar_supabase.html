@@ -207,6 +207,23 @@
     const CATEGORIAS_NOMES  = {{ categorias  | map(attribute='nome') | list | tojson }};
     const MEIOS_NOMES       = {{ meios_pagamento | map(attribute='nome') | list | tojson }};
 
+    // Mapas id → nome para resolver códigos numéricos vindos do bot
+    const CAT_ID_MAP  = Object.fromEntries(
+        {{ categorias | map(attribute='id') | list | tojson }}.map((id, i) => [id, CATEGORIAS_NOMES[i]])
+    );
+    const MEIO_ID_MAP = Object.fromEntries(
+        {{ meios_pagamento | map(attribute='id') | list | tojson }}.map((id, i) => [id, MEIOS_NOMES[i]])
+    );
+
+    // Resolve campo que pode ser string (nome legado) ou número (código novo)
+    function _resolveNome(raw, idMap, nomesArr) {
+        if (!raw && raw !== 0) return 'Outros';
+        const id = parseInt(raw);
+        if (!isNaN(id) && idMap[id]) return idMap[id];   // código numérico → nome
+        if (nomesArr.includes(raw)) return raw;           // nome já válido
+        return 'Outros';
+    }
+
     function _buildSelect(nomes, selectedName, fieldName) {
         const esc = s => s.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const opts = nomes.map(n =>
@@ -358,8 +375,8 @@
                     dataDespesa = `${parts[2]}/${parts[1]}/${parts[0]}`;
                 }
 
-                const meioNome = item.forma_pagamento || 'Outros';
-                const catNome  = item.conta_despesa  || 'Outros';
+                const meioNome = _resolveNome(item.meio_pagamento_codigo || item.forma_pagamento, MEIO_ID_MAP, MEIOS_NOMES);
+                const catNome  = _resolveNome(item.categoria_codigo    || item.conta_despesa,   CAT_ID_MAP,  CATEGORIAS_NOMES);
                 const dateVal  = _toInputDate(dataDespesa);
 
                 const tr = document.createElement('tr');

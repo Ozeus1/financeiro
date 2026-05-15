@@ -226,7 +226,7 @@
             resolvedId = found ? found.id : 12; // 12 = Outros
         }
         const opts = items.map(i =>
-            `<option value="${i.id}"${i.id === resolvedId ? ' selected' : ''}>${i.id} — ${esc(i.nome)}</option>`
+            `<option value="${i.id}"${i.id === resolvedId ? ' selected' : ''}>${esc(i.nome)}</option>`
         ).join('');
         return `<select class="cell-select form-select form-select-sm" data-field="${fieldName}">${opts}</select>`;
     }

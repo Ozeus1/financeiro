@@ -705,14 +705,15 @@ def despesas_entre_datas():
             func.count(Despesa.id).label('quantidade')
         ).join(CategoriaDespesa).filter(
             Despesa.data_pagamento.between(data_inicio, data_fim),
+            func.lower(CategoriaDespesa.nome) != 'pagamentos',
             Despesa.user_id == current_user.id
         )
-        
+
         # Group and order
         query = query.group_by(CategoriaDespesa.id, CategoriaDespesa.nome).order_by(desc('total'))
-        
+
         resultados = query.all()
-        
+
         # Calculate total
         total_geral = sum(r.total for r in resultados)
         
@@ -749,11 +750,12 @@ def despesas_mensais_periodo():
             func.to_char(Despesa.data_pagamento, 'YYYY-MM').label('mes_ano'),
             func.sum(Despesa.valor).label('total'),
             func.count(Despesa.id).label('quantidade')
-        ).filter(
+        ).join(Despesa.categoria).filter(
             Despesa.data_pagamento.between(data_inicio, data_fim),
+            func.lower(CategoriaDespesa.nome) != 'pagamentos',
             Despesa.user_id == current_user.id
         )
-        
+
         # Group and order
         query = query.group_by('mes_ano').order_by('mes_ano')
         
@@ -829,25 +831,28 @@ def top_10_despesas():
         data_fim = date(hoje.year, hoje.month, ultimo_dia)
 
     # Buscar top 10 despesas
-    top_despesas = Despesa.query.filter(
+    top_despesas = Despesa.query.join(Despesa.categoria).filter(
         Despesa.user_id == current_user.id,
         Despesa.data_pagamento >= data_inicio,
-        Despesa.data_pagamento <= data_fim
+        Despesa.data_pagamento <= data_fim,
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
     ).order_by(Despesa.valor.desc()).limit(10).all()
 
     # Calcular estatísticas
     total_top10 = sum([d.valor for d in top_despesas])
 
-    total_periodo = db.session.query(func.sum(Despesa.valor)).filter(
+    total_periodo = db.session.query(func.sum(Despesa.valor)).join(Despesa.categoria).filter(
         Despesa.user_id == current_user.id,
         Despesa.data_pagamento >= data_inicio,
-        Despesa.data_pagamento <= data_fim
+        Despesa.data_pagamento <= data_fim,
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
     ).scalar() or 0
 
-    quantidade_total = db.session.query(func.count(Despesa.id)).filter(
+    quantidade_total = db.session.query(func.count(Despesa.id)).join(Despesa.categoria).filter(
         Despesa.user_id == current_user.id,
         Despesa.data_pagamento >= data_inicio,
-        Despesa.data_pagamento <= data_fim
+        Despesa.data_pagamento <= data_fim,
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
     ).scalar() or 0
 
     media_despesa = total_periodo / quantidade_total if quantidade_total > 0 else 0
@@ -907,10 +912,11 @@ def evolucao_temporal():
     gastos_diarios = db.session.query(
         Despesa.data_pagamento,
         func.sum(Despesa.valor).label('total')
-    ).filter(
+    ).join(Despesa.categoria).filter(
         Despesa.user_id == current_user.id,
         Despesa.data_pagamento >= data_inicio,
-        Despesa.data_pagamento <= data_fim
+        Despesa.data_pagamento <= data_fim,
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
     ).group_by(Despesa.data_pagamento).order_by(Despesa.data_pagamento).all()
 
     # Criar série temporal completa (incluindo dias sem gastos)
@@ -975,8 +981,9 @@ def comparativo_anual():
         extract('year', Despesa.data_pagamento).label('ano'),
         extract('month', Despesa.data_pagamento).label('mes'),
         func.sum(Despesa.valor).label('total')
-    ).filter(
-        Despesa.user_id == current_user.id
+    ).join(Despesa.categoria).filter(
+        Despesa.user_id == current_user.id,
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
     ).group_by('ano', 'mes').order_by('ano', 'mes').all()
 
     # Organizar dados por ano e mês

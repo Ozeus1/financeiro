@@ -203,18 +203,32 @@
 </div>
 
 <script>
-    // Listas de opções vindas do banco
-    const CATEGORIAS_NOMES  = {{ categorias  | map(attribute='nome') | list | tojson }};
-    const MEIOS_NOMES       = {{ meios_pagamento | map(attribute='nome') | list | tojson }};
+    // Catálogos vindos do banco — [{id, nome}, ...]
+    const CATEGORIAS = {{ categorias | map(attribute='id') | list | tojson }}.map((id, i) => ({
+        id,
+        nome: {{ categorias | map(attribute='nome') | list | tojson }}[i]
+    }));
+    const MEIOS = {{ meios_pagamento | map(attribute='id') | list | tojson }}.map((id, i) => ({
+        id,
+        nome: {{ meios_pagamento | map(attribute='nome') | list | tojson }}[i]
+    }));
 
-    function _buildSelect(nomes, selectedName, fieldName) {
-        const esc = s => s.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const opts = nomes.map(n =>
-            `<option value="${esc(n)}"${n === selectedName ? ' selected' : ''}>${esc(n)}</option>`
+    // Mapas rápidos id→nome
+    const CAT_MAP  = Object.fromEntries(CATEGORIAS.map(c => [c.id, c.nome]));
+    const MEIO_MAP = Object.fromEntries(MEIOS.map(m => [m.id, m.nome]));
+
+    function _buildSelect(items, selectedId, fieldName) {
+        const esc = s => String(s).replace(/"/g, '&quot;');
+        // fallback: tenta encontrar por nome se selectedId for string
+        let resolvedId = parseInt(selectedId);
+        if (isNaN(resolvedId)) {
+            const found = items.find(i => i.nome === selectedId);
+            resolvedId = found ? found.id : 12; // 12 = Outros
+        }
+        const opts = items.map(i =>
+            `<option value="${i.id}"${i.id === resolvedId ? ' selected' : ''}>${i.id} — ${esc(i.nome)}</option>`
         ).join('');
-        return `<select class="cell-select" data-field="${fieldName}">`
-             + `<option value="Outros"${!nomes.includes(selectedName) ? ' selected' : ''}>Outros</option>`
-             + opts + `</select>`;
+        return `<select class="cell-select form-select form-select-sm" data-field="${fieldName}">${opts}</select>`;
     }
 
     function _toInputDate(s) {
@@ -358,9 +372,10 @@
                     dataDespesa = `${parts[2]}/${parts[1]}/${parts[0]}`;
                 }
 
-                const meioNome = item.forma_pagamento || 'Outros';
-                const catNome  = item.conta_despesa  || 'Outros';
-                const dateVal  = _toInputDate(dataDespesa);
+                // Suporta campo codigo (novo bot) ou nome (legado)
+                const catId   = item.categoria_codigo   || item.conta_despesa   || 12;
+                const meioId  = item.meio_pagamento_codigo || item.forma_pagamento || 1;
+                const dateVal = _toInputDate(dataDespesa);
 
                 const tr = document.createElement('tr');
                 tr.dataset.id = item.id;
@@ -368,8 +383,8 @@
                 <td class="text-center"><input type="checkbox" class="check-item"></td>
                 <td contenteditable="true" class="editable" data-field="descricao">${item.descricao || ''}</td>
                 <td contenteditable="true" class="editable text-end" data-field="valor">${valor}</td>
-                <td data-field="meio_pagamento">${_buildSelect(MEIOS_NOMES, meioNome, 'meio_pagamento')}</td>
-                <td data-field="categoria">${_buildSelect(CATEGORIAS_NOMES, catNome, 'categoria')}</td>
+                <td data-field="meio_pagamento_codigo">${_buildSelect(MEIOS, meioId, 'meio_pagamento_codigo')}</td>
+                <td data-field="categoria_codigo">${_buildSelect(CATEGORIAS, catId, 'categoria_codigo')}</td>
                 <td contenteditable="true" class="editable text-center" data-field="parcelas">${item.numero_parcelas || 1}</td>
                 <td data-field="data_despesa"><input type="date" class="cell-date" data-field="data_despesa" value="${dateVal}"></td>
                 <td class="text-center">
@@ -477,14 +492,16 @@
                 if (dataDespesa.includes('T')) dataDespesa = dataDespesa.split('T')[0];
                 // data input retorna YYYY-MM-DD — manter assim para o backend
 
+                const catId  = parseInt(readCell('categoria_codigo',    d.categoria_codigo    || d.conta_despesa   || 12)) || 12;
+                const meioId = parseInt(readCell('meio_pagamento_codigo', d.meio_pagamento_codigo || d.forma_pagamento || 1))  || 1;
                 return {
-                    id:             d.id,
-                    descricao:      readCell('descricao', d.descricao || ''),
-                    valor:          parseFloat(String(readCell('valor', d.valor || 0)).replace('.','').replace(',','.')) || 0,
-                    meio_pagamento: readCell('meio_pagamento', d.forma_pagamento || 'Outros'),
-                    categoria:      readCell('categoria',      d.conta_despesa  || 'Outros'),
-                    parcelas:       parseInt(readCell('parcelas', d.numero_parcelas || 1)) || 1,
-                    data_despesa:   dataDespesa
+                    id:                      d.id,
+                    descricao:               readCell('descricao', d.descricao || ''),
+                    valor:                   parseFloat(String(readCell('valor', d.valor || 0)).replace('.','').replace(',','.')) || 0,
+                    categoria_codigo:        catId,
+                    meio_pagamento_codigo:   meioId,
+                    parcelas:                parseInt(readCell('parcelas', d.numero_parcelas || 1)) || 1,
+                    data_despesa:            dataDespesa
                 };
             });
 
@@ -615,8 +632,15 @@
                 return cellDate && cellDate <= to;
             }
 
-            // text (default) — usa _getCellValue para suportar select/input
-            const cellText = _getCellValue(cell).toLowerCase();
+            // text — busca por código numérico OU nome (resolve via catálogo)
+            const rawVal = _getCellValue(cell);
+            const cellId = parseInt(rawVal);
+            let cellText = rawVal.toLowerCase();
+            // Enriquece com o nome do catálogo para colunas de código
+            if (!isNaN(cellId)) {
+                const nome = CAT_MAP[cellId] || MEIO_MAP[cellId] || '';
+                cellText = `${cellId} ${nome}`.toLowerCase();
+            }
             return cellText.includes(val.toLowerCase());
         }
 

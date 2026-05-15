@@ -1349,23 +1349,59 @@ def importar_dados_supabase():
         importados = 0
         erros = []
         
+        # Cache para evitar queries repetidas
+        _cat_cache = {}
+        _mp_cache  = {}
+
+        def _fallback_cat():
+            outros = CategoriaDespesa.query.filter_by(nome='Outros', user_id=current_user.id).first()
+            if not outros:
+                outros = CategoriaDespesa(nome='Outros', ativo=True, user_id=current_user.id)
+                db.session.add(outros)
+                db.session.flush()
+            return outros
+
+        def _fallback_mp():
+            outros = MeioPagamento.query.filter_by(nome='Outros', user_id=current_user.id).first()
+            if not outros:
+                outros = MeioPagamento(nome='Outros', tipo='outros', ativo=True, user_id=current_user.id)
+                db.session.add(outros)
+                db.session.flush()
+            return outros
+
         for item in items:
             try:
-                # Verificar/Criar Categoria
-                cat_nome = item.get('categoria', 'Outros')
-                categoria = CategoriaDespesa.query.filter_by(nome=cat_nome, user_id=current_user.id).first()
+                # Resolver Categoria — prioriza codigo (int), aceita nome como fallback
+                cat_id_raw = item.get('categoria_codigo') or item.get('categoria')
+                categoria  = None
+                try:
+                    cat_id = int(cat_id_raw)
+                    if cat_id not in _cat_cache:
+                        _cat_cache[cat_id] = CategoriaDespesa.query.filter_by(
+                            id=cat_id, user_id=current_user.id).first()
+                    categoria = _cat_cache[cat_id]
+                except (TypeError, ValueError):
+                    if cat_id_raw:
+                        categoria = CategoriaDespesa.query.filter_by(
+                            nome=str(cat_id_raw), user_id=current_user.id).first()
                 if not categoria:
-                    categoria = CategoriaDespesa(nome=cat_nome, ativo=True, user_id=current_user.id)
-                    db.session.add(categoria)
-                    db.session.commit()
-                
-                # Verificar/Criar Meio de Pagamento
-                mp_nome = item.get('meio_pagamento', 'Outros')
-                meio_pagamento = MeioPagamento.query.filter_by(nome=mp_nome, user_id=current_user.id).first()
+                    categoria = _fallback_cat()
+
+                # Resolver Meio de Pagamento — prioriza codigo (int), aceita nome como fallback
+                mp_id_raw    = item.get('meio_pagamento_codigo') or item.get('meio_pagamento')
+                meio_pagamento = None
+                try:
+                    mp_id = int(mp_id_raw)
+                    if mp_id not in _mp_cache:
+                        _mp_cache[mp_id] = MeioPagamento.query.filter_by(
+                            id=mp_id, user_id=current_user.id).first()
+                    meio_pagamento = _mp_cache[mp_id]
+                except (TypeError, ValueError):
+                    if mp_id_raw:
+                        meio_pagamento = MeioPagamento.query.filter_by(
+                            nome=str(mp_id_raw), user_id=current_user.id).first()
                 if not meio_pagamento:
-                    meio_pagamento = MeioPagamento(nome=mp_nome, tipo='outros', ativo=True, user_id=current_user.id)
-                    db.session.add(meio_pagamento)
-                    db.session.commit()
+                    meio_pagamento = _fallback_mp()
                 
                 # Criar Despesa
                 raw_valor = item.get('valor', 0)

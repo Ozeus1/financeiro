@@ -362,6 +362,15 @@ def reset_password(token):
     return render_template('auth/reset_password.html', token=token)
 
 
+@auth_bp.route('/check-username')
+def check_username():
+    """Verifica disponibilidade de username (AJAX, público)."""
+    from flask import jsonify
+    u = request.args.get('u', '').strip()
+    disponivel = bool(u) and not User.query.filter_by(username=u).first()
+    return jsonify({'disponivel': disponivel})
+
+
 @auth_bp.route('/solicitar-acesso', methods=['GET', 'POST'])
 def solicitar_acesso():
     """Auto-cadastro para plano Free com validação de e-mail."""

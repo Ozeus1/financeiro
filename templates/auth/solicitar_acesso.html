@@ -39,10 +39,11 @@
         </div>
         <div class="col-md-6">
           <label class="form-label fw-semibold">Nome de usuário (login) <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" name="username"
+          <input type="text" class="form-control" id="usernameInput" name="username"
                  placeholder="ex: joaosilva" pattern="[a-zA-Z0-9_\-]+"
+                 autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
                  value="{{ request.form.get('username','') }}" required>
-          <div class="form-text">Sem espaços ou acentos.</div>
+          <div id="usernameFeedback" class="form-text">Curto, sem espaços ou acentos.</div>
         </div>
       </div>
 
@@ -89,6 +90,7 @@
 
 {% block extra_js %}
 <script>
+// Máscara CPF
 document.querySelectorAll('.cpf-mask').forEach(inp => {
     inp.addEventListener('input', function () {
         let v = this.value.replace(/\D/g, '').slice(0, 11);
@@ -97,6 +99,54 @@ document.querySelectorAll('.cpf-mask').forEach(inp => {
         else if (v.length > 3) v = v.replace(/^(\d{3})(\d+)/, '$1.$2');
         this.value = v;
     });
+});
+
+// Verificação de disponibilidade do username em tempo real
+const usernameInput = document.getElementById('usernameInput');
+const feedback      = document.getElementById('usernameFeedback');
+const submitBtn     = document.querySelector('button[type=submit]');
+let checkTimer;
+
+usernameInput.addEventListener('input', function () {
+    clearTimeout(checkTimer);
+    const val = this.value.trim();
+
+    // Reset
+    this.classList.remove('is-valid', 'is-invalid');
+    feedback.className = 'form-text';
+    feedback.textContent = 'Curto, sem espaços ou acentos.';
+
+    if (!val) return;
+
+    if (!/^[a-zA-Z0-9_\-]+$/.test(val)) {
+        this.classList.add('is-invalid');
+        feedback.className = 'text-danger small';
+        feedback.textContent = 'Use apenas letras, números, _ ou -.';
+        return;
+    }
+
+    feedback.className = 'text-muted small';
+    feedback.textContent = 'Verificando…';
+
+    checkTimer = setTimeout(() => {
+        fetch(`/check-username?u=${encodeURIComponent(val)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.disponivel) {
+                    usernameInput.classList.add('is-valid');
+                    usernameInput.classList.remove('is-invalid');
+                    feedback.className = 'text-success small';
+                    feedback.textContent = '✓ Disponível!';
+                    submitBtn.disabled = false;
+                } else {
+                    usernameInput.classList.add('is-invalid');
+                    usernameInput.classList.remove('is-valid');
+                    feedback.className = 'text-danger small';
+                    feedback.textContent = '✗ Já em uso. Escolha outro.';
+                    submitBtn.disabled = true;
+                }
+            });
+    }, 500);
 });
 </script>
 {% endblock %}

@@ -70,6 +70,20 @@ def create_app(config_name='default'):
                 conn.execute(text(
                     "UPDATE users SET nivel_acesso = 'pro' WHERE nivel_acesso = 'usuario'"
                 ))
+                # Novos campos de CPF e confirmação de e-mail
+                conn.execute(text(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS cpf VARCHAR(11) UNIQUE"
+                ))
+                conn.execute(text(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_confirmado BOOLEAN NOT NULL DEFAULT FALSE"
+                ))
+                conn.execute(text(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS token_confirmacao VARCHAR(200)"
+                ))
+                # Admin e usuários existentes já confirmados
+                conn.execute(text(
+                    "UPDATE users SET email_confirmado = TRUE WHERE email_confirmado = FALSE AND ativo = TRUE"
+                ))
                 conn.commit()
         except Exception:
             pass

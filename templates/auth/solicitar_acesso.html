@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Solicitar Acesso Free — FiNan{% endblock %}
+{% block extra_css %}
+<style>
+.reg-card{max-width:540px;margin:2rem auto;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.reg-header{background:linear-gradient(135deg,#1e3a8a,#4361ee);color:#fff;border-radius:14px 14px 0 0;padding:1.5rem 1.75rem}
+.reg-header h2{font-size:1.3rem;font-weight:800;margin:0}
+.badge-free{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);font-size:.7rem;padding:.2em .6em;border-radius:5px;font-weight:700;vertical-align:middle}
+.step-dot{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.25);color:#fff;font-size:.7rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+<div class="reg-card">
+  <div class="reg-header">
+    <h2><i class="bi bi-person-plus me-2"></i>Solicitar Acesso <span class="badge-free">Free</span></h2>
+    <p class="mb-0 mt-1 opacity-75" style="font-size:.82rem">
+      Crie sua conta gratuita. Você receberá um e-mail para confirmar o acesso.
+    </p>
+  </div>
+
+  <div class="card-body p-4">
+    <form method="POST" novalidate>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Nome completo <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" name="nome" placeholder="Seu nome completo"
+               value="{{ request.form.get('nome','') }}" required autofocus>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">CPF <span class="text-danger">*</span></label>
+          <input type="text" class="form-control cpf-mask" name="cpf"
+                 placeholder="000.000.000-00" maxlength="14"
+                 value="{{ request.form.get('cpf','') }}" required>
+          <div class="form-text">Apenas um cadastro por CPF.</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Nome de usuário (login) <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="username"
+                 placeholder="ex: joaosilva" pattern="[a-zA-Z0-9_\-]+"
+                 value="{{ request.form.get('username','') }}" required>
+          <div class="form-text">Sem espaços ou acentos.</div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">E-mail <span class="text-danger">*</span></label>
+        <input type="email" class="form-control" name="email"
+               placeholder="seu@email.com"
+               value="{{ request.form.get('email','') }}" required>
+        <div class="form-text">Um link de confirmação será enviado para este e-mail.</div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Senha <span class="text-danger">*</span></label>
+          <input type="password" class="form-control" name="password"
+                 placeholder="Mín. 6 caracteres" minlength="6" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Confirmar senha <span class="text-danger">*</span></label>
+          <input type="password" class="form-control" name="password2"
+                 placeholder="Repita a senha" required>
+        </div>
+      </div>
+
+      <div class="alert alert-info py-2 small mb-4">
+        <i class="bi bi-info-circle me-1"></i>
+        Conta <strong>Free</strong>: até <strong>{{ limite_free }}</strong> registros por mês.
+        Para ilimitado, solicite upgrade ao administrador.
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 fw-bold">
+        <i class="bi bi-envelope-check me-1"></i>Criar conta e enviar confirmação
+      </button>
+    </form>
+
+    <hr class="my-3">
+    <div class="text-center small text-muted">
+      Já tem conta? <a href="{{ url_for('auth.login') }}">Fazer login</a>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.cpf-mask').forEach(inp => {
+    inp.addEventListener('input', function () {
+        let v = this.value.replace(/\D/g, '').slice(0, 11);
+        if (v.length > 9)      v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d+)/, '$1.$2.$3');
+        else if (v.length > 3) v = v.replace(/^(\d{3})(\d+)/, '$1.$2');
+        this.value = v;
+    });
+});
+</script>
+{% endblock %}

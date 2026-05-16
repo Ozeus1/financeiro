@@ -96,10 +96,19 @@
                 <!-- Contato -->
                 <td>
                   <div style="font-size:.85rem;">{{ u.email }}</div>
+                  {% if u.cpf %}
+                  <div style="font-size:.78rem;" class="text-muted">
+                    <i class="bi bi-person-vcard"></i>
+                    {{ u.cpf[:3] }}.{{ u.cpf[3:6] }}.{{ u.cpf[6:9] }}-{{ u.cpf[9:] }}
+                  </div>
+                  {% endif %}
                   {% if u.whatsapp %}
                   <div style="font-size:.78rem;" class="text-success">
                     <i class="bi bi-whatsapp"></i> {{ u.whatsapp }}
                   </div>
+                  {% endif %}
+                  {% if not u.email_confirmado %}
+                  <span class="badge bg-warning text-dark" style="font-size:.62rem">E-mail pendente</span>
                   {% endif %}
                 </td>
 
@@ -249,6 +258,12 @@
                             <label class="form-label">WhatsApp</label>
                             <input type="text" class="form-control" name="whatsapp"
                                    value="{{ u.whatsapp or '' }}" placeholder="(99) 99999-9999">
+                          </div>
+                          <div class="col-md-6">
+                            <label class="form-label">CPF</label>
+                            <input type="text" class="form-control cpf-mask" name="cpf"
+                                   value="{% if u.cpf %}{{ u.cpf[:3] }}.{{ u.cpf[3:6] }}.{{ u.cpf[6:9] }}-{{ u.cpf[9:] }}{% endif %}"
+                                   placeholder="000.000.000-00" maxlength="14">
                           </div>
                           <div class="col-12">
                             <label class="form-label">E-mail</label>
@@ -419,6 +434,11 @@
               <label class="form-label">WhatsApp</label>
               <input type="text" class="form-control" name="whatsapp" placeholder="(99) 99999-9999">
             </div>
+            <div class="col-md-6">
+              <label class="form-label">CPF</label>
+              <input type="text" class="form-control cpf-mask" name="cpf"
+                     placeholder="000.000.000-00" maxlength="14">
+            </div>
             <div class="col-12">
               <label class="form-label">E-mail <span class="text-danger">*</span></label>
               <input type="email" class="form-control" name="email" required>
@@ -480,6 +500,17 @@ function previewFoto(input, uid) {
 document.getElementById('nivel_novo').addEventListener('change', function () {
     document.getElementById('validade_novo_container').style.display =
         this.value === 'admin' ? 'none' : '';
+});
+
+// Máscara CPF: 000.000.000-00
+document.querySelectorAll('.cpf-mask').forEach(inp => {
+    inp.addEventListener('input', function () {
+        let v = this.value.replace(/\D/g, '').slice(0, 11);
+        if (v.length > 9) v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{2}).*/, '$1.$2.$3-$4');
+        else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d+)/, '$1.$2.$3');
+        else if (v.length > 3) v = v.replace(/^(\d{3})(\d+)/, '$1.$2');
+        this.value = v;
+    });
 });
 </script>
 {% endblock %}

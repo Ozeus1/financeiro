@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Confirmação de E-mail — FiNan{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-5">
+      <div class="card shadow text-center p-4">
+
+        {% if status == 'sucesso' %}
+        <div class="mb-3" style="font-size:3.5rem;color:#10b981"><i class="bi bi-check-circle-fill"></i></div>
+        <h4 class="fw-bold text-success">E-mail confirmado!</h4>
+        <p class="text-muted">{{ msg }}</p>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-success mt-2">
+          <i class="bi bi-box-arrow-in-right me-1"></i>Fazer login
+        </a>
+
+        {% elif status == 'ja_confirmado' %}
+        <div class="mb-3" style="font-size:3.5rem;color:#4361ee"><i class="bi bi-info-circle-fill"></i></div>
+        <h4 class="fw-bold text-primary">Já confirmado</h4>
+        <p class="text-muted">{{ msg }}</p>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary mt-2">Fazer login</a>
+
+        {% elif status == 'expirado' %}
+        <div class="mb-3" style="font-size:3.5rem;color:#f59e0b"><i class="bi bi-clock-history"></i></div>
+        <h4 class="fw-bold text-warning">Link expirado</h4>
+        <p class="text-muted">{{ msg }}</p>
+        <a href="{{ url_for('auth.solicitar_acesso') }}" class="btn btn-warning mt-2">
+          Solicitar novo acesso
+        </a>
+
+        {% else %}
+        <div class="mb-3" style="font-size:3.5rem;color:#ef4444"><i class="bi bi-x-circle-fill"></i></div>
+        <h4 class="fw-bold text-danger">Erro</h4>
+        <p class="text-muted">{{ msg }}</p>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-secondary mt-2">Voltar ao login</a>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

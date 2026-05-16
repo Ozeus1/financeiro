@@ -15,13 +15,16 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    nivel_acesso = db.Column(db.String(20), nullable=False, default='usuario')  # admin, usuario
+    nivel_acesso = db.Column(db.String(20), nullable=False, default='pro')  # admin, pro, free
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
     data_validade = db.Column(db.Date, nullable=True)
     nome = db.Column(db.String(150), nullable=True)
     whatsapp = db.Column(db.String(20), nullable=True)
     foto_perfil = db.Column(db.String(255), nullable=True)
+    cpf = db.Column(db.String(11), nullable=True, unique=True)  # 11 dígitos sem máscara
+    email_confirmado = db.Column(db.Boolean, default=False, nullable=False)
+    token_confirmacao = db.Column(db.String(200), nullable=True)
     
     # Relacionamentos
     despesas = db.relationship('Despesa', backref='usuario', lazy=True, cascade='all, delete-orphan')

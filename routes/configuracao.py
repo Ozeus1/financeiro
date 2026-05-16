@@ -886,11 +886,15 @@ def usuarios():
             data_validade_str = request.form.get('data_validade')
             nome = request.form.get('nome', '').strip() or None
             whatsapp = request.form.get('whatsapp', '').strip() or None
+            import re as _re
+            cpf_raw = _re.sub(r'\D', '', request.form.get('cpf', '').strip()) or None
 
             if User.query.filter_by(username=username).first():
                 flash('Nome de usuário já existe!', 'warning')
             elif User.query.filter_by(email=email).first():
                 flash('E-mail já cadastrado!', 'warning')
+            elif cpf_raw and User.query.filter_by(cpf=cpf_raw).first():
+                flash('CPF já cadastrado!', 'warning')
             else:
                 data_validade = None
                 if nivel != 'admin' and data_validade_str:
@@ -902,9 +906,11 @@ def usuarios():
                     email=email,
                     nivel_acesso=nivel,
                     ativo=True,
+                    email_confirmado=True,
                     data_validade=data_validade,
                     nome=nome,
-                    whatsapp=whatsapp
+                    whatsapp=whatsapp,
+                    cpf=cpf_raw,
                 )
                 novo_usuario.set_password(password)
                 db.session.add(novo_usuario)
@@ -932,18 +938,25 @@ def usuarios():
             email = request.form.get('email')
             nome = request.form.get('nome', '').strip() or None
             whatsapp = request.form.get('whatsapp', '').strip() or None
+            import re as _re
+            cpf_edit = _re.sub(r'\D', '', request.form.get('cpf', '').strip()) or None
 
             user = User.query.get(id)
             if user:
+                cpf_conflict = cpf_edit and User.query.filter(
+                    User.cpf == cpf_edit, User.id != id).first()
                 if user.username != username and User.query.filter_by(username=username).first():
                     flash('Nome de usuário já existe!', 'warning')
                 elif user.email != email and User.query.filter_by(email=email).first():
                     flash('E-mail já cadastrado!', 'warning')
+                elif cpf_conflict:
+                    flash('CPF já cadastrado para outro usuário!', 'warning')
                 else:
                     user.username = username
                     user.email = email
                     user.nome = nome
                     user.whatsapp = whatsapp
+                    user.cpf = cpf_edit
 
                     # Foto de perfil
                     foto_file = request.files.get('foto_perfil')

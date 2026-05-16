@@ -3,6 +3,92 @@ from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User
 from functools import wraps
 import os
+import re as _re
+
+
+def _limpar_cpf(cpf):
+    """Remove máscara e retorna 11 dígitos ou None."""
+    return _re.sub(r'\D', '', cpf or '')[:11] or None
+
+
+def _validar_cpf(cpf):
+    """Valida CPF (11 dígitos limpos). Retorna True se válido."""
+    cpf = _re.sub(r'\D', '', cpf or '')
+    if len(cpf) != 11 or cpf == cpf[0] * 11:
+        return False
+    for i in range(2):
+        soma = sum(int(cpf[j]) * (10 + i - j) for j in range(9 + i))
+        d = 11 - (soma % 11)
+        if d >= 10:
+            d = 0
+        if int(cpf[9 + i]) != d:
+            return False
+    return True
+
+
+def _gerar_token_confirmacao(email):
+    from itsdangerous import URLSafeTimedSerializer
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    return s.dumps(email, salt='email-confirm')
+
+
+def _verificar_token_confirmacao(token, max_age=86400):  # 24h
+    from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    try:
+        return s.loads(token, salt='email-confirm', max_age=max_age)
+    except (SignatureExpired, BadSignature):
+        return None
+
+
+def _enviar_email_confirmacao(to_email, confirm_url):
+    from models import ConfigSistema
+    import smtplib, ssl
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    host     = ConfigSistema.get('smtp_host', '')
+    port     = int(ConfigSistema.get('smtp_port', 465) or 465)
+    secure   = (ConfigSistema.get('smtp_secure', 'true') or 'true').lower() == 'true'
+    user     = ConfigSistema.get('smtp_user', '')
+    password = ConfigSistema.get('smtp_password', '')
+    from_    = ConfigSistema.get('smtp_from', user)
+
+    if not host or not user:
+        raise ValueError('Servidor SMTP não configurado.')
+
+    html = f"""
+    <div style="font-family:sans-serif;max-width:520px;margin:auto">
+      <h2 style="color:#4361ee">Confirme seu e-mail — FiNan</h2>
+      <p>Recebemos uma solicitação de acesso <strong>Free</strong> ao sistema FiNan.</p>
+      <p>Clique no botão abaixo para confirmar seu e-mail e ativar sua conta:</p>
+      <p style="margin:1.5rem 0">
+        <a href="{confirm_url}"
+           style="background:#4361ee;color:#fff;padding:.75rem 1.5rem;border-radius:8px;
+                  text-decoration:none;font-weight:600">
+          Confirmar e-mail e ativar conta
+        </a>
+      </p>
+      <p style="color:#64748b;font-size:.85rem">
+        Este link expira em 24 horas. Se você não solicitou acesso, ignore este e-mail.
+      </p>
+    </div>
+    """
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = 'Confirme seu e-mail — FiNan'
+    msg['From']    = from_
+    msg['To']      = to_email
+    msg.attach(MIMEText(html, 'html'))
+
+    ctx = ssl.create_default_context()
+    if secure:
+        with smtplib.SMTP_SSL(host, port, context=ctx) as s:
+            s.login(user, password)
+            s.sendmail(from_, [to_email], msg.as_string())
+    else:
+        with smtplib.SMTP(host, port) as s:
+            s.ehlo(); s.starttls(context=ctx); s.login(user, password)
+            s.sendmail(from_, [to_email], msg.as_string())
 
 
 def _generate_reset_token(email):
@@ -274,3 +360,112 @@ def reset_password(token):
             return redirect(url_for('auth.login'))
 
     return render_template('auth/reset_password.html', token=token)
+
+
+@auth_bp.route('/solicitar-acesso', methods=['GET', 'POST'])
+def solicitar_acesso():
+    """Auto-cadastro para plano Free com validação de e-mail."""
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+
+    if request.method == 'POST':
+        nome     = request.form.get('nome', '').strip()
+        cpf_raw  = _limpar_cpf(request.form.get('cpf', ''))
+        email    = request.form.get('email', '').strip().lower()
+        username = request.form.get('username', '').strip()
+        senha    = request.form.get('password', '')
+        senha2   = request.form.get('password2', '')
+
+        # Validações
+        if not nome:
+            flash('Nome completo é obrigatório.', 'danger')
+            return render_template('auth/solicitar_acesso.html')
+        if not cpf_raw or len(cpf_raw) != 11:
+            flash('CPF inválido.', 'danger')
+            return render_template('auth/solicitar_acesso.html')
+        if not _validar_cpf(cpf_raw):
+            flash('CPF inválido — verifique os dígitos.', 'danger')
+            return render_template('auth/solicitar_acesso.html')
+        if senha != senha2:
+            flash('As senhas não conferem.', 'danger')
+            return render_template('auth/solicitar_acesso.html')
+        if len(senha) < 6:
+            flash('A senha deve ter pelo menos 6 caracteres.', 'danger')
+            return render_template('auth/solicitar_acesso.html')
+        if User.query.filter_by(cpf=cpf_raw).first():
+            flash('Já existe uma conta cadastrada com este CPF.', 'danger')
+            return render_template('auth/solicitar_acesso.html')
+        if User.query.filter_by(email=email).first():
+            flash('E-mail já cadastrado. Use "Esqueceu a senha?" se precisar de acesso.', 'warning')
+            return redirect(url_for('auth.login'))
+        if User.query.filter_by(username=username).first():
+            flash('Este nome de usuário já está em uso. Escolha outro.', 'warning')
+            return render_template('auth/solicitar_acesso.html')
+
+        # Criar usuário inativo, aguardando confirmação
+        token = _gerar_token_confirmacao(email)
+        novo = User(
+            nome=nome,
+            cpf=cpf_raw,
+            email=email,
+            username=username,
+            nivel_acesso='free',
+            ativo=False,
+            email_confirmado=False,
+            token_confirmacao=token,
+        )
+        novo.set_password(senha)
+        db.session.add(novo)
+        db.session.commit()
+
+        # Criar categorias/meios padrão
+        from models import criar_dados_padrao_usuario
+        criar_dados_padrao_usuario(novo)
+
+        # Enviar e-mail de confirmação
+        try:
+            confirm_url = url_for('auth.confirmar_email', token=token, _external=True)
+            _enviar_email_confirmacao(email, confirm_url)
+            flash('Cadastro realizado! Verifique seu e-mail para confirmar e ativar sua conta.', 'success')
+        except Exception as e:
+            flash(f'Cadastro criado mas não foi possível enviar o e-mail: {e}. '
+                  f'Entre em contato com o administrador.', 'warning')
+
+        return redirect(url_for('auth.login'))
+
+    from models import ConfigSistema
+    limite_free = int(ConfigSistema.get('limite_registros_free', '500') or 500)
+    return render_template('auth/solicitar_acesso.html', limite_free=limite_free)
+
+
+@auth_bp.route('/confirmar-email/<token>')
+def confirmar_email(token):
+    """Ativa conta após clique no link de confirmação."""
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+
+    email = _verificar_token_confirmacao(token)
+    if not email:
+        return render_template('auth/confirmar_email.html',
+                               status='expirado',
+                               msg='Link expirado ou inválido. Solicite um novo acesso.')
+
+    user = User.query.filter_by(email=email, token_confirmacao=token).first()
+    if not user:
+        return render_template('auth/confirmar_email.html',
+                               status='erro',
+                               msg='Usuário não encontrado.')
+
+    if user.email_confirmado:
+        return render_template('auth/confirmar_email.html',
+                               status='ja_confirmado',
+                               msg='E-mail já confirmado anteriormente. Faça login.')
+
+    user.email_confirmado = True
+    user.ativo = True
+    user.token_confirmacao = None
+    db.session.commit()
+
+    return render_template('auth/confirmar_email.html',
+                           status='sucesso',
+                           msg='E-mail confirmado! Sua conta está ativa. Faça login.')

@@ -53,6 +53,14 @@
     padding: 1rem 1.1rem;
     display: flex; align-items: center; gap: .9rem;
     border-left: 4px solid transparent;
+    cursor: pointer;
+    transition: box-shadow .18s, transform .18s;
+    text-decoration: none; color: inherit;
+}
+.db-kpi:hover {
+    box-shadow: var(--db-shadow-lg);
+    transform: translateY(-2px);
+    color: inherit;
 }
 .db-kpi-icon {
     width: 44px; height: 44px; border-radius: 12px;
@@ -111,9 +119,11 @@
     padding: .7rem 1.1rem;
     border-bottom: 1px solid var(--db-border);
     transition: background .12s;
+    cursor: pointer;
+    text-decoration: none; color: inherit;
 }
 .db-txn-item:last-child { border-bottom: none; }
-.db-txn-item:hover { background: #f8fafc; }
+.db-txn-item:hover { background: #eef4ff; color: inherit; }
 
 .db-txn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: .38rem; }
 .db-txn-body { flex: 1; min-width: 0; }
@@ -218,27 +228,27 @@
     <i class="bi bi-calendar3"></i> Competência do Mês
 </div>
 <div class="db-kpis mb-3">
-    <div class="db-kpi db-kpi-green">
+    <a href="{{ url_for('receitas.lista', mes=mes_num, ano=ano_atual) }}" class="db-kpi db-kpi-green" title="Ver receitas de {{ mes_atual }}/{{ ano_atual }}">
         <div class="db-kpi-icon"><i class="bi bi-cash-coin"></i></div>
         <div>
             <div class="db-kpi-label">Receitas</div>
             <div class="db-kpi-value valor-monetario">R$ {{ total_receitas|moeda }}</div>
         </div>
-    </div>
-    <div class="db-kpi db-kpi-red">
+    </a>
+    <a href="{{ url_for('despesas.lista', mes=mes_num, ano=ano_atual) }}" class="db-kpi db-kpi-red" title="Ver despesas de {{ mes_atual }}/{{ ano_atual }}">
         <div class="db-kpi-icon"><i class="bi bi-wallet2"></i></div>
         <div>
             <div class="db-kpi-label">Despesas</div>
             <div class="db-kpi-value valor-monetario">R$ {{ total_despesas|moeda }}</div>
         </div>
-    </div>
-    <div class="db-kpi {% if saldo >= 0 %}db-kpi-blue{% else %}db-kpi-amber{% endif %}">
+    </a>
+    <a href="{{ url_for('relatorios.balanco') }}" class="db-kpi {% if saldo >= 0 %}db-kpi-blue{% else %}db-kpi-amber{% endif %}" title="Ver balanço mensal">
         <div class="db-kpi-icon"><i class="bi bi-piggy-bank"></i></div>
         <div>
             <div class="db-kpi-label">Saldo do Mês</div>
             <div class="db-kpi-value valor-monetario">R$ {{ saldo|moeda }}</div>
         </div>
-    </div>
+    </a>
 </div>
 
 <!-- ─── KPIs: Caixa ─── -->
@@ -246,27 +256,27 @@
     <i class="bi bi-cash-stack"></i> Fluxo de Caixa (Realizado)
 </div>
 <div class="db-kpis mb-4">
-    <div class="db-kpi db-kpi-cyan">
+    <a href="{{ url_for('receitas.lista', mes=mes_num, ano=ano_atual) }}" class="db-kpi db-kpi-cyan" title="Ver entradas do mês">
         <div class="db-kpi-icon"><i class="bi bi-arrow-down-circle"></i></div>
         <div>
             <div class="db-kpi-label">Entradas (Caixa)</div>
             <div class="db-kpi-value valor-monetario">R$ {{ fluxo_entradas|moeda }}</div>
         </div>
-    </div>
-    <div class="db-kpi db-kpi-red">
+    </a>
+    <a href="{{ url_for('despesas.lista', mes=mes_num, ano=ano_atual) }}" class="db-kpi db-kpi-red" title="Ver saídas do mês">
         <div class="db-kpi-icon"><i class="bi bi-arrow-up-circle"></i></div>
         <div>
             <div class="db-kpi-label">Saídas (Caixa)</div>
             <div class="db-kpi-value valor-monetario">R$ {{ fluxo_saidas|moeda }}</div>
         </div>
-    </div>
-    <div class="db-kpi {% if fluxo_saldo >= 0 %}db-kpi-indigo{% else %}db-kpi-amber{% endif %}">
+    </a>
+    <a href="{{ url_for('fluxo_caixa.index') }}" class="db-kpi {% if fluxo_saldo >= 0 %}db-kpi-indigo{% else %}db-kpi-amber{% endif %}" title="Ver fluxo de caixa">
         <div class="db-kpi-icon"><i class="bi bi-bank"></i></div>
         <div>
             <div class="db-kpi-label">Saldo (Caixa)</div>
             <div class="db-kpi-value valor-monetario">R$ {{ fluxo_saldo|moeda }}</div>
         </div>
-    </div>
+    </a>
 </div>
 
 <!-- ─── Transações ─── -->
@@ -291,7 +301,7 @@
         <div id="desp-data" class="db-txn-list">
             {% if ultimas_despesas_data %}
             {% for d in ultimas_despesas_data %}
-            <div class="db-txn-item">
+            <a href="{{ url_for('despesas.editar', id=d.id) }}" class="db-txn-item" title="Editar despesa">
                 <div class="db-txn-dot" style="background:var(--db-red);"></div>
                 <div class="db-txn-body">
                     <div class="db-txn-desc" title="{{ d.descricao }}">{{ d.descricao }}</div>
@@ -304,7 +314,7 @@
                     <div class="db-txn-date">{{ d.data_pagamento.strftime('%d/%m') }}</div>
                     <div class="db-txn-val valor-monetario" style="color:var(--db-red);">R$ {{ d.valor|moeda }}</div>
                 </div>
-            </div>
+            </a>
             {% endfor %}
             {% else %}
             <div class="db-empty"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nenhuma despesa nesta data.</div>
@@ -314,7 +324,7 @@
         <div id="desp-reg" class="db-txn-list" style="display:none;">
             {% if ultimas_despesas_registro %}
             {% for d in ultimas_despesas_registro %}
-            <div class="db-txn-item">
+            <a href="{{ url_for('despesas.editar', id=d.id) }}" class="db-txn-item" title="Editar despesa">
                 <div class="db-txn-dot" style="background:var(--db-red);"></div>
                 <div class="db-txn-body">
                     <div class="db-txn-desc" title="{{ d.descricao }}">{{ d.descricao }}</div>
@@ -327,7 +337,7 @@
                     <div class="db-txn-date">{{ d.data_pagamento.strftime('%d/%m') }}</div>
                     <div class="db-txn-val valor-monetario" style="color:var(--db-red);">R$ {{ d.valor|moeda }}</div>
                 </div>
-            </div>
+            </a>
             {% endfor %}
             {% else %}
             <div class="db-empty"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nenhuma despesa registrada.</div>
@@ -359,7 +369,7 @@
         <div id="rec-data" class="db-txn-list">
             {% if ultimas_receitas_data %}
             {% for r in ultimas_receitas_data %}
-            <div class="db-txn-item">
+            <a href="{{ url_for('receitas.editar', id=r.id) }}" class="db-txn-item" title="Editar receita">
                 <div class="db-txn-dot" style="background:var(--db-green);"></div>
                 <div class="db-txn-body">
                     <div class="db-txn-desc" title="{{ r.descricao }}">{{ r.descricao }}</div>
@@ -372,7 +382,7 @@
                     <div class="db-txn-date">{{ r.data_recebimento.strftime('%d/%m') }}</div>
                     <div class="db-txn-val valor-monetario" style="color:var(--db-green);">R$ {{ r.valor|moeda }}</div>
                 </div>
-            </div>
+            </a>
             {% endfor %}
             {% else %}
             <div class="db-empty"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nenhuma receita nesta data.</div>
@@ -382,7 +392,7 @@
         <div id="rec-reg" class="db-txn-list" style="display:none;">
             {% if ultimas_receitas_registro %}
             {% for r in ultimas_receitas_registro %}
-            <div class="db-txn-item">
+            <a href="{{ url_for('receitas.editar', id=r.id) }}" class="db-txn-item" title="Editar receita">
                 <div class="db-txn-dot" style="background:var(--db-green);"></div>
                 <div class="db-txn-body">
                     <div class="db-txn-desc" title="{{ r.descricao }}">{{ r.descricao }}</div>
@@ -395,7 +405,7 @@
                     <div class="db-txn-date">{{ r.data_recebimento.strftime('%d/%m') }}</div>
                     <div class="db-txn-val valor-monetario" style="color:var(--db-green);">R$ {{ r.valor|moeda }}</div>
                 </div>
-            </div>
+            </a>
             {% endfor %}
             {% else %}
             <div class="db-empty"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nenhuma receita registrada.</div>

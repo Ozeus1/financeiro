@@ -114,4 +114,5 @@ def dashboard():
                          ultimas_receitas_registro=ultimas_receitas_registro,
                          ultimas_receitas_data=ultimas_receitas_data,
                          mes_atual=nome_mes,
+                         mes_num=mes_atual,
                          ano_atual=ano_atual)

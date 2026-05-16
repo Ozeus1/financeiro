@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from models import db, Receita, CategoriaReceita, MeioRecebimento
 from datetime import datetime, date
 from sqlalchemy import extract, func
+from routes.despesas import _verificar_limite_free
 
 receitas_bp = Blueprint('receitas', __name__)
 
@@ -78,6 +79,10 @@ def lista():
 def criar():
     """Criar nova receita"""
     if request.method == 'POST':
+        ok, msg = _verificar_limite_free(current_user)
+        if not ok:
+            flash(msg, 'warning')
+            return redirect(url_for('receitas.lista'))
         descricao = request.form.get('descricao')
         valor = float(request.form.get('valor').replace(',', '.'))
         categoria_id = int(request.form.get('categoria_id'))

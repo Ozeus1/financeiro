@@ -100,8 +100,10 @@
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('config.orcamento') }}">Orçamentos</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('config.cartoes') }}">Configurar Cartões</a></li>
+                        {% if current_user.is_admin() %}
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('config.api_key') }}"><i class="bi bi-code-square me-1 text-primary"></i>API REST</a></li>
+                        {% endif %}
                         {% if current_user.is_admin() %}
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('config.importar_dados_antigos') }}"><i class="bi bi-download me-1"></i>Importar Dados Antigos</a></li>
@@ -194,7 +196,7 @@
         <a class="nav-link dropdown-sub" href="{{ url_for('config.meios_recebimento') }}"><i class="bi bi-bank"></i>Meios de Recebimento</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.orcamento') }}"><i class="bi bi-calculator"></i>Orçamentos</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.cartoes') }}"><i class="bi bi-credit-card"></i>Configurar Cartões</a>
-        <a class="nav-link dropdown-sub" href="{{ url_for('config.api_key') }}"><i class="bi bi-code-square text-primary"></i>API REST</a>
+        {% if current_user.is_admin() %}<a class="nav-link dropdown-sub" href="{{ url_for('config.api_key') }}"><i class="bi bi-code-square text-primary"></i>API REST</a>{% endif %}
         {% if current_user.is_admin() %}
         <div class="nav-divider"></div>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.importar_dados_antigos') }}"><i class="bi bi-download"></i>Importar Dados Antigos</a>

@@ -41,10 +41,24 @@ class User(UserMixin, db.Model):
     def is_admin(self):
         """Verifica se o usuário é administrador"""
         return self.nivel_acesso == 'admin'
-    
+
     def is_gerente(self):
         """Verifica se o usuário é gerente ou superior"""
         return self.nivel_acesso in ['admin', 'gerente']
+
+    def is_pro(self):
+        """Verifica se o usuário é do plano Pro"""
+        return self.nivel_acesso == 'pro'
+
+    def is_free(self):
+        """Verifica se o usuário é do plano Free"""
+        return self.nivel_acesso == 'free'
+
+    def limite_registros_mensais(self):
+        """Retorna o limite mensal de registros (None = ilimitado)"""
+        if self.nivel_acesso == 'free':
+            return int(ConfigSistema.get('limite_registros_free', '500') or 500)
+        return None
 
     def esta_valido(self):
         """Verifica se o acesso do usuário ainda está válido"""

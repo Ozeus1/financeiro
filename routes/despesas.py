@@ -1,9 +1,29 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from models import db, Despesa, CategoriaDespesa, MeioPagamento
+from models import db, Despesa, Receita, CategoriaDespesa, MeioPagamento
 from datetime import datetime, date
 from sqlalchemy import extract, func
 import re
+
+def _verificar_limite_free(usuario):
+    """Retorna (True, None) se pode registrar, (False, msg) se limite atingido."""
+    if not usuario.is_free():
+        return True, None
+    limite = usuario.limite_registros_mensais()
+    hoje   = datetime.now()
+    total  = (
+        Despesa.query.filter_by(user_id=usuario.id)
+        .filter(extract('month', Despesa.data_registro) == hoje.month,
+                extract('year',  Despesa.data_registro) == hoje.year).count()
+        +
+        Receita.query.filter_by(user_id=usuario.id)
+        .filter(extract('month', Receita.data_registro) == hoje.month,
+                extract('year',  Receita.data_registro) == hoje.year).count()
+    )
+    if total >= limite:
+        return False, (f'Limite de {limite} registros mensais do plano Free atingido. '
+                       f'Entre em contato com o administrador para fazer upgrade.')
+    return True, None
 
 def _parse_operador(valor_str):
     """Parse '>100', '<500', '>=200', '<=300', '=150' → (op, num) ou None"""
@@ -120,13 +140,19 @@ def lista():
 def criar():
     """Criar nova despesa"""
     if request.method == 'POST':
+        # Verificar limite Free
+        ok, msg = _verificar_limite_free(current_user)
+        if not ok:
+            flash(msg, 'warning')
+            return redirect(url_for('despesas.lista'))
+
         descricao = request.form.get('descricao')
         valor = float(request.form.get('valor').replace(',', '.'))
         categoria_id = int(request.form.get('categoria_id'))
         meio_pagamento_id = int(request.form.get('meio_pagamento_id'))
         num_parcelas = int(request.form.get('num_parcelas', 1))
         data_pagamento = datetime.strptime(request.form.get('data_pagamento'), '%Y-%m-%d').date()
-        
+
         nova_despesa = Despesa(
             descricao=descricao,
             valor=valor,
@@ -136,10 +162,10 @@ def criar():
             data_pagamento=data_pagamento,
             user_id=current_user.id
         )
-        
+
         db.session.add(nova_despesa)
         db.session.commit()
-        
+
         flash('Despesa cadastrada com sucesso!', 'success')
         return redirect(url_for('despesas.lista'))
     

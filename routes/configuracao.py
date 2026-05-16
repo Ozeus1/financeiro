@@ -1162,62 +1162,83 @@ def orcamento():
 
 @config_bp.route('/api-key', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def api_key():
-    """Página de gerenciamento da API key do usuário atual."""
+    """Página de gerenciamento de API keys — exclusiva para admin."""
+    from flask import session as flask_session
+
     if request.method == 'POST':
-        action = request.form.get('action')
+        action  = request.form.get('action')
+        user_id = int(request.form.get('user_id', current_user.id))
 
         if action == 'gerar':
             raw, key_hash, prefix = ApiKey.gerar_chave()
-            ak = ApiKey.query.filter_by(user_id=current_user.id).first()
+            ak = ApiKey.query.filter_by(user_id=user_id).first()
             if ak:
-                ak.key_hash = key_hash
-                ak.key_prefix = prefix
-                ak.ativo = True
-                ak.data_criacao = __import__('datetime').datetime.utcnow()
+                ak.key_hash      = key_hash
+                ak.key_prefix    = prefix
+                ak.ativo         = True
+                ak.data_criacao  = __import__('datetime').datetime.utcnow()
                 ak.total_requests = 0
                 ak.data_ultimo_uso = None
             else:
-                ak = ApiKey(
-                    user_id=current_user.id,
-                    key_hash=key_hash,
-                    key_prefix=prefix,
-                    ativo=True,
-                )
+                ak = ApiKey(user_id=user_id, key_hash=key_hash, key_prefix=prefix, ativo=True)
                 db.session.add(ak)
             db.session.commit()
-            flash(f'Chave gerada com sucesso! Copie agora — ela não será exibida novamente.', 'success')
-            # Exibe a chave raw UMA vez via sessão
-            from flask import session as flask_session
-            flask_session['api_key_raw'] = raw
+
+            target = User.query.get(user_id)
+            flash(f'Chave gerada para {target.username}. Copie agora — não será exibida novamente.', 'success')
+            flask_session[f'api_key_raw_{user_id}'] = raw
             return redirect(url_for('config.api_key'))
 
         elif action == 'revogar':
-            ak = ApiKey.query.filter_by(user_id=current_user.id).first()
+            ak = ApiKey.query.filter_by(user_id=user_id).first()
             if ak:
                 ak.ativo = False
                 db.session.commit()
-                flash('API key revogada. Gere uma nova quando precisar.', 'warning')
+                flash('API key revogada.', 'warning')
             return redirect(url_for('config.api_key'))
 
-    from flask import session as flask_session
-    raw_exibir = flask_session.pop('api_key_raw', None)
-    ak = ApiKey.query.filter_by(user_id=current_user.id).first()
+        elif action == 'salvar_limite':
+            limite = request.form.get('limite_free', '500').strip()
+            try:
+                limite = max(1, int(limite))
+            except ValueError:
+                limite = 500
+            from models import ConfigSistema
+            ConfigSistema.set('limite_registros_free', str(limite))
+            db.session.commit()
+            flash(f'Limite Free atualizado para {limite} registros/mês.', 'success')
+            return redirect(url_for('config.api_key'))
 
-    # Catálogos para a página de docs
+    # Coletar raw keys para exibição única
+    usuarios = User.query.order_by(User.username).all()
+    keys_map  = {ak.user_id: ak for ak in ApiKey.query.all()}
+    raw_map   = {}
+    for u in usuarios:
+        k = flask_session.pop(f'api_key_raw_{u.id}', None)
+        if k:
+            raw_map[u.id] = k
+
+    # Catálogos do admin (para a aba de docs)
     cat_despesas = CategoriaDespesa.query.filter_by(user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
     cat_receitas = CategoriaReceita.query.filter_by(user_id=current_user.id).order_by(CategoriaReceita.nome).all()
-    meios_pag = MeioPagamento.query.filter_by(user_id=current_user.id).order_by(MeioPagamento.nome).all()
-    meios_rec = MeioRecebimento.query.filter_by(user_id=current_user.id).order_by(MeioRecebimento.nome).all()
+    meios_pag    = MeioPagamento.query.filter_by(user_id=current_user.id).order_by(MeioPagamento.nome).all()
+    meios_rec    = MeioRecebimento.query.filter_by(user_id=current_user.id).order_by(MeioRecebimento.nome).all()
+
+    from models import ConfigSistema
+    limite_free = int(ConfigSistema.get('limite_registros_free', '500') or 500)
 
     return render_template(
         'config/api_keys.html',
-        ak=ak,
-        raw_exibir=raw_exibir,
+        usuarios=usuarios,
+        keys_map=keys_map,
+        raw_map=raw_map,
         cat_despesas=cat_despesas,
         cat_receitas=cat_receitas,
         meios_pag=meios_pag,
         meios_rec=meios_rec,
+        limite_free=limite_free,
     )
 
 @config_bp.route('/cartoes', methods=['GET', 'POST'])

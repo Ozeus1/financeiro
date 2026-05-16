@@ -66,6 +66,10 @@ def create_app(config_name='default'):
                         total_requests INTEGER NOT NULL DEFAULT 0
                     )
                 '''))
+                # Renomear nivel_acesso 'usuario' → 'pro'
+                conn.execute(text(
+                    "UPDATE users SET nivel_acesso = 'pro' WHERE nivel_acesso = 'usuario'"
+                ))
                 conn.commit()
         except Exception:
             pass

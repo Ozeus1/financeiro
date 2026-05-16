@@ -107,6 +107,10 @@
                 <td class="text-center">
                   {% if u.nivel_acesso == 'admin' %}
                   <span class="badge bg-danger">Admin</span>
+                  {% elif u.nivel_acesso == 'pro' %}
+                  <span class="badge bg-primary">Pro</span>
+                  {% elif u.nivel_acesso == 'free' %}
+                  <span class="badge bg-secondary">Free</span>
                   {% else %}
                   <span class="badge bg-secondary">Usuário</span>
                   {% endif %}
@@ -305,8 +309,9 @@
                         <input type="hidden" name="id" value="{{ u.id }}">
                         <p class="text-muted small">Usuário: <strong>{{ u.username }}</strong></p>
                         <select class="form-select" name="nivel" required>
-                          <option value="usuario" {% if u.nivel_acesso=='usuario' %}selected{% endif %}>Usuário</option>
-                          <option value="admin"   {% if u.nivel_acesso=='admin'   %}selected{% endif %}>Admin</option>
+                          <option value="pro"   {% if u.nivel_acesso=='pro'   %}selected{% endif %}>Pro</option>
+                          <option value="free"  {% if u.nivel_acesso=='free'  %}selected{% endif %}>Free</option>
+                          <option value="admin" {% if u.nivel_acesso=='admin' %}selected{% endif %}>Admin</option>
                         </select>
                       </div>
                       <div class="modal-footer">
@@ -425,7 +430,8 @@
             <div class="col-md-6">
               <label class="form-label">Nível de Acesso</label>
               <select class="form-select" name="nivel" id="nivel_novo">
-                <option value="usuario">Usuário</option>
+                <option value="pro">Pro</option>
+                <option value="free">Free</option>
                 <option value="admin">Admin</option>
               </select>
             </div>

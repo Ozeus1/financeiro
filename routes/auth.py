@@ -179,6 +179,30 @@ def gerente_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def supabase_required(f):
+    """Decorator: admin ou pro com allow_supabase"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+        if not (current_user.is_admin() or (current_user.is_pro() and current_user.allow_supabase)):
+            flash('Acesso negado. Permissão de Supabase não habilitada para seu usuário.', 'danger')
+            return redirect(url_for('main.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def openfinance_required(f):
+    """Decorator: admin ou pro com allow_openfinance"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+        if not (current_user.is_admin() or (current_user.is_pro() and current_user.allow_openfinance)):
+            flash('Acesso negado. Permissão de OpenFinance não habilitada para seu usuário.', 'danger')
+            return redirect(url_for('main.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     """Página de login"""

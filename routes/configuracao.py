@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
 from flask_login import login_required, current_user
-from routes.auth import admin_required, gerente_required
+from routes.auth import admin_required, gerente_required, supabase_required, openfinance_required
 from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa, Receita, BalancoMensal, EventoCaixaAvulso, ConfigSistema, ApiKey
 from utils.supabase_client import SupabaseClient
 import json
@@ -1294,7 +1294,7 @@ def cartoes():
 
 @config_bp.route('/importar-supabase', methods=['GET'])
 @login_required
-@admin_required
+@supabase_required
 def importar_supabase():
     """Página de importação do Supabase"""
     # Buscar configurações salvas
@@ -1316,7 +1316,7 @@ def importar_supabase():
 
 @config_bp.route('/importar-supabase/salvar-config', methods=['POST'])
 @login_required
-@admin_required
+@supabase_required
 def salvar_config_supabase():
     """Salvar configurações do Supabase"""
     try:
@@ -1346,7 +1346,7 @@ def salvar_config_supabase():
 
 @config_bp.route('/importar-supabase/testar', methods=['POST'])
 @login_required
-@admin_required
+@supabase_required
 def testar_conexao_supabase():
     """Testar conexão com Supabase"""
     try:
@@ -1359,7 +1359,7 @@ def testar_conexao_supabase():
 
 @config_bp.route('/importar-supabase/buscar', methods=['POST'])
 @login_required
-@admin_required
+@supabase_required
 def buscar_dados_supabase():
     """Buscar dados do Supabase"""
     try:
@@ -1372,7 +1372,7 @@ def buscar_dados_supabase():
 
 @config_bp.route('/importar-supabase/importar', methods=['POST'])
 @login_required
-@admin_required
+@supabase_required
 def importar_dados_supabase():
     """Importar dados selecionados"""
     try:
@@ -1461,7 +1461,7 @@ def importar_dados_supabase():
 
 @config_bp.route('/importar-supabase/excluir-item', methods=['POST'])
 @login_required
-@admin_required
+@supabase_required
 def excluir_item_supabase():
     """Excluir item do Supabase"""
     try:
@@ -1823,12 +1823,14 @@ def exportar_sqlite_fluxo_caixa():
 
 @config_bp.route('/openfinance', methods=['GET'])
 @login_required
+@openfinance_required
 def openfinance():
     """Página principal do OpenFinance"""
     return render_template('config/openfinance.html')
 
 @config_bp.route('/openfinance/import', methods=['POST'])
 @login_required
+@openfinance_required
 def openfinance_import():
     """Busca dados da Pluggy e mostra tela de revisão"""
     from flask import current_app
@@ -1965,6 +1967,7 @@ def openfinance_import():
 
 @config_bp.route('/openfinance/confirm', methods=['POST'])
 @login_required
+@openfinance_required
 def openfinance_confirm():
     """Processa a gravação das transações selecionadas"""
     
@@ -2050,6 +2053,7 @@ def openfinance_confirm():
 
 @config_bp.route('/openfinance/token', methods=['GET'])
 @login_required
+@openfinance_required
 def openfinance_token():
     """Gera um token de conexão para o widget da Pluggy"""
     from flask import current_app, jsonify

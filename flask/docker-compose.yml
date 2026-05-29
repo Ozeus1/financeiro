@@ -1,0 +1,44 @@
+version: '3.7'
+
+services:
+  finan_web:
+    build: .
+    container_name: finan_web
+    restart: always
+    env_file:
+      - .env.production
+    networks:
+      - network_swarm_public
+      - finan_internal
+    depends_on:
+      - finan_db
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.finan_web.rule=Host(`finan.receberberevinhos.com.br`)"
+        - "traefik.http.routers.finan_web.entrypoints=websecure"
+        - "traefik.http.routers.finan_web.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.finan_web.loadbalancer.server.port=5000"
+
+  finan_db:
+    image: postgres:15-alpine
+    container_name: finan_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - finan_db_data:/var/lib/postgresql/data
+    networks:
+      - finan_internal
+
+networks:
+  network_swarm_public:
+    external: true
+    name: network_swarm_public
+  finan_internal:
+    driver: bridge
+
+volumes:
+  finan_db_data:

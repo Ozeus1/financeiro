@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.production
+**/.env.production
 *.local
 
 # Banco de dados local
@@ -95,8 +96,8 @@ rag_config.json
 # tstex modules
 tstex_modules/
 
-# Flask específico
-flask/
+# Flask específico (pasta inteira excluída apenas localmente se necessário)
+# flask/   ← removido: pasta flask/ precisa ir para o GitHub no deploy
 
 # Arquivos de serviço
 *.service

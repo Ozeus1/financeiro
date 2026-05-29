@@ -3,7 +3,7 @@ version: '3.8'
 services:
   finan_web:
     build:
-      context: ../flask
+      context: ..
       dockerfile: Dockerfile
     container_name: finan_web
     restart: always
@@ -12,10 +12,9 @@ services:
     networks:
       - finan_internal
     depends_on:
-      finan_db:
-        condition: service_healthy
+      - finan_db
     ports:
-      - "127.0.0.1:5000:5000"   # expõe apenas para localhost (Nginx faz proxy)
+      - "127.0.0.1:5000:5000"
     volumes:
       - finan_uploads:/app/static/uploads
       - finan_instance:/app/instance
@@ -24,21 +23,14 @@ services:
     image: postgres:15-alpine
     container_name: finan_db
     restart: always
-    env_file:
-      - ../flask/.env.production
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: finan_user
+      POSTGRES_PASSWORD: 891783bc8ceb6811a58be4cca2bc499a
+      POSTGRES_DB: finan_db
     volumes:
       - finan_db_data:/var/lib/postgresql/data
     networks:
       - finan_internal
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
 networks:
   finan_internal:

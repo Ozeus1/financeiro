@@ -103,15 +103,18 @@
                         {% if current_user.is_admin() %}
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('config.api_key') }}"><i class="bi bi-code-square me-1 text-primary"></i>API REST</a></li>
-                        {% endif %}
-                        {% if current_user.is_admin() %}
-                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('config.importar_dados_antigos') }}"><i class="bi bi-download me-1"></i>Importar Dados Antigos</a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('config.importar_supabase') }}"><i class="bi bi-cloud-download me-1"></i>Importar do Supabase</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('config.usuarios') }}">Gerenciar Usuários</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('auth.register') }}">Novo Usuário</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('config.smtp_whatsapp') }}"><i class="bi bi-envelope-at me-1"></i>SMTP / WhatsApp</a></li>
+                        {% endif %}
+                        {% if current_user.is_admin() or (current_user.is_pro() and current_user.allow_supabase) %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('config.importar_supabase') }}"><i class="bi bi-cloud-download me-1"></i>Importar do Supabase</a></li>
+                        {% endif %}
+                        {% if current_user.is_admin() or (current_user.is_pro() and current_user.allow_openfinance) %}
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('config.openfinance') }}"><i class="bi bi-bank me-1"></i>OpenFinance (Pluggy)</a></li>
                         {% endif %}
                     </ul>
@@ -196,15 +199,19 @@
         <a class="nav-link dropdown-sub" href="{{ url_for('config.meios_recebimento') }}"><i class="bi bi-bank"></i>Meios de Recebimento</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.orcamento') }}"><i class="bi bi-calculator"></i>Orçamentos</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.cartoes') }}"><i class="bi bi-credit-card"></i>Configurar Cartões</a>
-        {% if current_user.is_admin() %}<a class="nav-link dropdown-sub" href="{{ url_for('config.api_key') }}"><i class="bi bi-code-square text-primary"></i>API REST</a>{% endif %}
         {% if current_user.is_admin() %}
+        <a class="nav-link dropdown-sub" href="{{ url_for('config.api_key') }}"><i class="bi bi-code-square text-primary"></i>API REST</a>
         <div class="nav-divider"></div>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.importar_dados_antigos') }}"><i class="bi bi-download"></i>Importar Dados Antigos</a>
-        <a class="nav-link dropdown-sub" href="{{ url_for('config.importar_supabase') }}"><i class="bi bi-cloud-download"></i>Importar do Supabase</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.usuarios') }}"><i class="bi bi-people"></i>Gerenciar Usuários</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('auth.register') }}"><i class="bi bi-person-plus"></i>Novo Usuário</a>
         <div class="nav-divider"></div>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.smtp_whatsapp') }}"><i class="bi bi-envelope-at"></i>SMTP / WhatsApp</a>
+        {% endif %}
+        {% if current_user.is_admin() or (current_user.is_pro() and current_user.allow_supabase) %}
+        <a class="nav-link dropdown-sub" href="{{ url_for('config.importar_supabase') }}"><i class="bi bi-cloud-download"></i>Importar do Supabase</a>
+        {% endif %}
+        {% if current_user.is_admin() or (current_user.is_pro() and current_user.allow_openfinance) %}
         <a class="nav-link dropdown-sub" href="{{ url_for('config.openfinance') }}"><i class="bi bi-bank"></i>OpenFinance (Pluggy)</a>
         {% endif %}
 

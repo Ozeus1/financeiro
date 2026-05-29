@@ -957,6 +957,9 @@ def usuarios():
                     user.nome = nome
                     user.whatsapp = whatsapp
                     user.cpf = cpf_edit
+                    if not user.is_admin():
+                        user.allow_supabase = 'allow_supabase' in request.form
+                        user.allow_openfinance = 'allow_openfinance' in request.form
 
                     # Foto de perfil
                     foto_file = request.files.get('foto_perfil')

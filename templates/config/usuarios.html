@@ -270,6 +270,29 @@
                             <input type="email" class="form-control" name="email"
                                    value="{{ u.email }}" required>
                           </div>
+                          {% if u.nivel_acesso == 'pro' %}
+                          <div class="col-12">
+                            <label class="form-label fw-semibold">Permissões extras (plano Pro)</label>
+                            <div class="d-flex flex-column gap-2">
+                              <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="allow_supabase"
+                                       id="allow_supabase_{{ u.id }}"
+                                       {% if u.allow_supabase %}checked{% endif %}>
+                                <label class="form-check-label" for="allow_supabase_{{ u.id }}">
+                                  <i class="bi bi-cloud-download me-1 text-primary"></i>Importar do Supabase
+                                </label>
+                              </div>
+                              <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="allow_openfinance"
+                                       id="allow_openfinance_{{ u.id }}"
+                                       {% if u.allow_openfinance %}checked{% endif %}>
+                                <label class="form-check-label" for="allow_openfinance_{{ u.id }}">
+                                  <i class="bi bi-bank me-1 text-success"></i>OpenFinance (Pluggy)
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                          {% endif %}
                         </div>
                       </div>
                       <div class="modal-footer">

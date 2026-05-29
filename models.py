@@ -25,6 +25,8 @@ class User(UserMixin, db.Model):
     cpf = db.Column(db.String(11), nullable=True, unique=True)  # 11 dígitos sem máscara
     email_confirmado = db.Column(db.Boolean, default=False, nullable=False)
     token_confirmacao = db.Column(db.String(200), nullable=True)
+    allow_supabase = db.Column(db.Boolean, default=False, nullable=False)
+    allow_openfinance = db.Column(db.Boolean, default=False, nullable=False)
     
     # Relacionamentos
     despesas = db.relationship('Despesa', backref='usuario', lazy=True, cascade='all, delete-orphan')

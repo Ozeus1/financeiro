@@ -115,6 +115,14 @@ def register():
 
     return render_template('auth/register.html')
 
+
+@auth_bp.route('/registro', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def registro():
+    """Alias de register para compatibilidade"""
+    return register()
+
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():

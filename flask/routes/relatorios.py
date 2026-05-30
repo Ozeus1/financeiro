@@ -16,38 +16,23 @@ def balanco():
     # Obter período do filtro ou usar últimos 12 meses
     meses = request.args.get('meses', 12, type=int)
     
-    # Query base
-    if current_user.is_gerente():
-        despesas_query = Despesa.query
-        receitas_query = Receita.query
-    else:
-        despesas_query = Despesa.query.filter_by(user_id=current_user.id)
-        receitas_query = Receita.query.filter_by(user_id=current_user.id)
-    
-    # Agrupar por mês
+    # Cada usuário vê apenas seus próprios dados
     despesas_mensais = db.session.query(
         extract('year', Despesa.data_pagamento).label('ano'),
         extract('month', Despesa.data_pagamento).label('mes'),
         func.sum(Despesa.valor).label('total')
     ).join(Despesa.categoria).filter(
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    ).group_by('ano', 'mes').order_by('ano', 'mes')
-    
-    if not current_user.is_gerente():
-        despesas_mensais = despesas_mensais.filter(Despesa.user_id == current_user.id)
-    
-    despesas_mensais = despesas_mensais.all()
-    
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).group_by('ano', 'mes').order_by('ano', 'mes').all()
+
     receitas_mensais = db.session.query(
         extract('year', Receita.data_recebimento).label('ano'),
         extract('month', Receita.data_recebimento).label('mes'),
         func.sum(Receita.valor).label('total')
-    ).group_by('ano', 'mes').order_by('ano', 'mes')
-    
-    if not current_user.is_gerente():
-        receitas_mensais = receitas_mensais.filter(Receita.user_id == current_user.id)
-    
-    receitas_mensais = receitas_mensais.all()
+    ).filter(
+        Receita.user_id == current_user.id
+    ).group_by('ano', 'mes').order_by('ano', 'mes').all()
     
     return render_template('relatorios/balanco.html',
                          despesas_mensais=despesas_mensais,
@@ -73,8 +58,7 @@ def despesas_mensal():
         func.lower(CategoriaDespesa.nome) != 'pagamentos'
     )
 
-    if not current_user.is_gerente():
-        query = query.filter(Despesa.user_id == current_user.id)
+    query = query.filter(Despesa.user_id == current_user.id)
     if entidade and current_user.usa_separacao_pf_pj():
         query = query.filter(Despesa.entidade == entidade)
 
@@ -110,8 +94,7 @@ def receitas_mensal():
         extract('year', Receita.data_recebimento) == ano
     )
 
-    if not current_user.is_gerente():
-        query = query.filter(Receita.user_id == current_user.id)
+    query = query.filter(Receita.user_id == current_user.id)
     if entidade and current_user.usa_separacao_pf_pj():
         query = query.filter(Receita.entidade == entidade)
 
@@ -146,8 +129,7 @@ def top_contas():
         func.lower(CategoriaDespesa.nome) != 'pagamentos'
     )
     
-    if not current_user.is_gerente():
-        query = query.filter(Despesa.user_id == current_user.id)
+    query = query.filter(Despesa.user_id == current_user.id)
     
     top_contas = query.group_by(CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).limit(10).all()
     
@@ -158,8 +140,7 @@ def top_contas():
         func.lower(CategoriaDespesa.nome) != 'pagamentos'
     )
     
-    if not current_user.is_gerente():
-        total_mes_query = total_mes_query.filter(Despesa.user_id == current_user.id)
+    total_mes_query = total_mes_query.filter(Despesa.user_id == current_user.id)
     
     total_mes = total_mes_query.scalar() or 0
     
@@ -191,8 +172,7 @@ def detalhes_despesas():
     )
     
     # Filtrar por usuário se não for gerente
-    if not current_user.is_gerente():
-        query = query.filter(Despesa.user_id == current_user.id)
+    query = query.filter(Despesa.user_id == current_user.id)
     
     # Ordenar por data
     despesas = query.order_by(Despesa.data_pagamento.desc()).all()
@@ -278,9 +258,7 @@ def previsao_cartoes():
         Despesa.num_parcelas > 1
     )
     
-    # Filtrar por usuário se não for gerente
-    if not current_user.is_gerente():
-        query_parcelas = query_parcelas.filter(Despesa.user_id == current_user.id)
+    query_parcelas = query_parcelas.filter(Despesa.user_id == current_user.id)
         
     despesas_parceladas = query_parcelas.all()
     
@@ -331,9 +309,7 @@ def previsao_cartoes():
         dia_fechamento = config.dia_fechamento if config else 31 # Se não tem fechamento, considera fim do mês
         
         # Buscar TODAS as despesas deste cartão
-        query_despesas = Despesa.query.filter_by(meio_pagamento_id=cartao.id)
-        if not current_user.is_gerente():
-            query_despesas = query_despesas.filter_by(user_id=current_user.id)
+        query_despesas = Despesa.query.filter_by(meio_pagamento_id=cartao.id, user_id=current_user.id)
         
         despesas = query_despesas.all()
         
@@ -444,10 +420,7 @@ def api_fatura_detalhes(cartao_id, mes, ano):
     """API para retornar detalhes da fatura (transações)"""
     try:
         # Buscar TODAS as despesas deste cartão
-        query = Despesa.query.filter_by(meio_pagamento_id=cartao_id)
-        
-        if not current_user.is_gerente():
-            query = query.filter_by(user_id=current_user.id)
+        query = Despesa.query.filter_by(meio_pagamento_id=cartao_id, user_id=current_user.id)
             
         despesas = query.order_by(Despesa.data_pagamento, Despesa.id).all()
         
@@ -506,8 +479,7 @@ def api_despesas_categoria():
         func.lower(CategoriaDespesa.nome) != 'pagamentos'
     )
     
-    if not current_user.is_gerente():
-        query = query.filter(Despesa.user_id == current_user.id)
+    query = query.filter(Despesa.user_id == current_user.id)
     
     dados = query.group_by(CategoriaDespesa.nome).all()
     
@@ -540,9 +512,8 @@ def api_balanco_mensal():
             extract('month', Despesa.data_pagamento) == mes,
             extract('year', Despesa.data_pagamento) == ano,
         )
-        if not current_user.is_gerente():
-            q_rec = q_rec.filter(Receita.user_id == current_user.id)
-            q_desp = q_desp.filter(Despesa.user_id == current_user.id)
+        q_rec = q_rec.filter(Receita.user_id == current_user.id)
+        q_desp = q_desp.filter(Despesa.user_id == current_user.id)
 
         receita = q_rec.scalar() or 0.0
         despesa = q_desp.scalar() or 0.0

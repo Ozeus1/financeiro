@@ -36,11 +36,8 @@ def lista():
         data_fim = None
     # Se personalizado, usa os valores de data_inicio e data_fim recebidos
     
-    # Query base
-    if current_user.is_gerente():
-        query = Receita.query
-    else:
-        query = Receita.query.filter_by(user_id=current_user.id)
+    # Cada usuário vê apenas suas próprias receitas
+    query = Receita.query.filter_by(user_id=current_user.id)
     
     # Aplicar filtros
     if categoria_id:

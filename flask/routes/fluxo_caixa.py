@@ -29,12 +29,15 @@ def index():
     ano_atual = hoje.year
     mes_atual = hoje.month
     
+    MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
     return render_template('fluxo_caixa/index.html',
                          balancos=balancos,
                          eventos=eventos,
                          ano_atual=ano_atual,
                          mes_atual=mes_atual,
-                         meses=calendar.month_name[1:],
+                         meses=MESES_PT,
                          date=date)
 
 

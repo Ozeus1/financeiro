@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, request
 from flask_login import login_required, current_user
 from models import db, Despesa, Receita, CategoriaDespesa
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, or_
 from datetime import datetime, timedelta
 import calendar
 
@@ -35,9 +35,14 @@ def dashboard():
         despesas_query = Despesa.query.filter_by(user_id=current_user.id)
         receitas_query = Receita.query.filter_by(user_id=current_user.id)
 
+    # Filtro de entidade: entidade == valor OU entidade IS NULL (cartão, sem separação)
     if entidade_filtro:
-        despesas_query = despesas_query.filter(Despesa.entidade == entidade_filtro)
-        receitas_query = receitas_query.filter(Receita.entidade == entidade_filtro)
+        despesas_query = despesas_query.filter(
+            or_(Despesa.entidade == entidade_filtro, Despesa.entidade == None)
+        )
+        receitas_query = receitas_query.filter(
+            or_(Receita.entidade == entidade_filtro, Receita.entidade == None)
+        )
 
     # Total de despesas do mês
     total_despesas_mes = db.session.query(func.sum(Despesa.valor)).join(CategoriaDespesa).filter(
@@ -48,7 +53,9 @@ def dashboard():
     if not current_user.is_gerente():
         total_despesas_mes = total_despesas_mes.filter(Despesa.user_id == current_user.id)
     if entidade_filtro:
-        total_despesas_mes = total_despesas_mes.filter(Despesa.entidade == entidade_filtro)
+        total_despesas_mes = total_despesas_mes.filter(
+            or_(Despesa.entidade == entidade_filtro, Despesa.entidade == None)
+        )
     total_despesas_mes = total_despesas_mes.scalar() or 0
 
     # Total de receitas do mês
@@ -59,7 +66,9 @@ def dashboard():
     if not current_user.is_gerente():
         total_receitas_mes = total_receitas_mes.filter(Receita.user_id == current_user.id)
     if entidade_filtro:
-        total_receitas_mes = total_receitas_mes.filter(Receita.entidade == entidade_filtro)
+        total_receitas_mes = total_receitas_mes.filter(
+            or_(Receita.entidade == entidade_filtro, Receita.entidade == None)
+        )
     total_receitas_mes = total_receitas_mes.scalar() or 0
 
     saldo_mes = total_receitas_mes - total_despesas_mes
@@ -85,7 +94,9 @@ def dashboard():
     if not current_user.is_gerente():
         saidas_caixa_query = saidas_caixa_query.filter(Despesa.user_id == current_user.id)
     if entidade_filtro:
-        saidas_caixa_query = saidas_caixa_query.filter(Despesa.entidade == entidade_filtro)
+        saidas_caixa_query = saidas_caixa_query.filter(
+            or_(Despesa.entidade == entidade_filtro, Despesa.entidade == None)
+        )
     saidas_caixa = saidas_caixa_query.scalar() or 0.0
 
     eventos_caixa_query = db.session.query(func.sum(EventoCaixaAvulso.valor)).filter(

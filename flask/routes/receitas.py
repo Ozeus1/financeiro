@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from models import db, Receita, CategoriaReceita, MeioRecebimento
 from datetime import datetime, date
-from sqlalchemy import extract, func
+from sqlalchemy import extract, func, or_
 
 receitas_bp = Blueprint('receitas', __name__)
 
@@ -56,7 +56,7 @@ def lista():
     if busca:
         query = query.filter(Receita.descricao.ilike(f'%{busca}%'))
     if entidade_filtro and current_user.usa_separacao_pf_pj():
-        query = query.filter(Receita.entidade == entidade_filtro)
+        query = query.filter(or_(Receita.entidade == entidade_filtro, Receita.entidade == None))
 
     # Ordenar e paginar
     receitas = query.order_by(Receita.data_recebimento.desc()).paginate(

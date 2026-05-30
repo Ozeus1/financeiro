@@ -364,9 +364,9 @@ def criar_dados_padrao_usuario(user):
     """Cria categorias e meios de pagamento padrão para um novo usuário"""
     # Categorias de despesa padrão
     categorias_despesa_padrao = [
-        'Moradia', 'Contas da casa', 'Alimentação', 'Transporte', 'Saúde',
-        'Educação', 'Vestuário', 'Lazer', 'Assinaturas', 'Pets', 'Trabalho',
-        'Impostos', 'Dívidas', 'Tarifas bancárias', 'Emergências', 'Outros'
+        'Moradia', 'Alimentação', 'Transporte', 'Saúde',
+        'Educação', 'Lazer', 'Assinaturas', 'Pets',
+        'Pagamentos', 'Impostos e Tarifas', 'Despesas Pessoais', 'Outros'
     ]
     for nome in categorias_despesa_padrao:
         if not CategoriaDespesa.query.filter_by(nome=nome, user_id=user.id).first():

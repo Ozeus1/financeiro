@@ -66,6 +66,7 @@
                             <table class="table table-striped table-hover">
                                 <thead class="table-dark">
                                     <tr>
+                                        <th>Cód.</th>
                                         <th>Nome</th>
                                         <th>Tipo</th>
                                         <th class="text-center">Status</th>
@@ -75,9 +76,9 @@
                                 <tbody>
                                     {% for meio in meios %}
                                     <tr>
+                                        <td><span class="badge bg-secondary">{{ meio.id }}</span></td>
                                         <td>
-                                            <i
-                                                class="bi bi-{% if meio.tipo == 'cartao' %}credit-card{% elif meio.tipo == 'dinheiro' %}cash{% elif meio.tipo == 'pix' %}qr-code{% else %}wallet2{% endif %}"></i>
+                                            <i class="bi bi-{% if meio.tipo == 'cartao' %}credit-card{% elif meio.tipo == 'dinheiro' %}cash{% elif meio.tipo == 'pix' %}qr-code{% else %}wallet2{% endif %}"></i>
                                             {{ meio.nome }}
                                         </td>
                                         <td>

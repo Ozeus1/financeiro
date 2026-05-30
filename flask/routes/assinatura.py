@@ -91,8 +91,9 @@ def minha_assinatura():
 @login_required
 def iniciar(plano):
     """Cria preferência de pagamento no Mercado Pago e redireciona"""
+    plano = plano.strip().lower() if plano else ''
     if plano not in PLANOS:
-        flash('Plano inválido.', 'danger')
+        flash(f'Plano inválido: "{plano}". Use pro ou promax.', 'danger')
         return redirect(url_for('assinatura.minha_assinatura'))
 
     mp_access_token = ConfigSistema.get('mp_access_token', '')

@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+{% block title %}API REST — Gerenciar Chaves{% endblock %}
+{% block extra_css %}
+<style>
+.api-hero{background:linear-gradient(135deg,#0d1b2a 0%,#1a3050 100%);color:#fff;border-radius:12px;padding:2rem 2rem 1.5rem}
+.api-hero h1{font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
+.api-hero .badge-version{background:rgba(76,201,240,.2);color:#4cc9f0;border:1px solid rgba(76,201,240,.4);font-size:.7rem;padding:.25em .6em;border-radius:6px;font-weight:700;vertical-align:middle}
+.key-box{font-family:monospace;font-size:.88rem;background:#0d1b2a;color:#4cc9f0;border:1px solid #1e3a5f;padding:.5rem .8rem;border-radius:8px;word-break:break-all}
+.key-masked{color:#475569;font-size:.82rem}
+.endpoint-card{border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:1rem}
+.endpoint-header{display:flex;align-items:center;gap:.6rem;padding:.65rem 1rem;background:#f8fafc;cursor:pointer;border-bottom:1px solid #e2e8f0}
+.endpoint-header:hover{background:#f1f5f9}
+.endpoint-body{padding:1rem}
+.method{font-weight:700;font-size:.75rem;padding:.22em .6em;border-radius:5px;min-width:52px;text-align:center}
+.method-get{background:#d1fae5;color:#065f46}
+.method-post{background:#dbeafe;color:#1e40af}
+.method-put{background:#fef3c7;color:#92400e}
+.method-delete{background:#fee2e2;color:#991b1b}
+.endpoint-path{font-family:monospace;font-size:.85rem;color:#1e293b;font-weight:600}
+.param-table th{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:600}
+.param-table td{font-size:.82rem;vertical-align:top}
+.param-required{color:#dc2626;font-size:.7rem;font-weight:700}
+.param-optional{color:#64748b;font-size:.7rem}
+.code-block{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:1rem;font-family:monospace;font-size:.8rem;overflow-x:auto;white-space:pre}
+.code-block .hl-key{color:#4cc9f0}.code-block .hl-val{color:#a3e635}
+.code-block .hl-str{color:#fbbf24}.code-block .hl-url{color:#c084fc}
+.catalog-table td,.catalog-table th{font-size:.82rem;padding:.4rem .6rem}
+.nav-tab-api .nav-link{font-size:.85rem;border-radius:8px 8px 0 0}
+.nav-tab-api .nav-link.active{background:#0d1b2a;color:#4cc9f0;border-color:#0d1b2a #0d1b2a #fff}
+.alert-key{background:#fffbeb;border:1px solid #f59e0b;border-radius:10px;color:#78350f}
+.badge-pro{background:#3b82f6;color:#fff}
+.badge-free{background:#6b7280;color:#fff}
+.badge-admin{background:#ef4444;color:#fff}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  {# ── Hero ── #}
+  <div class="api-hero mb-4">
+    <div class="d-flex align-items-start gap-3">
+      <div class="fs-2 mt-1"><i class="bi bi-code-square"></i></div>
+      <div>
+        <h1 class="mb-1">API REST <span class="badge-version">v1</span></h1>
+        <p class="mb-0 opacity-75" style="font-size:.9rem">
+          Gerencie as API keys dos usuários para conectar agentes de IA às suas contas.
+          O admin não acessa os dados financeiros — apenas gera e revoga chaves.
+        </p>
+      </div>
+    </div>
+    <div class="mt-3 d-flex gap-2 flex-wrap">
+      <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Leitura</span>
+      <span class="badge bg-primary"><i class="bi bi-pencil me-1"></i>Escrita</span>
+      <span class="badge bg-secondary"><i class="bi bi-shield-lock me-1"></i>Isolamento por usuário</span>
+      <span class="badge" style="background:#4cc9f0;color:#0d1b2a"><i class="bi bi-json me-1"></i>JSON</span>
+    </div>
+  </div>
+
+  {# ── Base URL ── #}
+  <div class="card shadow-sm mb-4">
+    <div class="card-body py-2 d-flex align-items-center gap-3 flex-wrap">
+      <span class="text-muted small fw-bold">BASE URL:</span>
+      <code id="baseUrl" class="text-primary">{{ request.host_url.rstrip('/') }}/api/v1</code>
+      <button class="btn btn-outline-secondary btn-sm" onclick="copyText('baseUrl')">
+        <i class="bi bi-clipboard"></i> Copiar
+      </button>
+    </div>
+  </div>
+
+  {# ── Tabs ── #}
+  <ul class="nav nav-tabs nav-tab-api mb-0" id="apiTabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabUsers"><i class="bi bi-people me-1"></i>Chaves por Usuário</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDocs"><i class="bi bi-book me-1"></i>Documentação</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCatalog"><i class="bi bi-list-ul me-1"></i>Catálogos</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabConfig"><i class="bi bi-sliders me-1"></i>Configurações</button></li>
+  </ul>
+
+  <div class="tab-content border border-top-0 rounded-bottom p-4 shadow-sm bg-white">
+
+    {# ══ TAB USERS ══ #}
+    <div class="tab-pane fade show active" id="tabUsers">
+      <p class="text-muted small mb-3">
+        <i class="bi bi-info-circle me-1"></i>
+        Gere ou revogue a API key de cada usuário. A chave só é exibida <strong>uma vez</strong> na geração —
+        guarde-a para configurar o agente de IA. O admin nunca acessa os dados financeiros do usuário diretamente.
+      </p>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>Usuário</th>
+              <th>Plano</th>
+              <th>Prefixo da chave</th>
+              <th class="text-center">Status</th>
+              <th class="text-center">Requisições</th>
+              <th class="text-center">Último uso</th>
+              <th class="text-center">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in usuarios %}
+            {% set ak = keys_map.get(u.id) %}
+            {% set raw = raw_map.get(u.id) %}
+            <tr>
+              <td>
+                <div class="fw-semibold">{{ u.nome or u.username }}</div>
+                <div class="text-muted small">{{ u.email }}</div>
+              </td>
+              <td>
+                {% if u.nivel_acesso == 'admin' %}<span class="badge badge-admin">Admin</span>
+                {% elif u.nivel_acesso == 'pro' %}<span class="badge badge-pro">Pro</span>
+                {% elif u.nivel_acesso == 'free' %}<span class="badge badge-free">Free</span>
+                {% else %}<span class="badge bg-secondary">{{ u.nivel_acesso }}</span>{% endif %}
+              </td>
+              <td>
+                {% if raw %}
+                <div class="alert-key p-2 rounded mb-1" style="font-size:.8rem">
+                  <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
+                  <strong>Copie agora!</strong>
+                </div>
+                <div class="key-box" id="rawKey{{ u.id }}">{{ raw }}</div>
+                <button class="btn btn-warning btn-sm mt-1" onclick="copyText('rawKey{{ u.id }}')">
+                  <i class="bi bi-clipboard me-1"></i>Copiar
+                </button>
+                {% elif ak %}
+                <span class="key-masked"><code>{{ ak.key_prefix }}••••••••••••••••••••••</code></span>
+                <div class="text-muted" style="font-size:.7rem">Criada {{ ak.data_criacao.strftime('%d/%m/%Y') }}</div>
+                {% else %}
+                <span class="text-muted small">Nenhuma chave gerada</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if ak %}
+                <span class="badge {% if ak.ativo %}bg-success{% else %}bg-secondary{% endif %}">
+                  {% if ak.ativo %}Ativa{% else %}Revogada{% endif %}
+                </span>
+                {% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
+              <td class="text-center small">{{ ak.total_requests if ak else '—' }}</td>
+              <td class="text-center small text-muted">
+                {% if ak and ak.data_ultimo_uso %}{{ ak.data_ultimo_uso.strftime('%d/%m %H:%M') }}
+                {% else %}—{% endif %}
+              </td>
+              <td class="text-center">
+                <div class="d-flex gap-1 justify-content-center">
+                  <form method="POST">
+                    <input type="hidden" name="action" value="gerar">
+                    <input type="hidden" name="user_id" value="{{ u.id }}">
+                    <button type="submit" class="btn btn-sm btn-primary"
+                      onclick="return confirm('{% if ak %}Isso INVALIDA a chave atual de {{ u.username }}. Continuar?{% else %}Gerar chave para {{ u.username }}?{% endif %}')"
+                      title="{% if ak %}Gerar nova chave{% else %}Gerar chave{% endif %}">
+                      <i class="bi bi-plus-circle"></i>
+                    </button>
+                  </form>
+                  {% if ak and ak.ativo %}
+                  <form method="POST" onsubmit="return confirm('Revogar chave de {{ u.username }}?')">
+                    <input type="hidden" name="action" value="revogar">
+                    <input type="hidden" name="user_id" value="{{ u.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Revogar">
+                      <i class="bi bi-x-circle"></i>
+                    </button>
+                  </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <hr class="my-4">
+      <h6 class="fw-bold"><i class="bi bi-shield-lock me-2 text-primary"></i>Regras de segurança</h6>
+      <ul class="small text-muted lh-lg mb-0">
+        <li>A chave é exibida <strong>uma única vez</strong> — salve imediatamente para o agente de IA.</li>
+        <li>Gerar nova chave <strong>invalida</strong> a anterior imediatamente.</li>
+        <li>Cada chave dá acesso <strong>apenas aos dados do usuário</strong> dono da chave.</li>
+        <li>O admin não acessa dados financeiros — apenas gerencia as chaves de acesso.</li>
+        <li>Em caso de comprometimento, revogue imediatamente e gere nova chave.</li>
+      </ul>
+    </div>
+
+    {# ══ TAB DOCS ══ #}
+    <div class="tab-pane fade" id="tabDocs">
+      <div class="mb-4">
+        <h5 class="fw-bold"><i class="bi bi-shield-check me-2 text-primary"></i>Autenticação</h5>
+        <p class="text-muted small mb-2">Inclua a API key em <strong>todas</strong> as requisições via header HTTP:</p>
+        <div class="code-block">GET /api/v1/despesas
+<span class="hl-key">X-API-Key:</span> <span class="hl-str">fn_ChaveDoUsuario...</span></div>
+      </div>
+
+      <div class="mb-4">
+        <h5 class="fw-bold"><i class="bi bi-info-circle me-2 text-primary"></i>Códigos de resposta</h5>
+        <table class="table table-sm table-bordered" style="font-size:.82rem;width:auto">
+          <tr><td class="fw-bold text-success">200</td><td>Sucesso</td></tr>
+          <tr><td class="fw-bold text-success">201</td><td>Criado</td></tr>
+          <tr><td class="fw-bold text-danger">401</td><td>API key ausente ou inválida</td></tr>
+          <tr><td class="fw-bold text-danger">403</td><td>Usuário inativo</td></tr>
+          <tr><td class="fw-bold text-danger">404</td><td>Registro não encontrado</td></tr>
+          <tr><td class="fw-bold text-danger">422</td><td>Dados inválidos</td></tr>
+        </table>
+      </div>
+
+      <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2 text-primary"></i>Endpoints disponíveis</h5>
+
+      {% macro ep(method, path, desc, id) %}
+      <div class="endpoint-card">
+        <div class="endpoint-header" data-bs-toggle="collapse" data-bs-target="#ep{{ id }}">
+          <span class="method method-{{ method|lower }}">{{ method }}</span>
+          <span class="endpoint-path">/api/v1{{ path }}</span>
+          <span class="text-muted small ms-auto">{{ desc }}</span>
+        </div>
+        <div id="ep{{ id }}" class="collapse endpoint-body">{{ caller() }}</div>
+      </div>
+      {% endmacro %}
+
+      <p class="small fw-bold text-uppercase text-muted mb-2">Catálogos</p>
+      {% call ep('GET','/categorias/despesas','Categorias de despesa com códigos','cd') %}<span class="text-muted small">Query: <code>ativo=true</code></span>{% endcall %}
+      {% call ep('GET','/categorias/receitas','Categorias de receita com códigos','cr') %}<span class="text-muted small">Query: <code>ativo=true</code></span>{% endcall %}
+      {% call ep('GET','/meios-pagamento','Meios de pagamento com códigos','mp') %}<span class="text-muted small">Query: <code>ativo=true</code></span>{% endcall %}
+      {% call ep('GET','/meios-recebimento','Meios de recebimento com códigos','mr') %}<span class="text-muted small">Query: <code>ativo=true</code></span>{% endcall %}
+
+      <p class="small fw-bold text-uppercase text-muted mb-2 mt-4">Despesas</p>
+      {% call ep('GET','/despesas','Lista com filtros e paginação','d1') %}<span class="text-muted small">Query: <code>mes, ano, data_inicio, data_fim, categoria_codigo, meio_pagamento_codigo, pagina, por_pagina</code></span>{% endcall %}
+      {% call ep('POST','/despesas','Cria despesa','d2') %}<span class="text-muted small">Body: <code>descricao, valor, data_pagamento, categoria_codigo, meio_pagamento_codigo, num_parcelas</code></span>{% endcall %}
+      {% call ep('GET','/despesas/{id}','Retorna despesa','d3') %}<span class="text-muted small">—</span>{% endcall %}
+      {% call ep('PUT','/despesas/{id}','Atualiza despesa','d4') %}<span class="text-muted small">Envie apenas os campos alterados.</span>{% endcall %}
+      {% call ep('DELETE','/despesas/{id}','Exclui despesa','d5') %}<span class="text-muted small">—</span>{% endcall %}
+
+      <p class="small fw-bold text-uppercase text-muted mb-2 mt-4">Receitas</p>
+      {% call ep('GET','/receitas','Lista com filtros e paginação','r1') %}<span class="text-muted small">Query: <code>mes, ano, data_inicio, data_fim, categoria_codigo, meio_recebimento_codigo, pagina, por_pagina</code></span>{% endcall %}
+      {% call ep('POST','/receitas','Cria receita','r2') %}<span class="text-muted small">Body: <code>descricao, valor, data_recebimento, categoria_codigo, meio_recebimento_codigo, num_parcelas</code></span>{% endcall %}
+      {% call ep('GET','/receitas/{id}','Retorna receita','r3') %}<span class="text-muted small">—</span>{% endcall %}
+      {% call ep('PUT','/receitas/{id}','Atualiza receita','r4') %}<span class="text-muted small">—</span>{% endcall %}
+      {% call ep('DELETE','/receitas/{id}','Exclui receita','r5') %}<span class="text-muted small">—</span>{% endcall %}
+
+      <p class="small fw-bold text-uppercase text-muted mb-2 mt-4">Resumos e Analytics</p>
+      {% call ep('GET','/resumo/categorias','Ranking de gastos por categoria','a1') %}<span class="text-muted small">Query: <code>mes, ano, data_inicio, data_fim</code></span>{% endcall %}
+      {% call ep('GET','/orcamento/status','Status do orçamento com alertas','a2') %}<span class="text-muted small">Query: <code>mes, ano</code></span>{% endcall %}
+      {% call ep('GET','/resumo/mensal','Comparativo mês a mês','a3') %}<span class="text-muted small">Query: <code>meses</code> (padrão 6)</span>{% endcall %}
+      {% call ep('GET','/resumo/cartoes','Gastos por meio de pagamento','a4') %}<span class="text-muted small">Query: <code>mes, ano, data_inicio, data_fim</code></span>{% endcall %}
+
+      <hr class="my-4">
+      <h5 class="fw-bold"><i class="bi bi-terminal me-2 text-primary"></i>Exemplo cURL</h5>
+      <div class="code-block">curl -X POST "{{ request.host_url.rstrip('/') }}/api/v1/despesas" \
+  -H "X-API-Key: fn_ChaveDoUsuario..." \
+  -H "Content-Type: application/json" \
+  -d '{"descricao":"Mercado","valor":"320.50","data_pagamento":"2026-05-15","categoria_codigo":"3","meio_pagamento_codigo":"4","num_parcelas":"1"}'</div>
+    </div>
+
+    {# ══ TAB CATALOG ══ #}
+    <div class="tab-pane fade" id="tabCatalog">
+      <p class="text-muted small mb-3">Catálogos do usuário admin. Para ver os catálogos de outro usuário use a API com a chave dele.</p>
+      <div class="row g-4">
+        <div class="col-md-6">
+          <h6 class="fw-bold"><i class="bi bi-tags me-1 text-danger"></i>Categorias de Despesa</h6>
+          <table class="table table-sm table-hover catalog-table">
+            <thead class="table-dark"><tr><th>Código</th><th>Nome</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for c in cat_despesas %}
+              <tr><td><code>{{ c.id }}</code></td><td>{{ c.nome }}</td>
+              <td><span class="badge {% if c.ativo %}bg-success{% else %}bg-secondary{% endif %}" style="font-size:.65rem">{% if c.ativo %}Ativa{% else %}Inativa{% endif %}</span></td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <h6 class="fw-bold"><i class="bi bi-tags me-1 text-success"></i>Categorias de Receita</h6>
+          <table class="table table-sm table-hover catalog-table">
+            <thead class="table-dark"><tr><th>Código</th><th>Nome</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for c in cat_receitas %}
+              <tr><td><code>{{ c.id }}</code></td><td>{{ c.nome }}</td>
+              <td><span class="badge {% if c.ativo %}bg-success{% else %}bg-secondary{% endif %}" style="font-size:.65rem">{% if c.ativo %}Ativa{% else %}Inativa{% endif %}</span></td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <h6 class="fw-bold"><i class="bi bi-credit-card me-1 text-primary"></i>Meios de Pagamento</h6>
+          <table class="table table-sm table-hover catalog-table">
+            <thead class="table-dark"><tr><th>Código</th><th>Nome</th><th>Tipo</th></tr></thead>
+            <tbody>
+              {% for m in meios_pag %}
+              <tr><td><code>{{ m.id }}</code></td><td>{{ m.nome }}</td><td class="text-muted small">{{ m.tipo or '—' }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <h6 class="fw-bold"><i class="bi bi-wallet2 me-1 text-warning"></i>Meios de Recebimento</h6>
+          <table class="table table-sm table-hover catalog-table">
+            <thead class="table-dark"><tr><th>Código</th><th>Nome</th></tr></thead>
+            <tbody>
+              {% for m in meios_rec %}
+              <tr><td><code>{{ m.id }}</code></td><td>{{ m.nome }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {# ══ TAB CONFIG ══ #}
+    <div class="tab-pane fade" id="tabConfig">
+      <h6 class="fw-bold mb-3"><i class="bi bi-sliders me-2 text-primary"></i>Limites do plano Free</h6>
+      <form method="POST" class="row g-3 align-items-end" style="max-width:420px">
+        <input type="hidden" name="action" value="salvar_limite">
+        <div class="col-8">
+          <label class="form-label small fw-bold">Limite mensal de registros (Free)</label>
+          <input type="number" class="form-control" name="limite_free"
+                 value="{{ limite_free }}" min="1" max="99999" required>
+          <div class="form-text">Soma de despesas + receitas por mês por usuário Free.</div>
+        </div>
+        <div class="col-4">
+          <button type="submit" class="btn btn-primary w-100">Salvar</button>
+        </div>
+      </form>
+      <hr class="my-4">
+      <h6 class="fw-bold mb-2"><i class="bi bi-info-circle me-2 text-primary"></i>Comparativo de planos</h6>
+      <table class="table table-bordered" style="max-width:500px;font-size:.85rem">
+        <thead class="table-dark"><tr><th>Recurso</th><th>Free</th><th>Pro</th><th>Admin</th></tr></thead>
+        <tbody>
+          <tr><td>Registros mensais</td><td>Até {{ limite_free }}</td><td>Ilimitado</td><td>Ilimitado</td></tr>
+          <tr><td>API REST</td><td><i class="bi bi-check text-success"></i></td><td><i class="bi bi-check text-success"></i></td><td><i class="bi bi-check text-success"></i></td></tr>
+          <tr><td>Gerenciar chaves API</td><td><i class="bi bi-x text-danger"></i></td><td><i class="bi bi-x text-danger"></i></td><td><i class="bi bi-check text-success"></i></td></tr>
+          <tr><td>Relatórios completos</td><td><i class="bi bi-check text-success"></i></td><td><i class="bi bi-check text-success"></i></td><td><i class="bi bi-check text-success"></i></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>{# /tab-content #}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copyText(id) {
+  const el = document.getElementById(id);
+  const text = el.innerText || el.textContent;
+  navigator.clipboard.writeText(text.trim()).then(() => {
+    const btn = event.target.closest('button');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check me-1"></i>Copiado!';
+    btn.classList.add('btn-success');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('btn-success'); }, 2000);
+  });
+}
+</script>
+{% endblock %}

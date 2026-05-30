@@ -692,7 +692,41 @@ def excluir_item_supabase():
         
         client = SupabaseClient(config_data.get('url'), config_data.get('key'))
         result = client.delete_record(config_data.get('table'), id)
-        
+
         return result
     except Exception as e:
         return {'success': False, 'message': str(e)}
+
+
+@config_bp.route('/api-key')
+@login_required
+def api_key():
+    """Gerenciar chaves de API"""
+    from models import ApiKey
+    chaves = ApiKey.query.filter_by(user_id=current_user.id).all()
+    return render_template('config/api_key.html', chaves=chaves)
+
+
+@config_bp.route('/smtp-whatsapp', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def smtp_whatsapp():
+    """Configurações de SMTP e WhatsApp"""
+    from models import ConfigSistema
+    if request.method == 'POST':
+        for chave in ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password',
+                      'smtp_from', 'whatsapp_token', 'whatsapp_phone_id']:
+            valor = request.form.get(chave, '').strip()
+            ConfigSistema.set(chave, valor)
+        db.session.commit()
+        flash('Configurações salvas!', 'success')
+        return redirect(url_for('config.smtp_whatsapp'))
+    configs = {c.chave: c.valor for c in ConfigSistema.query.all()}
+    return render_template('config/smtp_whatsapp.html', configs=configs)
+
+
+@config_bp.route('/openfinance')
+@login_required
+def openfinance():
+    """OpenFinance / Pluggy"""
+    return render_template('config/openfinance.html')

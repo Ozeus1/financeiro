@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from routes.auth import admin_required, gerente_required
 from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa
@@ -730,3 +730,23 @@ def smtp_whatsapp():
 def openfinance():
     """OpenFinance / Pluggy"""
     return render_template('config/openfinance.html')
+
+
+@config_bp.route('/openfinance/importar', methods=['POST'])
+@login_required
+def openfinance_import():
+    flash('Funcionalidade OpenFinance não disponível nesta versão.', 'warning')
+    return redirect(url_for('config.openfinance'))
+
+
+@config_bp.route('/openfinance/confirmar', methods=['POST'])
+@login_required
+def openfinance_confirm():
+    flash('Funcionalidade OpenFinance não disponível nesta versão.', 'warning')
+    return redirect(url_for('config.openfinance'))
+
+
+@config_bp.route('/openfinance/token')
+@login_required
+def openfinance_token():
+    return jsonify({'token': None, 'error': 'não configurado'})

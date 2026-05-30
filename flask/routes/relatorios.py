@@ -806,3 +806,124 @@ def despesas_mensais_periodo():
         chart_labels=chart_labels,
         chart_data=chart_data
     )
+
+
+def _promax_required(f):
+    """Decorator que exige nivel promax"""
+    from functools import wraps
+    from flask import abort
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_promax():
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated
+
+
+@relatorios_bp.route('/pf-pj/despesas')
+@login_required
+@_promax_required
+def pf_pj_despesas():
+    """Relatório ProMax: despesas mensais PF vs PJ"""
+    from models import CategoriaReceita
+    from sqlalchemy import or_
+
+    ano = request.args.get('ano', datetime.now().year, type=int)
+
+    meses_labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+    def _por_mes(entidade):
+        q = db.session.query(
+            extract('month', Despesa.data_pagamento).label('mes'),
+            func.sum(Despesa.valor).label('total')
+        ).join(CategoriaDespesa).filter(
+            extract('year', Despesa.data_pagamento) == ano,
+            func.lower(CategoriaDespesa.nome) != 'pagamentos',
+            Despesa.user_id == current_user.id
+        )
+        if entidade == 'cartao':
+            q = q.filter(Despesa.entidade == None)
+        else:
+            q = q.filter(Despesa.entidade == entidade)
+        rows = {int(r.mes): float(r.total) for r in q.group_by('mes').all()}
+        return [rows.get(m, 0) for m in range(1, 13)]
+
+    dados_pf = _por_mes('pf')
+    dados_pj = _por_mes('pj')
+    dados_cartao = _por_mes('cartao')
+
+    # Tabela mensal detalhada
+    tabela = []
+    for i, mes_label in enumerate(meses_labels):
+        pf = dados_pf[i]
+        pj = dados_pj[i]
+        cartao = dados_cartao[i]
+        total = pf + pj + cartao
+        tabela.append({'mes': mes_label, 'pf': pf, 'pj': pj, 'cartao': cartao, 'total': total})
+
+    total_pf = sum(dados_pf)
+    total_pj = sum(dados_pj)
+    total_cartao = sum(dados_cartao)
+
+    return render_template('relatorios/pf_pj_despesas.html',
+        ano=ano,
+        meses_labels=meses_labels,
+        dados_pf=dados_pf,
+        dados_pj=dados_pj,
+        dados_cartao=dados_cartao,
+        tabela=tabela,
+        total_pf=total_pf,
+        total_pj=total_pj,
+        total_cartao=total_cartao,
+    )
+
+
+@relatorios_bp.route('/pf-pj/receitas')
+@login_required
+@_promax_required
+def pf_pj_receitas():
+    """Relatório ProMax: receitas mensais PF vs PJ"""
+    from models import CategoriaReceita
+    from sqlalchemy import or_
+
+    ano = request.args.get('ano', datetime.now().year, type=int)
+
+    meses_labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+    def _por_mes(entidade):
+        q = db.session.query(
+            extract('month', Receita.data_recebimento).label('mes'),
+            func.sum(Receita.valor).label('total')
+        ).filter(
+            extract('year', Receita.data_recebimento) == ano,
+            Receita.user_id == current_user.id
+        )
+        if entidade == 'sem_entidade':
+            q = q.filter(Receita.entidade == None)
+        else:
+            q = q.filter(Receita.entidade == entidade)
+        rows = {int(r.mes): float(r.total) for r in q.group_by('mes').all()}
+        return [rows.get(m, 0) for m in range(1, 13)]
+
+    dados_pf = _por_mes('pf')
+    dados_pj = _por_mes('pj')
+
+    tabela = []
+    for i, mes_label in enumerate(meses_labels):
+        pf = dados_pf[i]
+        pj = dados_pj[i]
+        total = pf + pj
+        tabela.append({'mes': mes_label, 'pf': pf, 'pj': pj, 'total': total})
+
+    total_pf = sum(dados_pf)
+    total_pj = sum(dados_pj)
+
+    return render_template('relatorios/pf_pj_receitas.html',
+        ano=ano,
+        meses_labels=meses_labels,
+        dados_pf=dados_pf,
+        dados_pj=dados_pj,
+        tabela=tabela,
+        total_pf=total_pf,
+        total_pj=total_pj,
+    )

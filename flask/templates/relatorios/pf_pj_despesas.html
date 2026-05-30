@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Despesas PF vs PJ - {{ ano }}{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <h2><i class="bi bi-buildings"></i> Despesas PF vs PJ — {{ ano }}</h2>
+        <p class="text-muted">Relatório exclusivo ProMax · Comparativo mensal entre Pessoa Física, Pessoa Jurídica e Cartões</p>
+        <hr>
+    </div>
+</div>
+
+<!-- Filtro de Ano -->
+<div class="card mb-4">
+    <div class="card-body py-2">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Ano</label>
+                <input type="number" class="form-control" name="ano" value="{{ ano }}" min="2020" max="2100">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cards de Totais -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <h6 class="text-primary">Total PF</h6>
+                <h3 class="text-primary">R$ {{ "%.2f"|format(total_pf)|replace('.', ',') }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h6 class="text-success">Total PJ</h6>
+                <h3 class="text-success">R$ {{ "%.2f"|format(total_pj)|replace('.', ',') }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <h6 class="text-warning">Total Cartões (PF+PJ)</h6>
+                <h3 class="text-warning">R$ {{ "%.2f"|format(total_cartao)|replace('.', ',') }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico -->
+<div class="card mb-4">
+    <div class="card-header"><h5><i class="bi bi-bar-chart-line"></i> Comparativo Mensal</h5></div>
+    <div class="card-body">
+        <canvas id="grafico" height="100"></canvas>
+    </div>
+</div>
+
+<!-- Tabela -->
+<div class="card">
+    <div class="card-header"><h5><i class="bi bi-table"></i> Tabela Detalhada</h5></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Mês</th>
+                        <th class="text-end text-primary">PF (R$)</th>
+                        <th class="text-end text-success">PJ (R$)</th>
+                        <th class="text-end text-warning">Cartões (R$)</th>
+                        <th class="text-end">Total (R$)</th>
+                        <th>Distribuição</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in tabela %}
+                    <tr>
+                        <td><strong>{{ row.mes }}/{{ ano }}</strong></td>
+                        <td class="text-end text-primary">{{ "%.2f"|format(row.pf)|replace('.', ',') }}</td>
+                        <td class="text-end text-success">{{ "%.2f"|format(row.pj)|replace('.', ',') }}</td>
+                        <td class="text-end text-warning">{{ "%.2f"|format(row.cartao)|replace('.', ',') }}</td>
+                        <td class="text-end"><strong>{{ "%.2f"|format(row.total)|replace('.', ',') }}</strong></td>
+                        <td style="min-width:150px;">
+                            {% if row.total > 0 %}
+                            <div class="progress" style="height:16px;">
+                                <div class="progress-bar bg-primary" style="width:{{ (row.pf/row.total*100)|round(1) }}%" title="PF"></div>
+                                <div class="progress-bar bg-success" style="width:{{ (row.pj/row.total*100)|round(1) }}%" title="PJ"></div>
+                                <div class="progress-bar bg-warning" style="width:{{ (row.cartao/row.total*100)|round(1) }}%" title="Cartão"></div>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-secondary fw-bold">
+                    <tr>
+                        <td>Total</td>
+                        <td class="text-end text-primary">{{ "%.2f"|format(total_pf)|replace('.', ',') }}</td>
+                        <td class="text-end text-success">{{ "%.2f"|format(total_pj)|replace('.', ',') }}</td>
+                        <td class="text-end text-warning">{{ "%.2f"|format(total_cartao)|replace('.', ',') }}</td>
+                        <td class="text-end">{{ "%.2f"|format(total_pf + total_pj + total_cartao)|replace('.', ',') }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ctx = document.getElementById('grafico');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: {{ meses_labels | tojson }},
+        datasets: [
+            {
+                label: 'PF',
+                data: {{ dados_pf | tojson }},
+                backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                borderColor: 'rgba(13, 110, 253, 1)',
+                borderWidth: 1
+            },
+            {
+                label: 'PJ',
+                data: {{ dados_pj | tojson }},
+                backgroundColor: 'rgba(25, 135, 84, 0.7)',
+                borderColor: 'rgba(25, 135, 84, 1)',
+                borderWidth: 1
+            },
+            {
+                label: 'Cartões',
+                data: {{ dados_cartao | tojson }},
+                backgroundColor: 'rgba(255, 193, 7, 0.7)',
+                borderColor: 'rgba(255, 193, 7, 1)',
+                borderWidth: 1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+                callbacks: {
+                    label: ctx => ctx.dataset.label + ': R$ ' + ctx.parsed.y.toFixed(2).replace('.', ',')
+                }
+            }
+        },
+        scales: {
+            x: { stacked: false },
+            y: {
+                beginAtZero: true,
+                ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR') }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

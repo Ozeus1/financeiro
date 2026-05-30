@@ -68,35 +68,51 @@ def logout():
 def register():
     """Registrar novo usuário (apenas admin)"""
     if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
+        from datetime import datetime as dt
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
         password = request.form.get('password')
-        nivel_acesso = request.form.get('nivel_acesso', 'usuario')
-        
-        # Validações
+        nivel_acesso = request.form.get('nivel_acesso', 'pro')
+        nome = request.form.get('nome', '').strip() or None
+        whatsapp = request.form.get('whatsapp', '').strip() or None
+        cpf_raw = request.form.get('cpf', '').strip()
+        cpf = ''.join(filter(str.isdigit, cpf_raw)) or None
+        modo_conta = request.form.get('modo_conta', 'pf') if nivel_acesso == 'promax' else 'pf'
+        data_validade_str = request.form.get('data_validade', '').strip()
+        data_validade = dt.strptime(data_validade_str, '%Y-%m-%d').date() if data_validade_str else None
+
         if User.query.filter_by(username=username).first():
             flash('Nome de usuário já existe.', 'danger')
             return redirect(url_for('auth.register'))
-        
+
         if User.query.filter_by(email=email).first():
             flash('Email já cadastrado.', 'danger')
             return redirect(url_for('auth.register'))
-        
-        # Criar novo usuário
+
         new_user = User(
             username=username,
             email=email,
             nivel_acesso=nivel_acesso,
-            ativo=True
+            modo_conta=modo_conta,
+            nome=nome,
+            whatsapp=whatsapp,
+            cpf=cpf,
+            data_validade=data_validade,
+            ativo=True,
+            email_confirmado=True
         )
         new_user.set_password(password)
-        
+
         db.session.add(new_user)
         db.session.commit()
-        
+
+        from models import criar_dados_padrao_usuario
+        criar_dados_padrao_usuario(new_user)
+        db.session.commit()
+
         flash(f'Usuário {username} criado com sucesso!', 'success')
         return redirect(url_for('config.usuarios'))
-    
+
     return render_template('auth/register.html')
 
 @auth_bp.route('/profile', methods=['GET', 'POST'])

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Usuário{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0"><i class="bi bi-person-plus"></i> Novo Usuário</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <!-- Foto de perfil -->
+                    <div class="text-center mb-3">
+                        <div class="rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center mb-2"
+                            style="width:80px;height:80px;">
+                            <i class="bi bi-person-fill text-white" style="font-size:2.5rem;"></i>
+                        </div><br>
+                        <label class="text-success small">Foto de Perfil (opcional)</label><br>
+                        <input type="file" name="foto_perfil" accept="image/*">
+                    </div>
+
+                    <!-- Nome -->
+                    <div class="mb-3">
+                        <label class="form-label">Nome Completo</label>
+                        <input type="text" class="form-control" name="nome" placeholder="Nome real (opcional)">
+                    </div>
+
+                    <!-- Login e WhatsApp -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Login (username) *</label>
+                            <input type="text" class="form-control" name="username" placeholder="ex: joaosilva" required>
+                            <small class="text-muted">Curto, sem espaços ou acentos.</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">WhatsApp</label>
+                            <input type="text" class="form-control" name="whatsapp" placeholder="(99) 99999-9999">
+                        </div>
+                    </div>
+
+                    <!-- CPF -->
+                    <div class="mb-3">
+                        <label class="form-label">CPF</label>
+                        <input type="text" class="form-control" name="cpf" placeholder="000.000.000-00" style="max-width:220px;">
+                    </div>
+
+                    <!-- E-mail -->
+                    <div class="mb-3">
+                        <label class="form-label">E-mail *</label>
+                        <input type="email" class="form-control" name="email" required>
+                    </div>
+
+                    <!-- Senha -->
+                    <div class="mb-3">
+                        <label class="form-label">Senha *</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+
+                    <!-- Nível e Validade -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nível de Acesso</label>
+                            <select class="form-select" name="nivel_acesso" id="nivelAcesso" onchange="toggleModoConta()">
+                                <option value="pro">Pro</option>
+                                <option value="promax">ProMax</option>
+                                <option value="free">Free</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data de Validade</label>
+                            <input type="date" class="form-control" name="data_validade">
+                            <small class="text-muted">Deixe em branco = sem limite</small>
+                        </div>
+                    </div>
+
+                    <!-- Modo Conta (só ProMax) -->
+                    <div class="mb-3" id="divModoConta" style="display:none;">
+                        <label class="form-label">Modo de Conta (ProMax)</label>
+                        <select class="form-select" name="modo_conta">
+                            <option value="pf">Somente Pessoa Física (PF)</option>
+                            <option value="pf_pj">Pessoa Física + Jurídica (PF + PJ)</option>
+                        </select>
+                        <small class="text-muted">Pode ser alterado depois pelo admin ou pelo próprio usuário.</small>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-3">
+                        <a href="{{ url_for('config.usuarios') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-person-plus"></i> Criar Usuário
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleModoConta() {
+    const nivel = document.getElementById('nivelAcesso').value;
+    document.getElementById('divModoConta').style.display = nivel === 'promax' ? '' : 'none';
+}
+toggleModoConta();
+</script>
+{% endblock %}

@@ -891,15 +891,63 @@ def smtp_whatsapp():
     """Configurações de SMTP e WhatsApp"""
     from models import ConfigSistema
     if request.method == 'POST':
-        for chave in ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password',
-                      'smtp_from', 'whatsapp_token', 'whatsapp_phone_id']:
-            valor = request.form.get(chave, '').strip()
-            ConfigSistema.set(chave, valor)
-        db.session.commit()
-        flash('Configurações salvas!', 'success')
+        action = request.form.get('action', 'save')
+        if action == 'save':
+            for chave in ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password',
+                          'smtp_from', 'smtp_secure', 'webhook_whatsapp']:
+                valor = request.form.get(chave, '').strip()
+                ConfigSistema.set(chave, valor or None)
+            # Checkboxes (não enviados quando desmarcados)
+            ConfigSistema.set('notificar_email', '1' if request.form.get('notificar_email') else '0')
+            ConfigSistema.set('notificar_whatsapp', '1' if request.form.get('notificar_whatsapp') else '0')
+            db.session.commit()
+            flash('Configurações salvas!', 'success')
+        elif action == 'test_email':
+            dest = request.form.get('test_email_dest', '').strip()
+            try:
+                import smtplib, ssl
+                from email.mime.text import MIMEText
+                host = ConfigSistema.get('smtp_host', '')
+                port = int(ConfigSistema.get('smtp_port', 465) or 465)
+                secure = (ConfigSistema.get('smtp_secure', 'true') or 'true').lower() == 'true'
+                user = ConfigSistema.get('smtp_user', '')
+                password = ConfigSistema.get('smtp_password', '')
+                from_ = ConfigSistema.get('smtp_from', user)
+                msg = MIMEText('Teste de e-mail do Sistema FiNan.')
+                msg['Subject'] = 'Teste SMTP — FiNan'
+                msg['From'] = from_
+                msg['To'] = dest
+                ctx = ssl.create_default_context()
+                if secure:
+                    with smtplib.SMTP_SSL(host, port, context=ctx) as s:
+                        s.login(user, password); s.sendmail(from_, [dest], msg.as_string())
+                else:
+                    with smtplib.SMTP(host, port) as s:
+                        s.ehlo(); s.starttls(context=ctx); s.login(user, password)
+                        s.sendmail(from_, [dest], msg.as_string())
+                flash(f'E-mail de teste enviado para {dest}.', 'success')
+            except Exception as e:
+                flash(f'Erro ao enviar e-mail: {e}', 'danger')
+        elif action == 'test_whatsapp':
+            numero = request.form.get('test_whatsapp_numero', '').strip()
+            try:
+                import requests as req, re
+                webhook = ConfigSistema.get('webhook_whatsapp', '')
+                if not webhook:
+                    flash('Webhook WhatsApp não configurado.', 'warning')
+                else:
+                    numero_limpo = re.sub(r'\D', '', numero)
+                    payload = f'Teste Sistema<o>{numero_limpo}'
+                    r = req.post(webhook, data=payload.encode('utf-8'),
+                                 headers={'Content-Type': 'text/plain; charset=utf-8'}, timeout=15)
+                    r.raise_for_status()
+                    flash(f'WhatsApp de teste enviado para {numero}.', 'success')
+            except Exception as e:
+                flash(f'Erro ao enviar WhatsApp: {e}', 'danger')
         return redirect(url_for('config.smtp_whatsapp'))
+
     _SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password',
-                  'smtp_from', 'smtp_secure', 'whatsapp_token', 'whatsapp_phone_id', 'webhook_whatsapp']
+                  'smtp_from', 'smtp_secure', 'webhook_whatsapp', 'notificar_email', 'notificar_whatsapp']
     cfg = {k: ConfigSistema.get(k, '') for k in _SMTP_KEYS}
     return render_template('config/smtp_whatsapp.html', cfg=cfg)
 

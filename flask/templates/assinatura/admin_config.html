@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Configurar Mercado Pago{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card border-0 shadow">
+                <div class="card-header bg-primary text-white fw-bold">
+                    <i class="bi bi-credit-card me-2"></i> Configurar Mercado Pago
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Obtenha suas credenciais em <strong>mercadopago.com.br → Seu negócio → Credenciais → Produção</strong>.
+                    </div>
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Access Token (Produção)</label>
+                            <input type="text" class="form-control font-monospace" name="mp_access_token"
+                                value="{{ mp_access_token }}" placeholder="APP_USR-..." required>
+                            <small class="text-muted">Começa com APP_USR-</small>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Public Key (Produção)</label>
+                            <input type="text" class="form-control font-monospace" name="mp_public_key"
+                                value="{{ mp_public_key }}" placeholder="APP_USR-..." required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">
+                            <i class="bi bi-save me-1"></i> Salvar Credenciais
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

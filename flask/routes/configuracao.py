@@ -144,10 +144,16 @@ def categorias_despesa():
             if CategoriaDespesa.query.filter_by(nome=nome, user_id=current_user.id).first():
                 flash('Categoria já existe.', 'warning')
             else:
-                nova_categoria = CategoriaDespesa(nome=nome, ativo=True, user_id=current_user.id)
-                db.session.add(nova_categoria)
-                db.session.commit()
-                flash('Categoria criada com sucesso!', 'success')
+                from models import LIMITES_PLANO
+                limite = LIMITES_PLANO.get(current_user.nivel_acesso, {}).get('categorias_despesa')
+                total = CategoriaDespesa.query.filter_by(user_id=current_user.id).count()
+                if limite is not None and total >= limite:
+                    flash(f'Limite do plano {current_user.nivel_acesso.upper()}: máximo {limite} categorias de despesa. Faça upgrade para adicionar mais.', 'warning')
+                else:
+                    nova_categoria = CategoriaDespesa(nome=nome, ativo=True, user_id=current_user.id)
+                    db.session.add(nova_categoria)
+                    db.session.commit()
+                    flash('Categoria criada com sucesso!', 'success')
 
         elif action == 'editar':
             id = int(request.form.get('id'))
@@ -225,6 +231,13 @@ def meios_pagamento():
             if MeioPagamento.query.filter_by(nome=nome, user_id=current_user.id).first():
                 flash('Meio de pagamento já existe.', 'warning')
             else:
+                from models import LIMITES_PLANO
+                limite_cartoes = LIMITES_PLANO.get(current_user.nivel_acesso, {}).get('cartoes')
+                if tipo == 'cartao' and limite_cartoes is not None:
+                    total_cartoes = MeioPagamento.query.filter_by(user_id=current_user.id, tipo='cartao').count()
+                    if total_cartoes >= limite_cartoes:
+                        flash(f'Limite do plano {current_user.nivel_acesso.upper()}: máximo {limite_cartoes} cartões. Faça upgrade para adicionar mais.', 'warning')
+                        return redirect(url_for('config.meios_pagamento'))
                 novo_meio = MeioPagamento(nome=nome, tipo=tipo, ativo=True, user_id=current_user.id)
                 db.session.add(novo_meio)
                 db.session.commit()
@@ -295,6 +308,51 @@ def meios_recebimento():
     meios = MeioRecebimento.query.filter_by(user_id=current_user.id).order_by(MeioRecebimento.nome).all()
     return render_template('config/meios_recebimento.html', meios=meios)
 
+def _enviar_email_reset(user, nova_senha):
+    """Envia email com nova senha temporária"""
+    try:
+        from models import ConfigSistema
+        import smtplib, ssl
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        host     = ConfigSistema.get('smtp_host', '')
+        port     = int(ConfigSistema.get('smtp_port', 465) or 465)
+        secure   = (ConfigSistema.get('smtp_secure', 'true') or 'true').lower() == 'true'
+        smtp_user = ConfigSistema.get('smtp_user', '')
+        password = ConfigSistema.get('smtp_password', '')
+        from_    = ConfigSistema.get('smtp_from', smtp_user)
+        if not host or not smtp_user:
+            return False
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'Sua nova senha — FiNan'
+        msg['From'] = from_
+        msg['To'] = user.email
+        html = f"""
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
+            <h2 style="color:#4361ee;">FiNan — Redefinição de Senha</h2>
+            <p>Olá, <strong>{user.nome or user.username}</strong>!</p>
+            <p>Sua senha foi redefinida pelo administrador. Use a senha abaixo para acessar:</p>
+            <div style="background:#f1f5f9;padding:16px;border-radius:8px;font-size:1.3rem;font-weight:700;letter-spacing:2px;text-align:center;margin:16px 0;">
+                {nova_senha}
+            </div>
+            <p style="color:#64748b;font-size:.85rem;">Por segurança, altere sua senha após o primeiro acesso.</p>
+        </div>"""
+        msg.attach(MIMEText(html, 'html'))
+        ctx = ssl.create_default_context()
+        if secure:
+            with smtplib.SMTP_SSL(host, port, context=ctx) as s:
+                s.login(smtp_user, password)
+                s.sendmail(from_, [user.email], msg.as_string())
+        else:
+            with smtplib.SMTP(host, port) as s:
+                s.ehlo(); s.starttls(context=ctx); s.login(smtp_user, password)
+                s.sendmail(from_, [user.email], msg.as_string())
+        return True
+    except Exception as e:
+        print(f'Erro ao enviar email reset: {e}')
+        return False
+
+
 @config_bp.route('/usuarios', methods=['GET', 'POST'])
 @login_required
 @gerente_required
@@ -339,6 +397,45 @@ def usuarios():
                 user.modo_conta = modo
                 db.session.commit()
                 flash('Modo de conta alterado!', 'success')
+
+        elif action == 'editar_dados':
+            id = int(request.form.get('id'))
+            user = User.query.get(id)
+            if user and user.id != current_user.id or (user and eh_admin):
+                nome = request.form.get('nome', '').strip() or None
+                whatsapp = request.form.get('whatsapp', '').strip() or None
+                cpf_raw = request.form.get('cpf', '').strip()
+                cpf = ''.join(filter(str.isdigit, cpf_raw)) or None
+                novo_email = request.form.get('email', '').strip()
+                data_val = request.form.get('data_validade', '').strip()
+                user.nome = nome
+                user.whatsapp = whatsapp
+                user.cpf = cpf
+                if novo_email and novo_email != user.email:
+                    if not User.query.filter(User.email == novo_email, User.id != user.id).first():
+                        user.email = novo_email
+                    else:
+                        flash('E-mail já em uso por outro usuário.', 'danger')
+                        return redirect(url_for('config.usuarios'))
+                if data_val:
+                    from datetime import datetime as dt
+                    user.data_validade = dt.strptime(data_val, '%Y-%m-%d').date()
+                else:
+                    user.data_validade = None
+                db.session.commit()
+                flash(f'Dados de {user.username} atualizados!', 'success')
+
+        elif action == 'resetar_senha':
+            id = int(request.form.get('id'))
+            user = User.query.get(id)
+            if user:
+                import secrets as sec
+                nova_senha = sec.token_urlsafe(8)
+                user.set_password(nova_senha)
+                db.session.commit()
+                # Enviar por email
+                _enviar_email_reset(user, nova_senha)
+                flash(f'Nova senha enviada para {user.email}.', 'success')
 
         return redirect(url_for('config.usuarios'))
 

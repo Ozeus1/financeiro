@@ -88,6 +88,27 @@ def criar():
         num_parcelas = int(request.form.get('num_parcelas', 1))
         data_pagamento = datetime.strptime(request.form.get('data_pagamento'), '%Y-%m-%d').date()
 
+        # Verificar limite de registros mensais (Free)
+        from models import LIMITES_PLANO
+        from sqlalchemy import extract as _extract
+        limite_reg = LIMITES_PLANO.get(current_user.nivel_acesso, {}).get('registros_mensais')
+        if limite_reg is not None:
+            hoje = date.today()
+            total_mes = Despesa.query.filter(
+                Despesa.user_id == current_user.id,
+                _extract('month', Despesa.data_registro) == hoje.month,
+                _extract('year', Despesa.data_registro) == hoje.year
+            ).count()
+            from models import Receita as _Receita
+            total_mes += _Receita.query.filter(
+                _Receita.user_id == current_user.id,
+                _extract('month', _Receita.data_registro) == hoje.month,
+                _extract('year', _Receita.data_registro) == hoje.year
+            ).count()
+            if total_mes >= limite_reg:
+                flash(f'Limite de {limite_reg} registros mensais do plano FREE atingido. Faça upgrade para continuar.', 'warning')
+                return redirect(url_for('despesas.lista'))
+
         entidade = None
         if current_user.usa_separacao_pf_pj():
             meio = MeioPagamento.query.get(meio_pagamento_id)

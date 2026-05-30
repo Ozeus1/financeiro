@@ -367,6 +367,72 @@ class ApiKey(db.Model):
         return f'<ApiKey {self.key_prefix}... (User: {self.user_id})>'
 
 
+class Assinatura(db.Model):
+    """Histórico de assinaturas e pagamentos via Mercado Pago"""
+    __tablename__ = 'assinaturas'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    plano = db.Column(db.String(20), nullable=False)  # 'pro', 'promax'
+    status = db.Column(db.String(20), nullable=False, default='pendente')  # pendente, aprovado, cancelado, expirado
+    valor = db.Column(db.Float, nullable=False)
+    mp_payment_id = db.Column(db.String(100), nullable=True)  # ID do pagamento no Mercado Pago
+    mp_preference_id = db.Column(db.String(200), nullable=True)
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    data_aprovacao = db.Column(db.DateTime, nullable=True)
+    data_expiracao = db.Column(db.Date, nullable=True)
+
+    usuario = db.relationship('User', backref='assinaturas')
+
+    def __repr__(self):
+        return f'<Assinatura {self.plano} - {self.status}>'
+
+
+# Limites por plano
+LIMITES_PLANO = {
+    'free': {
+        'categorias_despesa': 10,
+        'categorias_receita': None,  # ilimitado
+        'cartoes': 2,
+        'registros_mensais': 300,
+        'api_acesso': False,
+        'pf_pj': False,
+    },
+    'pro': {
+        'categorias_despesa': None,
+        'categorias_receita': None,
+        'cartoes': None,
+        'registros_mensais': None,
+        'api_acesso': True,
+        'pf_pj': False,
+    },
+    'promax': {
+        'categorias_despesa': None,
+        'categorias_receita': None,
+        'cartoes': None,
+        'registros_mensais': None,
+        'api_acesso': True,
+        'pf_pj': True,
+    },
+    'gerente': {
+        'categorias_despesa': None,
+        'categorias_receita': None,
+        'cartoes': None,
+        'registros_mensais': None,
+        'api_acesso': False,
+        'pf_pj': False,
+    },
+    'admin': {
+        'categorias_despesa': None,
+        'categorias_receita': None,
+        'cartoes': None,
+        'registros_mensais': None,
+        'api_acesso': True,
+        'pf_pj': True,
+    },
+}
+
+
 def init_db(app):
     """Inicializa a extensão do banco de dados"""
     db.init_app(app)

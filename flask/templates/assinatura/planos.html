@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Planos e Preços — FiNan{% endblock %}
+
+{% block extra_css %}
+<style>
+.plano-card { border-radius:16px; box-shadow:0 4px 24px rgba(0,0,0,.09); transition:transform .2s,box-shadow .2s; }
+.plano-card:hover { transform:translateY(-4px); box-shadow:0 8px 32px rgba(0,0,0,.14); }
+.plano-preco { font-size:2.8rem; font-weight:800; line-height:1; }
+.plano-periodo { font-size:.85rem; color:#64748b; }
+.plano-badge { font-size:.7rem; font-weight:700; padding:.3em .7em; border-radius:20px; }
+.recurso-item { display:flex; gap:.5rem; align-items:flex-start; padding:.35rem 0; font-size:.9rem; }
+.destaque-card { border:3px solid #6f42c1 !important; position:relative; }
+.destaque-badge { position:absolute; top:-14px; left:50%; transform:translateX(-50%);
+    background:#6f42c1; color:#fff; font-size:.72rem; font-weight:700;
+    padding:.3em 1em; border-radius:20px; white-space:nowrap; }
+.comparativo th { font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+.comparativo td,.comparativo th { vertical-align:middle; text-align:center; padding:.6rem .8rem; }
+.comparativo td:first-child { text-align:left; font-size:.88rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <!-- Hero -->
+    <div class="text-center mb-5">
+        <h1 class="fw-800" style="font-size:2.2rem;">Escolha o plano ideal para você</h1>
+        <p class="text-muted fs-5">Controle suas finanças com inteligência. Comece grátis, faça upgrade quando quiser.</p>
+    </div>
+
+    <!-- Cards de Planos -->
+    <div class="row g-4 mb-5 justify-content-center">
+
+        <!-- Free -->
+        <div class="col-md-4">
+            <div class="card plano-card h-100 border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi {{ plano_free.icone }} fs-3" style="color:{{ plano_free.cor }};"></i>
+                        <h3 class="mb-0">{{ plano_free.nome }}</h3>
+                    </div>
+                    <p class="text-muted mb-3" style="font-size:.88rem;">{{ plano_free.descricao }}</p>
+                    <div class="mb-4">
+                        <span class="plano-preco" style="color:{{ plano_free.cor }};">Grátis</span>
+                    </div>
+                    <hr>
+                    <ul class="list-unstyled mb-4">
+                        {% for icone, texto in plano_free.recursos %}
+                        <li class="recurso-item">
+                            <i class="bi bi-{{ icone }} flex-shrink-0 mt-1"></i>
+                            <span>{{ texto }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.nivel_acesso == 'free' %}
+                        <button class="btn btn-secondary w-100" disabled>Plano Atual</button>
+                        {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('auth.solicitar_acesso') }}" class="btn btn-outline-secondary w-100">Começar Grátis</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pro -->
+        <div class="col-md-4">
+            <div class="card plano-card h-100 border-0" style="border:2px solid {{ planos.pro.cor }} !important;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi {{ planos.pro.icone }} fs-3" style="color:{{ planos.pro.cor }};"></i>
+                        <h3 class="mb-0">{{ planos.pro.nome }}</h3>
+                    </div>
+                    <p class="text-muted mb-3" style="font-size:.88rem;">{{ planos.pro.descricao }}</p>
+                    <div class="mb-4">
+                        <span class="plano-preco" style="color:{{ planos.pro.cor }};">R$ {{ "%.2f"|format(planos.pro.preco)|replace('.', ',') }}</span>
+                        <span class="plano-periodo">/mês</span>
+                    </div>
+                    <hr>
+                    <ul class="list-unstyled mb-4">
+                        {% for icone, texto in planos.pro.recursos %}
+                        <li class="recurso-item">
+                            <i class="bi bi-{{ icone }} flex-shrink-0 mt-1"></i>
+                            <span>{{ texto }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.nivel_acesso == 'pro' %}
+                        <button class="btn w-100 disabled" style="background:{{ planos.pro.cor }};color:#fff;">Plano Atual</button>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('assinatura.iniciar', plano='pro') }}">
+                            <button type="submit" class="btn w-100 fw-bold" style="background:{{ planos.pro.cor }};color:#fff;">
+                                <i class="bi bi-credit-card me-1"></i> Assinar Pro
+                            </button>
+                        </form>
+                        {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="btn w-100 fw-bold" style="background:{{ planos.pro.cor }};color:#fff;">Fazer Login para Assinar</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ProMax -->
+        <div class="col-md-4">
+            <div class="card plano-card h-100 border-0 destaque-card">
+                <span class="destaque-badge"><i class="bi bi-stars me-1"></i> Mais Completo</span>
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi {{ planos.promax.icone }} fs-3" style="color:{{ planos.promax.cor }};"></i>
+                        <h3 class="mb-0">{{ planos.promax.nome }}</h3>
+                    </div>
+                    <p class="text-muted mb-3" style="font-size:.88rem;">{{ planos.promax.descricao }}</p>
+                    <div class="mb-4">
+                        <span class="plano-preco" style="color:{{ planos.promax.cor }};">R$ {{ "%.2f"|format(planos.promax.preco)|replace('.', ',') }}</span>
+                        <span class="plano-periodo">/mês</span>
+                    </div>
+                    <hr>
+                    <ul class="list-unstyled mb-4">
+                        {% for icone, texto in planos.promax.recursos %}
+                        <li class="recurso-item">
+                            <i class="bi bi-{{ icone }} flex-shrink-0 mt-1"></i>
+                            <span>{{ texto }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.nivel_acesso == 'promax' %}
+                        <button class="btn w-100 disabled" style="background:{{ planos.promax.cor }};color:#fff;">Plano Atual</button>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('assinatura.iniciar', plano='promax') }}">
+                            <button type="submit" class="btn w-100 fw-bold" style="background:{{ planos.promax.cor }};color:#fff;">
+                                <i class="bi bi-credit-card me-1"></i> Assinar ProMax
+                            </button>
+                        </form>
+                        {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="btn w-100 fw-bold" style="background:{{ planos.promax.cor }};color:#fff;">Fazer Login para Assinar</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela Comparativa -->
+    <h2 class="text-center mb-4 fw-bold">Comparativo Detalhado</h2>
+    <div class="card border-0 shadow-sm mb-5">
+        <div class="table-responsive">
+            <table class="table comparativo mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="text-start">Recurso</th>
+                        <th>Free</th>
+                        <th style="color:#4361ee;">Pro</th>
+                        <th style="color:#c084fc;">ProMax</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Preço mensal</td><td>Grátis</td><td class="fw-bold text-primary">R$ 19,90</td><td class="fw-bold" style="color:#6f42c1;">R$ 27,90</td></tr>
+                    <tr class="table-light"><td>Registros mensais</td><td>300</td><td>Ilimitado</td><td>Ilimitado</td></tr>
+                    <tr><td>Categorias de despesa</td><td>10</td><td>Ilimitado</td><td>Ilimitado</td></tr>
+                    <tr class="table-light"><td>Categorias de receita</td><td>Ilimitado</td><td>Ilimitado</td><td>Ilimitado</td></tr>
+                    <tr><td>Cartões de crédito</td><td>2</td><td>Ilimitado</td><td>Ilimitado</td></tr>
+                    <tr class="table-light"><td>Relatórios e gráficos</td><td><i class="bi bi-check-lg text-success"></i></td><td><i class="bi bi-check-lg text-success"></i></td><td><i class="bi bi-check-lg text-success"></i></td></tr>
+                    <tr><td>Exportação Excel</td><td><i class="bi bi-x-lg text-danger"></i></td><td><i class="bi bi-check-lg text-success"></i></td><td><i class="bi bi-check-lg text-success"></i></td></tr>
+                    <tr class="table-light"><td>Robô de IA via WhatsApp</td><td><i class="bi bi-x-lg text-danger"></i></td><td><i class="bi bi-check-lg text-success"></i></td><td><i class="bi bi-check-lg text-success"></i></td></tr>
+                    <tr><td>Gerente Financeiro IA</td><td><i class="bi bi-x-lg text-danger"></i></td><td><i class="bi bi-check-lg text-success"></i></td><td><i class="bi bi-check-lg text-success"></i></td></tr>
+                    <tr class="table-light"><td>Separação PF e PJ</td><td><i class="bi bi-x-lg text-danger"></i></td><td><i class="bi bi-x-lg text-danger"></i></td><td><i class="bi bi-check-lg text-success"></i></td></tr>
+                    <tr><td>Relatórios PF vs PJ</td><td><i class="bi bi-x-lg text-danger"></i></td><td><i class="bi bi-x-lg text-danger"></i></td><td><i class="bi bi-check-lg text-success"></i></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- FAQ -->
+    <h2 class="text-center mb-4 fw-bold">Perguntas Frequentes</h2>
+    <div class="accordion mb-5" id="faq">
+        <div class="accordion-item border-0 shadow-sm mb-2 rounded">
+            <h2 class="accordion-header"><button class="accordion-button collapsed rounded" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">Como funciona a cobrança?</button></h2>
+            <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faq">
+                <div class="accordion-body text-muted">A cobrança é mensal. Após o pagamento via Mercado Pago, seu plano é ativado imediatamente e válido por 30 dias. Você pode cancelar a qualquer momento — o plano continua ativo até o final do período pago.</div>
+            </div>
+        </div>
+        <div class="accordion-item border-0 shadow-sm mb-2 rounded">
+            <h2 class="accordion-header"><button class="accordion-button collapsed rounded" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">Posso mudar de plano?</button></h2>
+            <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faq">
+                <div class="accordion-body text-muted">Sim. Você pode fazer upgrade a qualquer momento. O novo plano é ativado imediatamente após o pagamento.</div>
+            </div>
+        </div>
+        <div class="accordion-item border-0 shadow-sm mb-2 rounded">
+            <h2 class="accordion-header"><button class="accordion-button collapsed rounded" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">O plano Free é realmente gratuito?</button></h2>
+            <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faq">
+                <div class="accordion-body text-muted">Sim, 100% gratuito e sem cartão de crédito. Ideal para começar a organizar suas finanças. Tem algumas limitações (300 registros/mês, 10 categorias, 2 cartões) mas é funcional para uso básico.</div>
+            </div>
+        </div>
+        <div class="accordion-item border-0 shadow-sm rounded">
+            <h2 class="accordion-header"><button class="accordion-button collapsed rounded" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">Quais formas de pagamento são aceitas?</button></h2>
+            <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faq">
+                <div class="accordion-body text-muted">Aceitamos cartão de crédito, débito, PIX e boleto bancário via Mercado Pago, uma das plataformas de pagamento mais seguras do Brasil.</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

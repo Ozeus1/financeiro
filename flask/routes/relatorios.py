@@ -255,7 +255,7 @@ def orcado_vs_gasto():
 def previsao_cartoes():
     """Previsão de faturas de cartões de crédito (Histórico Completo)"""
     # Buscar todos os meios de pagamento do tipo cartão
-    cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True).all()
+    cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True, user_id=current_user.id).all()
     
     # Determinar intervalo de datas
     min_db_date = db.session.query(func.min(Despesa.data_pagamento)).scalar()

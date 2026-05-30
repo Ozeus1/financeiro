@@ -90,16 +90,16 @@
                         <!-- Mostrar Pro e ProMax -->
                         {% for chave, plano in planos.items() %}
                         <div class="col-md-6">
-                            <div class="card border-2 h-100" style="border-color:{{ plano.cor }} !important;">
+                            <div class="card border-2 h-100" style="border-color:{{ plano['cor'] }} !important;">
                                 <div class="card-body text-center p-3">
-                                    <i class="bi {{ plano.icone }} fs-2" style="color:{{ plano.cor }};"></i>
-                                    <h5 class="mt-2 mb-0">{{ plano.nome }}</h5>
-                                    <div class="my-2" style="font-size:1.6rem;font-weight:800;color:{{ plano.cor }};">
-                                        R$ {{ "%.2f"|format(plano.preco)|replace('.', ',') }}<small style="font-size:.7rem;color:#64748b;">/mês</small>
+                                    <i class="bi {{ plano['icone'] }} fs-2" style="color:{{ plano['cor'] }};"></i>
+                                    <h5 class="mt-2 mb-0">{{ plano['nome'] }}</h5>
+                                    <div class="my-2" style="font-size:1.6rem;font-weight:800;color:{{ plano['cor'] }};">
+                                        R$ {{ "%.2f"|format(plano['preco'])|replace('.', ',') }}<small style="font-size:.7rem;color:#64748b;">/mês</small>
                                     </div>
-                                    <p class="text-muted small mb-3">{{ plano.descricao }}</p>
+                                    <p class="text-muted small mb-3">{{ plano['descricao'] }}</p>
                                     <form method="POST" action="{{ url_for('assinatura.iniciar', plano=chave) }}">
-                                        <button type="submit" class="btn w-100 fw-bold" style="background:{{ plano.cor }};color:#fff;">
+                                        <button type="submit" class="btn w-100 fw-bold" style="background:{{ plano['cor'] }};color:#fff;">
                                             <i class="bi bi-credit-card me-1"></i> Assinar
                                         </button>
                                     </form>

@@ -137,11 +137,15 @@ def dashboard():
             'rec_pf': _total_rec('pf'),   'rec_pj': _total_rec('pj'),
         }
 
-    # Últimas transações
-    ultimas_despesas = despesas_query.order_by(Despesa.data_registro.desc()).limit(5).all()
-    ultimas_receitas = receitas_query.order_by(Receita.data_registro.desc()).limit(5).all()
+    # Últimas transações — por data e por registro
+    ultimas_despesas_data = despesas_query.order_by(Despesa.data_pagamento.desc()).limit(5).all()
+    ultimas_despesas_registro = despesas_query.order_by(Despesa.data_registro.desc()).limit(5).all()
+    ultimas_receitas_data = receitas_query.order_by(Receita.data_recebimento.desc()).limit(5).all()
+    ultimas_receitas_registro = receitas_query.order_by(Receita.data_registro.desc()).limit(5).all()
 
-    nome_mes = calendar.month_name[mes_atual]
+    MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = MESES_PT[mes_atual - 1]
 
     return render_template('dashboard.html',
                          total_despesas=total_despesas_mes,
@@ -150,8 +154,10 @@ def dashboard():
                          fluxo_entradas=fluxo_entradas,
                          fluxo_saidas=fluxo_saidas,
                          fluxo_saldo=fluxo_saldo,
-                         ultimas_despesas=ultimas_despesas,
-                         ultimas_receitas=ultimas_receitas,
+                         ultimas_despesas_data=ultimas_despesas_data,
+                         ultimas_despesas_registro=ultimas_despesas_registro,
+                         ultimas_receitas_data=ultimas_receitas_data,
+                         ultimas_receitas_registro=ultimas_receitas_registro,
                          mes_atual=nome_mes,
                          mes_num=mes_atual,
                          ano_atual=ano_atual,

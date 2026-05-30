@@ -10,6 +10,33 @@
     </div>
 </div>
 
+{% if current_user.usa_separacao_pf_pj() %}
+<!-- Filtro PF/PJ para ProMax -->
+<div class="row mb-2">
+    <div class="col-12">
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('main.dashboard') }}"
+               class="btn btn-sm {% if not entidade_filtro %}btn-dark{% else %}btn-outline-dark{% endif %}">
+                Todas
+            </a>
+            <a href="{{ url_for('main.dashboard', entidade='pf') }}"
+               class="btn btn-sm {% if entidade_filtro == 'pf' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                Pessoa Física (PF)
+            </a>
+            <a href="{{ url_for('main.dashboard', entidade='pj') }}"
+               class="btn btn-sm {% if entidade_filtro == 'pj' %}btn-success{% else %}btn-outline-success{% endif %}">
+                Pessoa Jurídica (PJ)
+            </a>
+        </div>
+        {% if entidade_filtro %}
+        <span class="ms-2 badge {% if entidade_filtro == 'pf' %}bg-primary{% else %}bg-success{% endif %}">
+            Exibindo: {{ 'Pessoa Física' if entidade_filtro == 'pf' else 'Pessoa Jurídica' }}
+        </span>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 <!-- Cards Resumo (Competência) -->
 <div class="row mt-3">
     <div class="col-md-4">
@@ -39,6 +66,36 @@
         </div>
     </div>
 </div>
+
+{% if totais_pf_pj %}
+<!-- Detalhamento PF/PJ para ProMax -->
+<div class="row mt-1 mb-2">
+    <div class="col-12">
+        <div class="card border-0 bg-light">
+            <div class="card-body py-2">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Receitas PF</small>
+                        <span class="fw-bold text-primary">R$ {{ "%.2f"|format(totais_pf_pj.rec_pf)|replace('.', ',') }}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Despesas PF</small>
+                        <span class="fw-bold text-danger">R$ {{ "%.2f"|format(totais_pf_pj.desp_pf)|replace('.', ',') }}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Receitas PJ</small>
+                        <span class="fw-bold text-success">R$ {{ "%.2f"|format(totais_pf_pj.rec_pj)|replace('.', ',') }}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Despesas PJ</small>
+                        <span class="fw-bold text-warning">R$ {{ "%.2f"|format(totais_pf_pj.desp_pj)|replace('.', ',') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Resumo do Fluxo de Caixa (Realizado) -->
 <div class="row mt-3">

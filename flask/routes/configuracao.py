@@ -721,8 +721,10 @@ def smtp_whatsapp():
         db.session.commit()
         flash('Configurações salvas!', 'success')
         return redirect(url_for('config.smtp_whatsapp'))
-    configs = {c.chave: c.valor for c in ConfigSistema.query.all()}
-    return render_template('config/smtp_whatsapp.html', configs=configs)
+    _SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password',
+                  'smtp_from', 'smtp_secure', 'whatsapp_token', 'whatsapp_phone_id', 'webhook_whatsapp']
+    cfg = {k: ConfigSistema.get(k, '') for k in _SMTP_KEYS}
+    return render_template('config/smtp_whatsapp.html', cfg=cfg)
 
 
 @config_bp.route('/openfinance')

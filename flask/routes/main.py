@@ -75,7 +75,6 @@ def dashboard():
 
     # --- FLUXO DE CAIXA ---
     from models import MeioPagamento, EventoCaixaAvulso
-    from sqlalchemy import or_
 
     MEIOS_PAGAMENTO_CAIXA = ['Boleto', 'Dinheiro', 'PIX', 'Transferência', 'Débito em Conta']
 

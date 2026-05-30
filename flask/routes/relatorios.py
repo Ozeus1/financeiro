@@ -808,6 +808,25 @@ def despesas_mensais_periodo():
     )
 
 
+@relatorios_bp.route('/top-10-despesas')
+@login_required
+def top_10_despesas():
+    from flask import redirect, url_for
+    return redirect(url_for('relatorios.top_contas'))
+
+
+@relatorios_bp.route('/evolucao-temporal')
+@login_required
+def evolucao_temporal():
+    return redirect(url_for('relatorios.despesas_por_categoria_evolucao'))
+
+
+@relatorios_bp.route('/comparativo-anual')
+@login_required
+def comparativo_anual():
+    return redirect(url_for('relatorios.balanco'))
+
+
 def _promax_required(f):
     """Decorator que exige nivel promax"""
     from functools import wraps

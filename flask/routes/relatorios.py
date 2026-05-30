@@ -851,40 +851,50 @@ def pf_pj_despesas():
 
     meses_labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
-    def _por_mes(entidade):
+    from sqlalchemy import or_
+
+    def _por_mes(entidade=None, sem_entidade=False):
         q = db.session.query(
             extract('month', Despesa.data_pagamento).label('mes'),
             func.sum(Despesa.valor).label('total')
         ).join(CategoriaDespesa).filter(
             extract('year', Despesa.data_pagamento) == ano,
             func.lower(CategoriaDespesa.nome) != 'pagamentos',
-            Despesa.user_id == current_user.id,
-            Despesa.entidade == entidade
+            Despesa.user_id == current_user.id
         )
+        if sem_entidade:
+            q = q.filter(Despesa.entidade == None)
+        else:
+            q = q.filter(Despesa.entidade == entidade)
         rows = {int(r.mes): float(r.total) for r in q.group_by('mes').all()}
         return [rows.get(m, 0) for m in range(1, 13)]
 
     dados_pf = _por_mes('pf')
     dados_pj = _por_mes('pj')
+    dados_sc = _por_mes(sem_entidade=True)  # sem classificação (cartão antigo)
 
     tabela = []
     for i, mes_label in enumerate(meses_labels):
         pf = dados_pf[i]
         pj = dados_pj[i]
-        total = pf + pj
-        tabela.append({'mes': mes_label, 'pf': pf, 'pj': pj, 'total': total})
+        sc = dados_sc[i]
+        total = pf + pj + sc
+        tabela.append({'mes': mes_label, 'pf': pf, 'pj': pj, 'sc': sc, 'total': total})
 
     total_pf = sum(dados_pf)
     total_pj = sum(dados_pj)
+    total_sc = sum(dados_sc)
 
     return render_template('relatorios/pf_pj_despesas.html',
         ano=ano,
         meses_labels=meses_labels,
         dados_pf=dados_pf,
         dados_pj=dados_pj,
+        dados_sc=dados_sc,
         tabela=tabela,
         total_pf=total_pf,
         total_pj=total_pj,
+        total_sc=total_sc,
     )
 
 

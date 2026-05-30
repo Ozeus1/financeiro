@@ -27,7 +27,7 @@
 
 <!-- Cards de Totais -->
 <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-primary">
             <div class="card-body text-center">
                 <h6 class="text-primary">Total PF</h6>
@@ -35,7 +35,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-success">
             <div class="card-body text-center">
                 <h6 class="text-success">Total PJ</h6>
@@ -43,11 +43,19 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <h6 class="text-warning">Cartões (s/ classif.)</h6>
+                <h3 class="text-warning">R$ {{ "%.2f"|format(total_sc)|replace('.', ',') }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
         <div class="card border-secondary">
             <div class="card-body text-center">
                 <h6 class="text-secondary">Total Geral</h6>
-                <h3 class="text-secondary">R$ {{ "%.2f"|format(total_pf + total_pj)|replace('.', ',') }}</h3>
+                <h3 class="text-secondary">R$ {{ "%.2f"|format(total_pf + total_pj + total_sc)|replace('.', ',') }}</h3>
             </div>
         </div>
     </div>
@@ -72,6 +80,7 @@
                         <th>Mês</th>
                         <th class="text-end text-primary">PF (R$)</th>
                         <th class="text-end text-success">PJ (R$)</th>
+                        <th class="text-end text-warning">Cartões (R$)</th>
                         <th class="text-end">Total (R$)</th>
                         <th>Distribuição</th>
                     </tr>
@@ -103,6 +112,15 @@
                             {% endif %}
                         </td>
                         <td class="text-end">
+                            {% if row.sc > 0 %}
+                            <a href="{{ url_for('despesas.lista', periodo='personalizado', data_inicio=data_ini, data_fim=data_fim) }}" class="text-warning text-decoration-none fw-bold">
+                                {{ "%.2f"|format(row.sc)|replace('.', ',') }}
+                            </a>
+                            {% else %}
+                            <span class="text-warning">0,00</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
                             {% if row.total > 0 %}
                             <a href="{{ url_for('despesas.lista', periodo='personalizado', data_inicio=data_ini, data_fim=data_fim) }}" class="text-dark text-decoration-none fw-bold">
                                 {{ "%.2f"|format(row.total)|replace('.', ',') }}
@@ -114,8 +132,9 @@
                         <td style="min-width:150px;">
                             {% if row.total > 0 %}
                             <div class="progress" style="height:16px;">
-                                <div class="progress-bar bg-primary" style="width:{{ (row.pf/row.total*100)|round(1) }}%" title="PF {{ (row.pf/row.total*100)|round(1) }}%"></div>
-                                <div class="progress-bar bg-success" style="width:{{ (row.pj/row.total*100)|round(1) }}%" title="PJ {{ (row.pj/row.total*100)|round(1) }}%"></div>
+                                <div class="progress-bar bg-primary" style="width:{{ (row.pf/row.total*100)|round(1) }}%" title="PF"></div>
+                                <div class="progress-bar bg-success" style="width:{{ (row.pj/row.total*100)|round(1) }}%" title="PJ"></div>
+                                <div class="progress-bar bg-warning" style="width:{{ (row.sc/row.total*100)|round(1) }}%" title="Cartões"></div>
                             </div>
                             {% endif %}
                         </td>
@@ -127,7 +146,8 @@
                         <td>Total</td>
                         <td class="text-end text-primary">{{ "%.2f"|format(total_pf)|replace('.', ',') }}</td>
                         <td class="text-end text-success">{{ "%.2f"|format(total_pj)|replace('.', ',') }}</td>
-                        <td class="text-end">{{ "%.2f"|format(total_pf + total_pj)|replace('.', ',') }}</td>
+                        <td class="text-end text-warning">{{ "%.2f"|format(total_sc)|replace('.', ',') }}</td>
+                        <td class="text-end">{{ "%.2f"|format(total_pf + total_pj + total_sc)|replace('.', ',') }}</td>
                         <td></td>
                     </tr>
                 </tfoot>
@@ -171,6 +191,13 @@ new Chart(ctx, {
                 backgroundColor: 'rgba(25, 135, 84, 0.7)',
                 borderColor: 'rgba(25, 135, 84, 1)',
                 borderWidth: 1
+            },
+            {
+                label: 'Cartões',
+                data: {{ dados_sc | tojson }},
+                backgroundColor: 'rgba(255, 193, 7, 0.7)',
+                borderColor: 'rgba(255, 193, 7, 1)',
+                borderWidth: 1
             }
         ]
     },
@@ -194,7 +221,7 @@ new Chart(ctx, {
             if (!elements.length) return;
             const el = elements[0];
             const mesNum = mesesNums[el.index];
-            const entidade = el.datasetIndex === 0 ? 'pf' : 'pj';
+            const entidade = el.datasetIndex === 0 ? 'pf' : el.datasetIndex === 1 ? 'pj' : null;
             window.location.href = urlDespesas(mesNum, entidade);
         },
         onHover: (evt, elements) => {

@@ -87,7 +87,7 @@ def minha_assinatura():
                            historico=historico)
 
 
-@assinatura_bp.route('/iniciar/<plano>', methods=['POST'])
+@assinatura_bp.route('/iniciar/<plano>', methods=['GET', 'POST'])
 @login_required
 def iniciar(plano):
     """Cria preferência de pagamento no Mercado Pago e redireciona"""

@@ -41,7 +41,16 @@ def create_app(config_name='default'):
     app.register_blueprint(config_bp, url_prefix='/configuracao')
     app.register_blueprint(relatorios_bp, url_prefix='/relatorios')
     app.register_blueprint(fluxo_caixa_bp)
-    
+
+    @app.template_filter('moeda')
+    def formatar_moeda(valor):
+        try:
+            valor_float = float(valor)
+            valor_formatado = f"{valor_float:,.2f}"
+            return valor_formatado.replace(',', 'X').replace('.', ',').replace('X', '.')
+        except (ValueError, TypeError):
+            return "0,00"
+
     return app
 
 if __name__ == '__main__':

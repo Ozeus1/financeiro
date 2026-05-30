@@ -153,6 +153,7 @@ def dashboard():
                          ultimas_despesas=ultimas_despesas,
                          ultimas_receitas=ultimas_receitas,
                          mes_atual=nome_mes,
+                         mes_num=mes_atual,
                          ano_atual=ano_atual,
                          entidade_filtro=entidade_filtro,
                          totais_pf_pj=totais_pf_pj)

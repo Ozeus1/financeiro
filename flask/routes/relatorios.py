@@ -519,39 +519,36 @@ def api_despesas_categoria():
 @relatorios_bp.route('/api/graficos/balanco-mensal')
 @login_required
 def api_balanco_mensal():
-    """API JSON para gráfico de balanço mensal"""
-    # Últimos 12 meses
-    despesas = db.session.query(
-        extract('year', Despesa.data_pagamento).label('ano'),
-        extract('month', Despesa.data_pagamento).label('mes'),
-        func.sum(Despesa.valor).label('total')
-    ).join(Despesa.categoria).filter(
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    ).group_by('ano', 'mes').order_by('ano', 'mes').limit(12)
-    
-    if not current_user.is_gerente():
-        despesas = despesas.filter(Despesa.user_id == current_user.id)
-    
-    despesas = despesas.all()
-    
-    receitas = db.session.query(
-        extract('year', Receita.data_recebimento).label('ano'),
-        extract('month', Receita.data_recebimento).label('mes'),
-        func.sum(Receita.valor).label('total')
-    ).group_by('ano', 'mes').order_by('ano', 'mes').limit(12)
-    
-    if not current_user.is_gerente():
-        receitas = receitas.filter(Receita.user_id == current_user.id)
-    
-    receitas = receitas.all()
-    
-    labels = [f"{int(d.mes):02d}/{int(d.ano)}" for d in despesas]
-    
-    return jsonify({
-        'labels': labels,
-        'despesas': [float(d.total) for d in despesas],
-        'receitas': [float(r.total) for r in receitas]
-    })
+    """API JSON para gráfico de balanço mensal (últimos 12 meses alinhados)"""
+    hoje = datetime.now()
+    meses_referencia = []
+    for i in range(11, -1, -1):
+        data = hoje - relativedelta(months=i)
+        meses_referencia.append((data.year, data.month))
+
+    dados = {'labels': [], 'receitas': [], 'despesas': [], 'saldos': []}
+
+    for ano, mes in meses_referencia:
+        dados['labels'].append(f"{mes:02d}/{ano}")
+
+        receita = db.session.query(func.sum(Receita.valor)).filter(
+            extract('month', Receita.data_recebimento) == mes,
+            extract('year', Receita.data_recebimento) == ano,
+            Receita.user_id == current_user.id
+        ).scalar() or 0.0
+
+        despesa = db.session.query(func.sum(Despesa.valor)).join(CategoriaDespesa).filter(
+            func.lower(CategoriaDespesa.nome) != 'pagamentos',
+            extract('month', Despesa.data_pagamento) == mes,
+            extract('year', Despesa.data_pagamento) == ano,
+            Despesa.user_id == current_user.id
+        ).scalar() or 0.0
+
+        dados['receitas'].append(float(receita))
+        dados['despesas'].append(float(despesa))
+        dados['saldos'].append(float(receita - despesa))
+
+    return jsonify(dados)
 
 @relatorios_bp.route('/despesas_por_categoria_evolucao')
 @login_required

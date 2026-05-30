@@ -138,6 +138,48 @@ def reset_password(token):
     flash('Link inválido ou expirado. Entre em contato com o administrador.', 'danger')
     return redirect(url_for('auth.login'))
 
+
+@auth_bp.route('/solicitar-acesso', methods=['GET', 'POST'])
+def solicitar_acesso():
+    """Auto-cadastro para plano Free"""
+    from flask import render_template, request, flash, redirect, url_for
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        nome = request.form.get('nome', '').strip() or None
+
+        if User.query.filter_by(username=username).first():
+            flash('Nome de usuário já existe.', 'danger')
+            return redirect(url_for('auth.solicitar_acesso'))
+        if User.query.filter_by(email=email).first():
+            flash('E-mail já cadastrado.', 'danger')
+            return redirect(url_for('auth.solicitar_acesso'))
+
+        new_user = User(
+            username=username,
+            email=email,
+            nome=nome,
+            nivel_acesso='free',
+            ativo=True,
+            email_confirmado=True
+        )
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+
+        from models import criar_dados_padrao_usuario
+        criar_dados_padrao_usuario(new_user)
+        db.session.commit()
+
+        flash('Conta criada com sucesso! Faça login para continuar.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/solicitar_acesso.html')
+
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():

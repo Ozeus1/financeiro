@@ -76,8 +76,13 @@ def minha_assinatura():
     """Tela do usuário com seu plano atual e opção de assinar"""
     historico = Assinatura.query.filter_by(user_id=current_user.id)\
         .order_by(Assinatura.data_criacao.desc()).limit(10).all()
+    # Passa como lista de tuplas para garantir iteração correta no Jinja
+    planos_lista = list(PLANOS.items())
     return render_template('assinatura/minha_assinatura.html',
                            planos=PLANOS,
+                           planos_lista=planos_lista,
+                           plano_pro=PLANOS['pro'],
+                           plano_promax=PLANOS['promax'],
                            plano_free=PLANO_FREE,
                            historico=historico)
 

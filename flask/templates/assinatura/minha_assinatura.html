@@ -87,26 +87,42 @@
                 <div class="card-body p-4">
                     <div class="row g-3">
                         {% if current_user.nivel_acesso == 'free' %}
-                        <!-- Mostrar Pro e ProMax -->
-                        {% for chave, plano in planos.items() %}
+                        <!-- Pro -->
                         <div class="col-md-6">
-                            <div class="card border-2 h-100" style="border-color:{{ plano['cor'] }} !important;">
+                            <div class="card border-2 h-100" style="border-color:{{ plano_pro['cor'] }} !important;">
                                 <div class="card-body text-center p-3">
-                                    <i class="bi {{ plano['icone'] }} fs-2" style="color:{{ plano['cor'] }};"></i>
-                                    <h5 class="mt-2 mb-0">{{ plano['nome'] }}</h5>
-                                    <div class="my-2" style="font-size:1.6rem;font-weight:800;color:{{ plano['cor'] }};">
-                                        R$ {{ "%.2f"|format(plano['preco'])|replace('.', ',') }}<small style="font-size:.7rem;color:#64748b;">/mês</small>
+                                    <i class="bi {{ plano_pro['icone'] }} fs-2" style="color:{{ plano_pro['cor'] }};"></i>
+                                    <h5 class="mt-2 mb-0">{{ plano_pro['nome'] }}</h5>
+                                    <div class="my-2" style="font-size:1.6rem;font-weight:800;color:{{ plano_pro['cor'] }};">
+                                        R$ {{ "%.2f"|format(plano_pro['preco'])|replace('.', ',') }}<small style="font-size:.7rem;color:#64748b;">/mês</small>
                                     </div>
-                                    <p class="text-muted small mb-3">{{ plano['descricao'] }}</p>
-                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano=chave) }}">
-                                        <button type="submit" class="btn w-100 fw-bold" style="background:{{ plano['cor'] }};color:#fff;">
-                                            <i class="bi bi-credit-card me-1"></i> Assinar
+                                    <p class="text-muted small mb-3">{{ plano_pro['descricao'] }}</p>
+                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='pro') }}">
+                                        <button type="submit" class="btn w-100 fw-bold" style="background:{{ plano_pro['cor'] }};color:#fff;">
+                                            <i class="bi bi-credit-card me-1"></i> Assinar Pro
                                         </button>
                                     </form>
                                 </div>
                             </div>
                         </div>
-                        {% endfor %}
+                        <!-- ProMax -->
+                        <div class="col-md-6">
+                            <div class="card border-2 h-100" style="border-color:{{ plano_promax['cor'] }} !important;">
+                                <div class="card-body text-center p-3">
+                                    <i class="bi {{ plano_promax['icone'] }} fs-2" style="color:{{ plano_promax['cor'] }};"></i>
+                                    <h5 class="mt-2 mb-0">{{ plano_promax['nome'] }}</h5>
+                                    <div class="my-2" style="font-size:1.6rem;font-weight:800;color:{{ plano_promax['cor'] }};">
+                                        R$ {{ "%.2f"|format(plano_promax['preco'])|replace('.', ',') }}<small style="font-size:.7rem;color:#64748b;">/mês</small>
+                                    </div>
+                                    <p class="text-muted small mb-3">{{ plano_promax['descricao'] }}</p>
+                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='promax') }}">
+                                        <button type="submit" class="btn w-100 fw-bold" style="background:{{ plano_promax['cor'] }};color:#fff;">
+                                            <i class="bi bi-credit-card me-1"></i> Assinar ProMax
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                         {% elif current_user.nivel_acesso == 'pro' %}
                         <!-- Mostrar só ProMax -->
                         <div class="col-12">

@@ -32,6 +32,16 @@
                 <label class="form-label">Ano</label>
                 <input type="number" class="form-control" name="ano" value="{{ ano }}" min="2000" max="2100">
             </div>
+            {% if current_user.usa_separacao_pf_pj() %}
+            <div class="col-md-3">
+                <label class="form-label">Conta</label>
+                <select class="form-select" name="entidade">
+                    <option value="" {% if not entidade %}selected{% endif %}>Todas</option>
+                    <option value="pf" {% if entidade == 'pf' %}selected{% endif %}>Pessoa Física (PF)</option>
+                    <option value="pj" {% if entidade == 'pj' %}selected{% endif %}>Pessoa Jurídica (PJ)</option>
+                </select>
+            </div>
+            {% endif %}
             <div class="col-md-4 d-flex align-items-end">
                 <button type="submit" class="btn btn-success">
                     <i class="bi bi-search"></i> Filtrar

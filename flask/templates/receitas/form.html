@@ -34,8 +34,7 @@
                             <select class="form-select" id="categoria_id" name="categoria_id" required>
                                 <option value="">Selecione...</option>
                                 {% for categoria in categorias %}
-                                <option value="{{ categoria.id }}" {% if receita and receita.categoria_id==categoria.id
-                                    %}selected{% endif %}>
+                                <option value="{{ categoria.id }}" {% if receita and receita.categoria_id==categoria.id %}selected{% endif %}>
                                     {{ categoria.nome }}
                                 </option>
                                 {% endfor %}
@@ -47,14 +46,25 @@
                             <select class="form-select" id="meio_recebimento_id" name="meio_recebimento_id" required>
                                 <option value="">Selecione...</option>
                                 {% for meio in meios_recebimento %}
-                                <option value="{{ meio.id }}" {% if receita and receita.meio_recebimento_id==meio.id
-                                    %}selected{% endif %}>
+                                <option value="{{ meio.id }}" {% if receita and receita.meio_recebimento_id==meio.id %}selected{% endif %}>
                                     {{ meio.nome }}
                                 </option>
                                 {% endfor %}
                             </select>
                         </div>
                     </div>
+
+                    {% if current_user.usa_separacao_pf_pj() %}
+                    <div class="row" id="rowEntidade">
+                        <div class="col-md-6 mb-3">
+                            <label for="entidade" class="form-label">Conta *</label>
+                            <select class="form-select" id="entidade" name="entidade" required>
+                                <option value="pf" {% if not receita or receita.entidade == 'pf' %}selected{% endif %}>Pessoa Física (PF)</option>
+                                <option value="pj" {% if receita and receita.entidade == 'pj' %}selected{% endif %}>Pessoa Jurídica (PJ)</option>
+                            </select>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -94,7 +104,6 @@
 
 {% block extra_js %}
 <script>
-    // Formatar valor como moeda enquanto digita
     document.getElementById('valor').addEventListener('blur', function (e) {
         let valor = e.target.value.replace(',', '.');
         if (!isNaN(valor) && valor !== '') {

@@ -59,7 +59,8 @@ def despesas_mensal():
     """Relatório mensal de despesas"""
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
-    
+    entidade = request.args.get('entidade', '')
+
     # Query por categoria
     query = db.session.query(
         CategoriaDespesa.id,
@@ -71,21 +72,24 @@ def despesas_mensal():
         extract('year', Despesa.data_pagamento) == ano,
         func.lower(CategoriaDespesa.nome) != 'pagamentos'
     )
-    
+
     if not current_user.is_gerente():
         query = query.filter(Despesa.user_id == current_user.id)
-    
+    if entidade and current_user.usa_separacao_pf_pj():
+        query = query.filter(Despesa.entidade == entidade)
+
     despesas_por_categoria = query.group_by(CategoriaDespesa.id, CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).all()
-    
+
     total_mes = sum([d[2] for d in despesas_por_categoria])
     nome_mes = calendar.month_name[mes]
-    
+
     return render_template('relatorios/despesas_mensal.html',
                          despesas_por_categoria=despesas_por_categoria,
                          total_mes=total_mes,
                          mes=mes,
                          ano=ano,
-                         nome_mes=nome_mes)
+                         nome_mes=nome_mes,
+                         entidade=entidade)
 
 @relatorios_bp.route('/receitas-mensal')
 @login_required
@@ -93,9 +97,10 @@ def receitas_mensal():
     """Relatório mensal de receitas"""
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
-    
+    entidade = request.args.get('entidade', '')
+
     from models import CategoriaReceita
-    
+
     # Query por categoria
     query = db.session.query(
         CategoriaReceita.nome,
@@ -104,21 +109,24 @@ def receitas_mensal():
         extract('month', Receita.data_recebimento) == mes,
         extract('year', Receita.data_recebimento) == ano
     )
-    
+
     if not current_user.is_gerente():
         query = query.filter(Receita.user_id == current_user.id)
-    
+    if entidade and current_user.usa_separacao_pf_pj():
+        query = query.filter(Receita.entidade == entidade)
+
     receitas_por_categoria = query.group_by(CategoriaReceita.nome).order_by(func.sum(Receita.valor).desc()).all()
-    
+
     total_mes = sum([r[1] for r in receitas_por_categoria])
     nome_mes = calendar.month_name[mes]
-    
+
     return render_template('relatorios/receitas_mensal.html',
                          receitas_por_categoria=receitas_por_categoria,
                          total_mes=total_mes,
                          mes=mes,
                          ano=ano,
-                         nome_mes=nome_mes)
+                         nome_mes=nome_mes,
+                         entidade=entidade)
 
 @relatorios_bp.route('/top-contas')
 @login_required

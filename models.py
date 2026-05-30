@@ -15,7 +15,8 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    nivel_acesso = db.Column(db.String(20), nullable=False, default='pro')  # admin, pro, free
+    nivel_acesso = db.Column(db.String(20), nullable=False, default='pro')  # admin, promax, pro, free
+    modo_conta = db.Column(db.String(10), nullable=False, default='pf')  # pf | pf_pj (apenas promax)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
     data_validade = db.Column(db.Date, nullable=True)
@@ -54,6 +55,14 @@ class User(UserMixin, db.Model):
     def is_pro(self):
         """Verifica se o usuário é do plano Pro"""
         return self.nivel_acesso == 'pro'
+
+    def is_promax(self):
+        """Verifica se o usuário é do plano ProMax"""
+        return self.nivel_acesso == 'promax'
+
+    def usa_separacao_pf_pj(self):
+        """Promax com as duas contas ativas"""
+        return self.nivel_acesso == 'promax' and self.modo_conta == 'pf_pj'
 
     def is_free(self):
         """Verifica se o usuário é do plano Free"""
@@ -197,14 +206,15 @@ class MeioRecebimento(db.Model):
 class Despesa(db.Model):
     """Tabela de despesas"""
     __tablename__ = 'despesas'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     descricao = db.Column(db.String(200), nullable=False)
     valor = db.Column(db.Float, nullable=False)
     num_parcelas = db.Column(db.Integer, default=1)
     data_registro = db.Column(db.DateTime, default=datetime.utcnow)
     data_pagamento = db.Column(db.Date, nullable=False)
-    
+    entidade = db.Column(db.String(5), nullable=True)  # 'pf' | 'pj' — apenas para promax pf_pj
+
     # Chaves estrangeiras
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categorias_despesa.id'), nullable=False)
@@ -217,14 +227,15 @@ class Despesa(db.Model):
 class Receita(db.Model):
     """Tabela de receitas"""
     __tablename__ = 'receitas'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     descricao = db.Column(db.String(200), nullable=False)
     valor = db.Column(db.Float, nullable=False)
     num_parcelas = db.Column(db.Integer, default=1)
     data_registro = db.Column(db.DateTime, default=datetime.utcnow)
     data_recebimento = db.Column(db.Date, nullable=False)
-    
+    entidade = db.Column(db.String(5), nullable=True)  # 'pf' | 'pj' — apenas para promax pf_pj
+
     # Chaves estrangeiras
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categorias_receita.id'), nullable=False)

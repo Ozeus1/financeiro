@@ -99,8 +99,23 @@ def register():
     
     return render_template('auth/register.html')
 
-@auth_bp.route('/profile')
+@auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
     """Perfil do usuário"""
+    from models import db
+    from flask import request, flash, redirect, url_for
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action == 'modo_conta' and current_user.is_promax():
+            modo = request.form.get('modo_conta')
+            if modo in ('pf', 'pf_pj'):
+                current_user.modo_conta = modo
+                db.session.commit()
+                flash('Configuração de conta atualizada!', 'success')
+
+        return redirect(url_for('auth.profile'))
+
     return render_template('auth/profile.html')

@@ -326,11 +326,122 @@ def usuarios():
                 user.nivel_acesso = nivel
                 db.session.commit()
                 flash('Nível de acesso alterado!', 'success')
-        
+
+        elif action == 'alterar_modo_conta':
+            id = int(request.form.get('id'))
+            modo = request.form.get('modo_conta')
+            user = User.query.get(id)
+            if user and modo in ('pf', 'pf_pj'):
+                user.modo_conta = modo
+                db.session.commit()
+                flash('Modo de conta alterado!', 'success')
+
         return redirect(url_for('config.usuarios'))
     
     usuarios = User.query.order_by(User.username).all()
     return render_template('config/usuarios.html', usuarios=usuarios)
+
+
+@config_bp.route('/usuarios/<int:id>/exportar-dados')
+@login_required
+@admin_required
+def exportar_dados_usuario(id):
+    """Exportar todos os dados de um usuário para Excel antes de excluir"""
+    import pandas as pd
+    from io import BytesIO
+    from flask import send_file
+    from models import Despesa, Receita, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento
+
+    user = User.query.get_or_404(id)
+    if user.id == current_user.id:
+        flash('Você não pode exportar/excluir sua própria conta!', 'danger')
+        return redirect(url_for('config.usuarios'))
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Despesas
+        despesas = Despesa.query.filter_by(user_id=id).all()
+        dados_d = [{'Data': d.data_pagamento.strftime('%d/%m/%Y'), 'Descrição': d.descricao,
+                    'Categoria': d.categoria.nome, 'Meio de Pagamento': d.meio_pagamento.nome,
+                    'Valor': d.valor, 'Parcelas': d.num_parcelas,
+                    'Entidade': getattr(d, 'entidade', '')} for d in despesas]
+        pd.DataFrame(dados_d).to_excel(writer, index=False, sheet_name='Despesas')
+
+        # Receitas
+        receitas = Receita.query.filter_by(user_id=id).all()
+        dados_r = [{'Data': r.data_recebimento.strftime('%d/%m/%Y'), 'Descrição': r.descricao,
+                    'Categoria': r.categoria.nome, 'Meio de Recebimento': r.meio_recebimento.nome,
+                    'Valor': r.valor, 'Parcelas': r.num_parcelas,
+                    'Entidade': getattr(r, 'entidade', '')} for r in receitas]
+        pd.DataFrame(dados_r).to_excel(writer, index=False, sheet_name='Receitas')
+
+        # Categorias despesa
+        cats_d = [{'Nome': c.nome, 'Ativo': c.ativo}
+                  for c in CategoriaDespesa.query.filter_by(user_id=id).all()]
+        pd.DataFrame(cats_d).to_excel(writer, index=False, sheet_name='CategoriasDespesa')
+
+        # Categorias receita
+        cats_r = [{'Nome': c.nome, 'Ativo': c.ativo}
+                  for c in CategoriaReceita.query.filter_by(user_id=id).all()]
+        pd.DataFrame(cats_r).to_excel(writer, index=False, sheet_name='CategoriasReceita')
+
+        # Meios de pagamento
+        meios_p = [{'Nome': m.nome, 'Tipo': m.tipo, 'Ativo': m.ativo}
+                   for m in MeioPagamento.query.filter_by(user_id=id).all()]
+        pd.DataFrame(meios_p).to_excel(writer, index=False, sheet_name='MeiosPagamento')
+
+        # Meios de recebimento
+        meios_r = [{'Nome': m.nome, 'Ativo': m.ativo}
+                   for m in MeioRecebimento.query.filter_by(user_id=id).all()]
+        pd.DataFrame(meios_r).to_excel(writer, index=False, sheet_name='MeiosRecebimento')
+
+    output.seek(0)
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'dados_{user.username}_{datetime.now().strftime("%Y%m%d")}.xlsx'
+    )
+
+
+@config_bp.route('/usuarios/<int:id>/excluir', methods=['POST'])
+@login_required
+@admin_required
+def excluir_usuario(id):
+    """Excluir usuário e todos os seus dados"""
+    user = User.query.get_or_404(id)
+    if user.id == current_user.id:
+        flash('Você não pode excluir sua própria conta!', 'danger')
+        return redirect(url_for('config.usuarios'))
+    if user.nivel_acesso == 'admin':
+        flash('Não é possível excluir outro administrador!', 'danger')
+        return redirect(url_for('config.usuarios'))
+
+    # Excluir dados sem cascade automático
+    from models import (CategoriaDespesa, CategoriaReceita, MeioPagamento,
+                        MeioRecebimento, Orcamento, FechamentoCartao,
+                        BalancoMensal, EventoCaixaAvulso, ApiKey)
+    ApiKey.query.filter_by(user_id=id).delete()
+    Orcamento.query.filter_by(user_id=id).delete()
+    FechamentoCartao.query.filter_by(user_id=id).delete()
+    BalancoMensal.query.filter_by(user_id=id).delete()
+    EventoCaixaAvulso.query.filter_by(user_id=id).delete()
+    # Despesas e receitas têm cascade no relacionamento do User
+    # Categorias e meios têm user_id mas não cascade — excluir manualmente
+    from models import Despesa, Receita
+    Despesa.query.filter_by(user_id=id).delete()
+    Receita.query.filter_by(user_id=id).delete()
+    MeioPagamento.query.filter_by(user_id=id).delete()
+    MeioRecebimento.query.filter_by(user_id=id).delete()
+    CategoriaDespesa.query.filter_by(user_id=id).delete()
+    CategoriaReceita.query.filter_by(user_id=id).delete()
+
+    username = user.username
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'Usuário "{username}" e todos os seus dados foram excluídos!', 'success')
+    return redirect(url_for('config.usuarios'))
+
 
 @config_bp.route('/orcamento', methods=['GET', 'POST'])
 @login_required

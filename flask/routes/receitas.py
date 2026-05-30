@@ -17,7 +17,8 @@ def lista():
     categoria_id = request.args.get('categoria_id', type=int)
     meio_recebimento_id = request.args.get('meio_recebimento_id', type=int)
     busca = request.args.get('busca', '').strip()
-    
+    entidade_filtro = request.args.get('entidade', '')
+
     # Periodo (padrão: mes_atual)
     periodo = request.args.get('periodo', 'mes_atual')
     data_inicio = request.args.get('data_inicio')
@@ -54,7 +55,9 @@ def lista():
         
     if busca:
         query = query.filter(Receita.descricao.ilike(f'%{busca}%'))
-    
+    if entidade_filtro and current_user.usa_separacao_pf_pj():
+        query = query.filter(Receita.entidade == entidade_filtro)
+
     # Ordenar e paginar
     receitas = query.order_by(Receita.data_recebimento.desc()).paginate(
         page=page, per_page=per_page, error_out=False
@@ -87,7 +90,11 @@ def criar():
         meio_recebimento_id = int(request.form.get('meio_recebimento_id'))
         num_parcelas = int(request.form.get('num_parcelas', 1))
         data_recebimento = datetime.strptime(request.form.get('data_recebimento'), '%Y-%m-%d').date()
-        
+
+        entidade = None
+        if current_user.usa_separacao_pf_pj():
+            entidade = request.form.get('entidade', 'pf')
+
         nova_receita = Receita(
             descricao=descricao,
             valor=valor,
@@ -95,12 +102,13 @@ def criar():
             meio_recebimento_id=meio_recebimento_id,
             num_parcelas=num_parcelas,
             data_recebimento=data_recebimento,
+            entidade=entidade,
             user_id=current_user.id
         )
-        
+
         db.session.add(nova_receita)
         db.session.commit()
-        
+
         flash('Receita cadastrada com sucesso!', 'success')
         return redirect(url_for('receitas.lista'))
     
@@ -133,7 +141,12 @@ def editar(id):
         receita.meio_recebimento_id = int(request.form.get('meio_recebimento_id'))
         receita.num_parcelas = int(request.form.get('num_parcelas', 1))
         receita.data_recebimento = datetime.strptime(request.form.get('data_recebimento'), '%Y-%m-%d').date()
-        
+
+        if current_user.usa_separacao_pf_pj():
+            receita.entidade = request.form.get('entidade', 'pf')
+        else:
+            receita.entidade = None
+
         db.session.commit()
         
         # Recuperar filtros do form (se houver) ou usar padrão

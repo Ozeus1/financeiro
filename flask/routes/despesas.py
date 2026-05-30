@@ -17,7 +17,8 @@ def lista():
     categoria_id = request.args.get('categoria_id', type=int)
     meio_pagamento_id = request.args.get('meio_pagamento_id', type=int)
     busca = request.args.get('busca', '').strip()
-    
+    entidade_filtro = request.args.get('entidade', '')
+
     # Periodo (padrão: mes_atual)
     periodo = request.args.get('periodo', 'mes_atual')
     data_inicio = request.args.get('data_inicio')
@@ -54,7 +55,9 @@ def lista():
         
     if busca:
         query = query.filter(Despesa.descricao.ilike(f'%{busca}%'))
-    
+    if entidade_filtro and current_user.usa_separacao_pf_pj():
+        query = query.filter(Despesa.entidade == entidade_filtro)
+
     # Ordenar e paginar
     despesas = query.order_by(Despesa.data_pagamento.desc()).paginate(
         page=page, per_page=per_page, error_out=False
@@ -87,7 +90,13 @@ def criar():
         meio_pagamento_id = int(request.form.get('meio_pagamento_id'))
         num_parcelas = int(request.form.get('num_parcelas', 1))
         data_pagamento = datetime.strptime(request.form.get('data_pagamento'), '%Y-%m-%d').date()
-        
+
+        entidade = None
+        if current_user.usa_separacao_pf_pj():
+            meio = MeioPagamento.query.get(meio_pagamento_id)
+            if meio and meio.tipo != 'cartao':
+                entidade = request.form.get('entidade', 'pf')
+
         nova_despesa = Despesa(
             descricao=descricao,
             valor=valor,
@@ -95,12 +104,13 @@ def criar():
             meio_pagamento_id=meio_pagamento_id,
             num_parcelas=num_parcelas,
             data_pagamento=data_pagamento,
+            entidade=entidade,
             user_id=current_user.id
         )
-        
+
         db.session.add(nova_despesa)
         db.session.commit()
-        
+
         flash('Despesa cadastrada com sucesso!', 'success')
         return redirect(url_for('despesas.lista'))
     
@@ -133,7 +143,16 @@ def editar(id):
         despesa.meio_pagamento_id = int(request.form.get('meio_pagamento_id'))
         despesa.num_parcelas = int(request.form.get('num_parcelas', 1))
         data_pagamento = datetime.strptime(request.form.get('data_pagamento'), '%Y-%m-%d').date()
-        
+
+        if current_user.usa_separacao_pf_pj():
+            meio = MeioPagamento.query.get(despesa.meio_pagamento_id)
+            if meio and meio.tipo != 'cartao':
+                despesa.entidade = request.form.get('entidade', 'pf')
+            else:
+                despesa.entidade = None
+        else:
+            despesa.entidade = None
+
         db.session.commit()
         
         # Recuperar filtros do form (se houver) ou usar padrão

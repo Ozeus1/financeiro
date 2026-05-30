@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Meu Perfil{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-md-8 offset-md-2">
+
+        <!-- Dados do usuário -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-person-circle"></i> Meu Perfil</h4>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Usuário</dt>
+                    <dd class="col-sm-8">{{ current_user.username }}</dd>
+
+                    <dt class="col-sm-4">Nome</dt>
+                    <dd class="col-sm-8">{{ current_user.nome or '—' }}</dd>
+
+                    <dt class="col-sm-4">E-mail</dt>
+                    <dd class="col-sm-8">
+                        {{ current_user.email }}
+                        {% if not current_user.email_confirmado %}
+                        <span class="badge bg-warning text-dark ms-2">Pendente de confirmação</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-4">WhatsApp</dt>
+                    <dd class="col-sm-8">{{ current_user.whatsapp or '—' }}</dd>
+
+                    <dt class="col-sm-4">Plano</dt>
+                    <dd class="col-sm-8">
+                        {% if current_user.nivel_acesso == 'admin' %}
+                        <span class="badge bg-danger">Admin</span>
+                        {% elif current_user.nivel_acesso == 'promax' %}
+                        <span class="badge" style="background-color:#6f42c1">ProMax</span>
+                        {% elif current_user.nivel_acesso == 'pro' %}
+                        <span class="badge bg-primary">Pro</span>
+                        {% elif current_user.nivel_acesso == 'gerente' %}
+                        <span class="badge bg-warning text-dark">Gerente</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Free</span>
+                        {% endif %}
+                    </dd>
+
+                    {% if current_user.data_validade %}
+                    <dt class="col-sm-4">Validade</dt>
+                    <dd class="col-sm-8">{{ current_user.data_validade.strftime('%d/%m/%Y') }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+
+        {% if current_user.is_promax() %}
+        <!-- Configuração ProMax: modo de conta -->
+        <div class="card mb-4">
+            <div class="card-header" style="background-color:#6f42c1; color:white;">
+                <h5 class="mb-0"><i class="bi bi-buildings"></i> Configuração ProMax — Modo de Conta</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Defina se você gerencia finanças de <strong>Pessoa Física (PF)</strong> apenas,
+                    ou de <strong>PF e Pessoa Jurídica (PJ)</strong> de forma separada.
+                </p>
+                <form method="POST">
+                    <input type="hidden" name="action" value="modo_conta">
+                    <div class="mb-3">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="modo_conta" id="modoPF" value="pf"
+                                {% if current_user.modo_conta != 'pf_pj' %}checked{% endif %}>
+                            <label class="form-check-label" for="modoPF">
+                                <strong>Somente Pessoa Física (PF)</strong><br>
+                                <small class="text-muted">Funciona igual ao plano Pro. Sem campo de entidade nos lançamentos.</small>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="modo_conta" id="modoPFPJ" value="pf_pj"
+                                {% if current_user.modo_conta == 'pf_pj' %}checked{% endif %}>
+                            <label class="form-check-label" for="modoPFPJ">
+                                <strong>Pessoa Física + Pessoa Jurídica (PF + PJ)</strong><br>
+                                <small class="text-muted">
+                                    Cada lançamento de despesa e receita terá um campo "Conta" (PF ou PJ),
+                                    exceto quando o meio de pagamento for cartão.
+                                    Os relatórios poderão ser filtrados por entidade.
+                                </small>
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> Salvar configuração
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

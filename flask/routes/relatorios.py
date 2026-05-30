@@ -531,18 +531,21 @@ def api_balanco_mensal():
     for ano, mes in meses_referencia:
         dados['labels'].append(f"{mes:02d}/{ano}")
 
-        receita = db.session.query(func.sum(Receita.valor)).filter(
+        q_rec = db.session.query(func.sum(Receita.valor)).filter(
             extract('month', Receita.data_recebimento) == mes,
             extract('year', Receita.data_recebimento) == ano,
-            Receita.user_id == current_user.id
-        ).scalar() or 0.0
-
-        despesa = db.session.query(func.sum(Despesa.valor)).join(CategoriaDespesa).filter(
+        )
+        q_desp = db.session.query(func.sum(Despesa.valor)).join(CategoriaDespesa).filter(
             func.lower(CategoriaDespesa.nome) != 'pagamentos',
             extract('month', Despesa.data_pagamento) == mes,
             extract('year', Despesa.data_pagamento) == ano,
-            Despesa.user_id == current_user.id
-        ).scalar() or 0.0
+        )
+        if not current_user.is_gerente():
+            q_rec = q_rec.filter(Receita.user_id == current_user.id)
+            q_desp = q_desp.filter(Despesa.user_id == current_user.id)
+
+        receita = q_rec.scalar() or 0.0
+        despesa = q_desp.scalar() or 0.0
 
         dados['receitas'].append(float(receita))
         dados['despesas'].append(float(despesa))

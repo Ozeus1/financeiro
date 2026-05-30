@@ -16,11 +16,21 @@ def admin_required(f):
     return decorated_function
 
 def gerente_required(f):
-    """Decorator para requerer nível gerente ou superior"""
+    """Decorator para requerer nível gerente ou superior (admin ou gerente)"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or not current_user.is_gerente():
             flash('Acesso negado. Permissão de gerente necessária.', 'danger')
+            return redirect(url_for('main.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def gerente_only_required(f):
+    """Decorator exclusivo para gerente (não inclui admin — use admin_required para isso)"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.nivel_acesso != 'gerente':
+            flash('Acesso negado.', 'danger')
             return redirect(url_for('main.dashboard'))
         return f(*args, **kwargs)
     return decorated_function
@@ -64,7 +74,7 @@ def logout():
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 @login_required
-@admin_required
+@gerente_required
 def register():
     """Registrar novo usuário (apenas admin)"""
     if request.method == 'POST':
@@ -73,6 +83,9 @@ def register():
         email = request.form.get('email', '').strip()
         password = request.form.get('password')
         nivel_acesso = request.form.get('nivel_acesso', 'pro')
+        # Gerente não pode criar admin ou outro gerente
+        if not current_user.is_admin() and nivel_acesso in ('admin', 'gerente'):
+            nivel_acesso = 'pro'
         nome = request.form.get('nome', '').strip() or None
         whatsapp = request.form.get('whatsapp', '').strip() or None
         cpf_raw = request.form.get('cpf', '').strip()

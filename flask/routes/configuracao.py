@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from routes.auth import admin_required, gerente_required
+from routes.auth import admin_required, gerente_required, gerente_only_required
 from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa
 from utils.supabase_client import SupabaseClient
 import json
@@ -297,28 +297,36 @@ def meios_recebimento():
 
 @config_bp.route('/usuarios', methods=['GET', 'POST'])
 @login_required
-@admin_required
+@gerente_required
 def usuarios():
-    """Gerenciar usuários (apenas admin)"""
+    """Gerenciar usuários (admin e gerente)"""
+    # Níveis que o gerente pode atribuir (não pode criar/promover a admin/gerente)
+    NIVEIS_GERENTE = ('pro', 'promax', 'free')
+    eh_admin = current_user.is_admin()
+
     if request.method == 'POST':
         action = request.form.get('action')
-        
+
         if action == 'ativar_desativar':
             id = int(request.form.get('id'))
             user = User.query.get(id)
-            if user and user.id != current_user.id:  # Não pode desativar a si mesmo
+            if user and user.id == current_user.id:
+                flash('Você não pode desativar sua própria conta!', 'danger')
+            elif user and (eh_admin or user.nivel_acesso in NIVEIS_GERENTE):
                 user.ativo = not user.ativo
                 db.session.commit()
-                status = 'ativado' if user.ativo else 'desativado'
-                flash(f'Usuário {status}!', 'success')
-            elif user and user.id == current_user.id:
-                flash('Você não pode desativar sua própria conta!', 'danger')
-        
+                flash(f'Usuário {"ativado" if user.ativo else "desativado"}!', 'success')
+            else:
+                flash('Sem permissão para esta ação.', 'danger')
+
         elif action == 'alterar_nivel':
             id = int(request.form.get('id'))
             nivel = request.form.get('nivel')
             user = User.query.get(id)
-            if user and user.id != current_user.id:
+            # Gerente só pode atribuir níveis não-admin
+            if not eh_admin and nivel not in NIVEIS_GERENTE:
+                flash('Você não pode atribuir este nível.', 'danger')
+            elif user and user.id != current_user.id:
                 user.nivel_acesso = nivel
                 db.session.commit()
                 flash('Nível de acesso alterado!', 'success')
@@ -333,9 +341,16 @@ def usuarios():
                 flash('Modo de conta alterado!', 'success')
 
         return redirect(url_for('config.usuarios'))
-    
-    usuarios = User.query.order_by(User.username).all()
-    return render_template('config/usuarios.html', usuarios=usuarios)
+
+    # Gerente vê apenas usuários não-admin; admin vê todos
+    if eh_admin:
+        usuarios = User.query.order_by(User.username).all()
+    else:
+        usuarios = User.query.filter(
+            User.nivel_acesso.in_(NIVEIS_GERENTE)
+        ).order_by(User.username).all()
+
+    return render_template('config/usuarios.html', usuarios=usuarios, eh_admin=eh_admin)
 
 
 @config_bp.route('/usuarios/<int:id>/exportar-dados')

@@ -101,6 +101,7 @@
                                             <i class="bi bi-shield-check"></i>
                                         </button>
 
+                                                        {% if eh_admin %}
                                         <!-- Exportar dados -->
                                         <a href="{{ url_for('config.exportar_dados_usuario', id=usuario.id) }}"
                                             class="btn btn-sm btn-info" title="Exportar dados para Excel">
@@ -112,6 +113,7 @@
                                             data-bs-toggle="modal" data-bs-target="#excluirModal{{ usuario.id }}">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% endif %}
                                     </div>
                                     {% else %}
                                     <span class="text-muted">&mdash;</span>
@@ -149,8 +151,10 @@
                             <option value="free" {% if usuario.nivel_acesso=='free' %}selected{% endif %}>Free</option>
                             <option value="pro" {% if usuario.nivel_acesso=='pro' %}selected{% endif %}>Pro</option>
                             <option value="promax" {% if usuario.nivel_acesso=='promax' %}selected{% endif %}>ProMax</option>
+                            {% if eh_admin %}
                             <option value="gerente" {% if usuario.nivel_acesso=='gerente' %}selected{% endif %}>Gerente</option>
                             <option value="admin" {% if usuario.nivel_acesso=='admin' %}selected{% endif %}>Admin</option>
+                            {% endif %}
                         </select>
                     </div>
                     {% if usuario.nivel_acesso == 'promax' %}

@@ -482,7 +482,7 @@ def orcamento():
         db.session.commit()
         return redirect(url_for('config.orcamento'))
     
-    categorias = CategoriaDespesa.query.filter_by(ativo=True).order_by(CategoriaDespesa.nome).all()
+    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
     orcamentos = Orcamento.query.filter_by(user_id=current_user.id).all()
     
     return render_template('config/orcamento.html', 
@@ -518,7 +518,7 @@ def cartoes():
         return redirect(url_for('config.cartoes'))
     
     # Buscar apenas meios de pagamento do tipo cartão
-    cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True).order_by(MeioPagamento.nome).all()
+    cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
     configuracoes = FechamentoCartao.query.all()
     
     return render_template('config/cartoes.html', cartoes=cartoes, configuracoes=configuracoes)

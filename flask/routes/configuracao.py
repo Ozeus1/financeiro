@@ -134,7 +134,6 @@ def importar_dados_antigos():
 
 @config_bp.route('/categorias-despesa', methods=['GET', 'POST'])
 @login_required
-@gerente_required
 def categorias_despesa():
     """Gerenciar categorias de despesa"""
     if request.method == 'POST':
@@ -175,7 +174,6 @@ def categorias_despesa():
 
 @config_bp.route('/categorias-receita', methods=['GET', 'POST'])
 @login_required
-@gerente_required
 def categorias_receita():
     """Gerenciar categorias de receita"""
     if request.method == 'POST':
@@ -216,7 +214,6 @@ def categorias_receita():
 
 @config_bp.route('/meios-pagamento', methods=['GET', 'POST'])
 @login_required
-@gerente_required
 def meios_pagamento():
     """Gerenciar meios de pagamento"""
     if request.method == 'POST':
@@ -260,7 +257,6 @@ def meios_pagamento():
 
 @config_bp.route('/meios-recebimento', methods=['GET', 'POST'])
 @login_required
-@gerente_required
 def meios_recebimento():
     """Gerenciar meios de recebimento"""
     if request.method == 'POST':
@@ -448,7 +444,6 @@ def excluir_usuario(id):
 
 @config_bp.route('/orcamento', methods=['GET', 'POST'])
 @login_required
-@gerente_required
 def orcamento():
     """Gerenciar orçamento geral por categoria"""
     if request.method == 'POST':
@@ -496,7 +491,6 @@ def orcamento():
 
 @config_bp.route('/cartoes', methods=['GET', 'POST'])
 @login_required
-@gerente_required
 def cartoes():
     """Configurar fechamento de cartões"""
     if request.method == 'POST':

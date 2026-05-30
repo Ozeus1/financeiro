@@ -78,11 +78,33 @@
                 </thead>
                 <tbody>
                     {% for row in tabela %}
+                    {% set mes_num = loop.index %}
+                    {% set data_ini = '%04d-%02d-01' | format(ano, mes_num) %}
+                    {% set ultimo_dia = [31,28,31,30,31,30,31,31,30,31,30,31][mes_num-1] %}
+                    {% set data_fim = '%04d-%02d-%02d' | format(ano, mes_num, ultimo_dia) %}
                     <tr>
                         <td><strong>{{ row.mes }}/{{ ano }}</strong></td>
-                        <td class="text-end text-primary">{{ "%.2f"|format(row.pf)|replace('.', ',') }}</td>
-                        <td class="text-end text-success">{{ "%.2f"|format(row.pj)|replace('.', ',') }}</td>
-                        <td class="text-end"><strong>{{ "%.2f"|format(row.total)|replace('.', ',') }}</strong></td>
+                        <td class="text-end">
+                            {% if row.pf > 0 %}
+                            <a href="{{ url_for('receitas.lista', periodo='personalizado', data_inicio=data_ini, data_fim=data_fim, entidade='pf') }}" class="text-primary text-decoration-none fw-bold">
+                                {{ "%.2f"|format(row.pf)|replace('.', ',') }}
+                            </a>
+                            {% else %}<span class="text-primary">0,00</span>{% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if row.pj > 0 %}
+                            <a href="{{ url_for('receitas.lista', periodo='personalizado', data_inicio=data_ini, data_fim=data_fim, entidade='pj') }}" class="text-success text-decoration-none fw-bold">
+                                {{ "%.2f"|format(row.pj)|replace('.', ',') }}
+                            </a>
+                            {% else %}<span class="text-success">0,00</span>{% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if row.total > 0 %}
+                            <a href="{{ url_for('receitas.lista', periodo='personalizado', data_inicio=data_ini, data_fim=data_fim) }}" class="text-dark text-decoration-none fw-bold">
+                                {{ "%.2f"|format(row.total)|replace('.', ',') }}
+                            </a>
+                            {% else %}<strong>0,00</strong>{% endif %}
+                        </td>
                         <td style="min-width:150px;">
                             {% if row.total > 0 %}
                             <div class="progress" style="height:16px;">
@@ -111,6 +133,19 @@
 
 {% block extra_js %}
 <script>
+const mesesNums = [1,2,3,4,5,6,7,8,9,10,11,12];
+const ano = {{ ano }};
+
+function urlReceitas(mesNum, entidade) {
+    const pad = n => String(n).padStart(2, '0');
+    const diasMes = new Date(ano, mesNum, 0).getDate();
+    const ini = `${ano}-${pad(mesNum)}-01`;
+    const fim = `${ano}-${pad(mesNum)}-${pad(diasMes)}`;
+    let url = `/receitas/?periodo=personalizado&data_inicio=${ini}&data_fim=${fim}`;
+    if (entidade) url += `&entidade=${entidade}`;
+    return url;
+}
+
 const ctx = document.getElementById('grafico');
 new Chart(ctx, {
     type: 'bar',
@@ -144,11 +179,20 @@ new Chart(ctx, {
             }
         },
         scales: {
-            x: { stacked: false },
             y: {
                 beginAtZero: true,
                 ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR') }
             }
+        },
+        onClick: (evt, elements) => {
+            if (!elements.length) return;
+            const el = elements[0];
+            const mesNum = mesesNums[el.index];
+            const entidade = el.datasetIndex === 0 ? 'pf' : 'pj';
+            window.location.href = urlReceitas(mesNum, entidade);
+        },
+        onHover: (evt, elements) => {
+            evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
         }
     }
 });

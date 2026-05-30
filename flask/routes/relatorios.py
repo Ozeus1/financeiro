@@ -858,42 +858,33 @@ def pf_pj_despesas():
         ).join(CategoriaDespesa).filter(
             extract('year', Despesa.data_pagamento) == ano,
             func.lower(CategoriaDespesa.nome) != 'pagamentos',
-            Despesa.user_id == current_user.id
+            Despesa.user_id == current_user.id,
+            Despesa.entidade == entidade
         )
-        if entidade == 'cartao':
-            q = q.filter(Despesa.entidade == None)
-        else:
-            q = q.filter(Despesa.entidade == entidade)
         rows = {int(r.mes): float(r.total) for r in q.group_by('mes').all()}
         return [rows.get(m, 0) for m in range(1, 13)]
 
     dados_pf = _por_mes('pf')
     dados_pj = _por_mes('pj')
-    dados_cartao = _por_mes('cartao')
 
-    # Tabela mensal detalhada
     tabela = []
     for i, mes_label in enumerate(meses_labels):
         pf = dados_pf[i]
         pj = dados_pj[i]
-        cartao = dados_cartao[i]
-        total = pf + pj + cartao
-        tabela.append({'mes': mes_label, 'pf': pf, 'pj': pj, 'cartao': cartao, 'total': total})
+        total = pf + pj
+        tabela.append({'mes': mes_label, 'pf': pf, 'pj': pj, 'total': total})
 
     total_pf = sum(dados_pf)
     total_pj = sum(dados_pj)
-    total_cartao = sum(dados_cartao)
 
     return render_template('relatorios/pf_pj_despesas.html',
         ano=ano,
         meses_labels=meses_labels,
         dados_pf=dados_pf,
         dados_pj=dados_pj,
-        dados_cartao=dados_cartao,
         tabela=tabela,
         total_pf=total_pf,
         total_pj=total_pj,
-        total_cartao=total_cartao,
     )
 
 

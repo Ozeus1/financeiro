@@ -39,37 +39,39 @@
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-hover">
-                        <thead>
+                        <thead class="table-dark">
                             <tr>
                                 <th>ID</th>
                                 <th>Nome</th>
-                                <th>Status</th>
-                                <th>Ações</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for categoria in categorias %}
                             <tr>
-                                <td>{{ categoria.id }}</td>
+                                <td><span class="badge bg-secondary">{{ categoria.id }}</span></td>
                                 <td>{{ categoria.nome }}</td>
-                                <td>
+                                <td class="text-center">
                                     {% if categoria.ativo %}
                                     <span class="badge bg-success">Ativa</span>
                                     {% else %}
                                     <span class="badge bg-secondary">Inativa</span>
                                     {% endif %}
                                 </td>
-                                <td>
+                                <td class="text-center">
                                     <form method="POST" style="display: inline;">
                                         <input type="hidden" name="action" value="ativar_desativar">
                                         <input type="hidden" name="id" value="{{ categoria.id }}">
                                         <button type="submit"
                                             class="btn btn-sm btn-{% if categoria.ativo %}warning{% else %}success{% endif %}">
-                                            <i
-                                                class="bi bi-{% if categoria.ativo %}pause{% else %}play{% endif %}-circle"></i>
-                                            {% if categoria.ativo %}Desativar{% else %}Ativar{% endif %}
+                                            <i class="bi bi-{% if categoria.ativo %}pause{% else %}play{% endif %}-circle"></i>
                                         </button>
                                     </form>
+                                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                        data-bs-target="#editarModal{{ categoria.id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -80,4 +82,31 @@
         </div>
     </div>
 </div>
+
+{% for categoria in categorias %}
+<div class="modal fade" id="editarModal{{ categoria.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Categoria</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="editar">
+                    <input type="hidden" name="id" value="{{ categoria.id }}">
+                    <div class="mb-3">
+                        <label class="form-label">Nome</label>
+                        <input type="text" class="form-control" name="nome" value="{{ categoria.nome }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}

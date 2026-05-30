@@ -411,8 +411,7 @@ def criar_dados_padrao_usuario(user):
 
     # Meios de recebimento padrão
     meios_recebimento_padrao = [
-        'Dinheiro', 'PIX', 'Boleto recebido', 'Depósito bancário',
-        'Cartão Bradesco', 'Cartão Santander Unique'
+        'Dinheiro', 'PIX', 'Boleto recebido',
     ]
     for nome in meios_recebimento_padrao:
         if not MeioRecebimento.query.filter_by(nome=nome, user_id=user.id).first():

@@ -141,35 +141,35 @@ def categorias_despesa():
         
         if action == 'criar':
             nome = request.form.get('nome')
-            if CategoriaDespesa.query.filter_by(nome=nome).first():
+            if CategoriaDespesa.query.filter_by(nome=nome, user_id=current_user.id).first():
                 flash('Categoria já existe.', 'warning')
             else:
-                nova_categoria = CategoriaDespesa(nome=nome, ativo=True)
+                nova_categoria = CategoriaDespesa(nome=nome, ativo=True, user_id=current_user.id)
                 db.session.add(nova_categoria)
                 db.session.commit()
                 flash('Categoria criada com sucesso!', 'success')
-        
+
         elif action == 'editar':
             id = int(request.form.get('id'))
             nome = request.form.get('nome')
-            categoria = CategoriaDespesa.query.get(id)
+            categoria = CategoriaDespesa.query.filter_by(id=id, user_id=current_user.id).first()
             if categoria:
                 categoria.nome = nome
                 db.session.commit()
                 flash('Categoria atualizada!', 'success')
-        
+
         elif action == 'ativar_desativar':
             id = int(request.form.get('id'))
-            categoria = CategoriaDespesa.query.get(id)
+            categoria = CategoriaDespesa.query.filter_by(id=id, user_id=current_user.id).first()
             if categoria:
                 categoria.ativo = not categoria.ativo
                 db.session.commit()
                 status = 'ativada' if categoria.ativo else 'desativada'
                 flash(f'Categoria {status}!', 'success')
-        
+
         return redirect(url_for('config.categorias_despesa'))
-    
-    categorias = CategoriaDespesa.query.order_by(CategoriaDespesa.nome).all()
+
+    categorias = CategoriaDespesa.query.filter_by(user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
     return render_template('config/categorias_despesa.html', categorias=categorias)
 
 @config_bp.route('/categorias-receita', methods=['GET', 'POST'])
@@ -181,35 +181,35 @@ def categorias_receita():
         
         if action == 'criar':
             nome = request.form.get('nome')
-            if CategoriaReceita.query.filter_by(nome=nome).first():
+            if CategoriaReceita.query.filter_by(nome=nome, user_id=current_user.id).first():
                 flash('Categoria já existe.', 'warning')
             else:
-                nova_categoria = CategoriaReceita(nome=nome, ativo=True)
+                nova_categoria = CategoriaReceita(nome=nome, ativo=True, user_id=current_user.id)
                 db.session.add(nova_categoria)
                 db.session.commit()
                 flash('Categoria criada com sucesso!', 'success')
-        
+
         elif action == 'editar':
             id = int(request.form.get('id'))
             nome = request.form.get('nome')
-            categoria = CategoriaReceita.query.get(id)
+            categoria = CategoriaReceita.query.filter_by(id=id, user_id=current_user.id).first()
             if categoria:
                 categoria.nome = nome
                 db.session.commit()
                 flash('Categoria atualizada!', 'success')
-        
+
         elif action == 'ativar_desativar':
             id = int(request.form.get('id'))
-            categoria = CategoriaReceita.query.get(id)
+            categoria = CategoriaReceita.query.filter_by(id=id, user_id=current_user.id).first()
             if categoria:
                 categoria.ativo = not categoria.ativo
                 db.session.commit()
                 status = 'ativada' if categoria.ativo else 'desativada'
                 flash(f'Categoria {status}!', 'success')
-        
+
         return redirect(url_for('config.categorias_receita'))
-    
-    categorias = CategoriaReceita.query.order_by(CategoriaReceita.nome).all()
+
+    categorias = CategoriaReceita.query.filter_by(user_id=current_user.id).order_by(CategoriaReceita.nome).all()
     return render_template('config/categorias_receita.html', categorias=categorias)
 
 @config_bp.route('/meios-pagamento', methods=['GET', 'POST'])
@@ -222,37 +222,37 @@ def meios_pagamento():
         if action == 'criar':
             nome = request.form.get('nome')
             tipo = request.form.get('tipo')
-            if MeioPagamento.query.filter_by(nome=nome).first():
+            if MeioPagamento.query.filter_by(nome=nome, user_id=current_user.id).first():
                 flash('Meio de pagamento já existe.', 'warning')
             else:
-                novo_meio = MeioPagamento(nome=nome, tipo=tipo, ativo=True)
+                novo_meio = MeioPagamento(nome=nome, tipo=tipo, ativo=True, user_id=current_user.id)
                 db.session.add(novo_meio)
                 db.session.commit()
                 flash('Meio de pagamento criado com sucesso!', 'success')
-        
+
         elif action == 'editar':
             id = int(request.form.get('id'))
             nome = request.form.get('nome')
             tipo = request.form.get('tipo')
-            meio = MeioPagamento.query.get(id)
+            meio = MeioPagamento.query.filter_by(id=id, user_id=current_user.id).first()
             if meio:
                 meio.nome = nome
                 meio.tipo = tipo
                 db.session.commit()
                 flash('Meio de pagamento atualizado!', 'success')
-        
+
         elif action == 'ativar_desativar':
             id = int(request.form.get('id'))
-            meio = MeioPagamento.query.get(id)
+            meio = MeioPagamento.query.filter_by(id=id, user_id=current_user.id).first()
             if meio:
                 meio.ativo = not meio.ativo
                 db.session.commit()
                 status = 'ativado' if meio.ativo else 'desativado'
                 flash(f'Meio de pagamento {status}!', 'success')
-        
+
         return redirect(url_for('config.meios_pagamento'))
-    
-    meios = MeioPagamento.query.order_by(MeioPagamento.nome).all()
+
+    meios = MeioPagamento.query.filter_by(user_id=current_user.id).order_by(MeioPagamento.nome).all()
     return render_template('config/meios_pagamento.html', meios=meios)
 
 @config_bp.route('/meios-recebimento', methods=['GET', 'POST'])
@@ -264,35 +264,35 @@ def meios_recebimento():
         
         if action == 'criar':
             nome = request.form.get('nome')
-            if MeioRecebimento.query.filter_by(nome=nome).first():
+            if MeioRecebimento.query.filter_by(nome=nome, user_id=current_user.id).first():
                 flash('Meio de recebimento já existe.', 'warning')
             else:
-                novo_meio = MeioRecebimento(nome=nome, ativo=True)
+                novo_meio = MeioRecebimento(nome=nome, ativo=True, user_id=current_user.id)
                 db.session.add(novo_meio)
                 db.session.commit()
                 flash('Meio de recebimento criado com sucesso!', 'success')
-        
+
         elif action == 'editar':
             id = int(request.form.get('id'))
             nome = request.form.get('nome')
-            meio = MeioRecebimento.query.get(id)
+            meio = MeioRecebimento.query.filter_by(id=id, user_id=current_user.id).first()
             if meio:
                 meio.nome = nome
                 db.session.commit()
                 flash('Meio de recebimento atualizado!', 'success')
-        
+
         elif action == 'ativar_desativar':
             id = int(request.form.get('id'))
-            meio = MeioRecebimento.query.get(id)
+            meio = MeioRecebimento.query.filter_by(id=id, user_id=current_user.id).first()
             if meio:
                 meio.ativo = not meio.ativo
                 db.session.commit()
                 status = 'ativado' if meio.ativo else 'desativado'
                 flash(f'Meio de recebimento {status}!', 'success')
-        
+
         return redirect(url_for('config.meios_recebimento'))
-    
-    meios = MeioRecebimento.query.order_by(MeioRecebimento.nome).all()
+
+    meios = MeioRecebimento.query.filter_by(user_id=current_user.id).order_by(MeioRecebimento.nome).all()
     return render_template('config/meios_recebimento.html', meios=meios)
 
 @config_bp.route('/usuarios', methods=['GET', 'POST'])

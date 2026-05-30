@@ -64,8 +64,8 @@ def lista():
     )
     
     # Carregar opções para filtros
-    categorias = CategoriaDespesa.query.filter_by(ativo=True).order_by(CategoriaDespesa.nome).all()
-    meios_pagamento = MeioPagamento.query.filter_by(ativo=True).order_by(MeioPagamento.nome).all()
+    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
+    meios_pagamento = MeioPagamento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
     
     # Args para paginação (excluindo page)
     filtros_url = {k: v for k, v in request.args.items() if k != 'page'}
@@ -114,8 +114,8 @@ def criar():
         flash('Despesa cadastrada com sucesso!', 'success')
         return redirect(url_for('despesas.lista'))
     
-    categorias = CategoriaDespesa.query.filter_by(ativo=True).order_by(CategoriaDespesa.nome).all()
-    meios_pagamento = MeioPagamento.query.filter_by(ativo=True).order_by(MeioPagamento.nome).all()
+    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
+    meios_pagamento = MeioPagamento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
     
     return render_template('despesas/form.html',
                          categorias=categorias,
@@ -165,8 +165,8 @@ def editar(id):
         flash('Despesa atualizada com sucesso!', 'success')
         return redirect(url_for('despesas.lista', **filtros_redirect))
     
-    categorias = CategoriaDespesa.query.filter_by(ativo=True).order_by(CategoriaDespesa.nome).all()
-    meios_pagamento = MeioPagamento.query.filter_by(ativo=True).order_by(MeioPagamento.nome).all()
+    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
+    meios_pagamento = MeioPagamento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
     
     return render_template('despesas/form.html',
                          despesa=despesa,

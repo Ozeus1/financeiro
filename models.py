@@ -388,16 +388,10 @@ def criar_dados_padrao_usuario(user):
     meios_pagamento_padrao = [
         ('Dinheiro', 'dinheiro'),
         ('PIX', 'pix'),
-        ('Débito', 'debito'),
-        ('Crédito à vista', 'cartao'),
-        ('Crédito parcelado', 'cartao'),
         ('Boleto', 'boleto'),
         ('Débito automático', 'debito'),
-        ('Transferência bancária', 'transferencia'),
-        ('Carteira digital', 'outros'),
-        # Especificados pelo usuário, mas mantendo o tipo genérico
-        ('Cartão BB', 'cartao'),
-        ('Cartão Nubank', 'cartao')
+        ('Cartão Bradesco', 'cartao'),
+        ('Cartão Santander Unique', 'cartao'),
     ]
     for nome, tipo in meios_pagamento_padrao:
         if not MeioPagamento.query.filter_by(nome=nome, user_id=user.id).first():
@@ -406,11 +400,8 @@ def criar_dados_padrao_usuario(user):
 
     # Meios de recebimento padrão
     meios_recebimento_padrao = [
-        'Dinheiro', 'PIX', 'Crédito à vista', 'Crédito parcelado',
-        'Transferência bancária', 'Boleto recebido', 'Carteira digital',
-        'Depósito bancário',
-        # Especificados pelo usuário
-        'Cartão BB', 'Cartão Nubank'
+        'Dinheiro', 'PIX', 'Boleto recebido', 'Depósito bancário',
+        'Cartão Bradesco', 'Cartão Santander Unique'
     ]
     for nome in meios_recebimento_padrao:
         if not MeioRecebimento.query.filter_by(nome=nome, user_id=user.id).first():

@@ -123,6 +123,21 @@ def registro():
     """Alias de register para compatibilidade"""
     return register()
 
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Recuperação de senha (stub)"""
+    from flask import render_template, flash, redirect, url_for
+    flash('Entre em contato com o administrador para redefinir sua senha.', 'info')
+    return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    from flask import flash, redirect, url_for
+    flash('Link inválido ou expirado. Entre em contato com o administrador.', 'danger')
+    return redirect(url_for('auth.login'))
+
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():

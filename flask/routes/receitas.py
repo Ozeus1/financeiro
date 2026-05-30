@@ -159,9 +159,11 @@ def editar(id):
         flash('Receita atualizada com sucesso!', 'success')
         return redirect(url_for('receitas.lista', **filtros_redirect))
     
-    categorias = CategoriaReceita.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaReceita.nome).all()
-    meios_recebimento = MeioRecebimento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioRecebimento.nome).all()
-    
+    # Carregar categorias e meios do dono da receita (não do admin)
+    dono_id = receita.user_id
+    categorias = CategoriaReceita.query.filter_by(ativo=True, user_id=dono_id).order_by(CategoriaReceita.nome).all()
+    meios_recebimento = MeioRecebimento.query.filter_by(ativo=True, user_id=dono_id).order_by(MeioRecebimento.nome).all()
+
     return render_template('receitas/form.html',
                          receita=receita,
                          categorias=categorias,

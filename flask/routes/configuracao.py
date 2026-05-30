@@ -423,7 +423,10 @@ def excluir_usuario(id):
                         BalancoMensal, EventoCaixaAvulso, ApiKey)
     ApiKey.query.filter_by(user_id=id).delete()
     Orcamento.query.filter_by(user_id=id).delete()
-    FechamentoCartao.query.filter_by(user_id=id).delete()
+    # FechamentoCartao está ligado a MeioPagamento, não diretamente ao user
+    meios_ids = [m.id for m in MeioPagamento.query.filter_by(user_id=id).all()]
+    if meios_ids:
+        FechamentoCartao.query.filter(FechamentoCartao.meio_pagamento_id.in_(meios_ids)).delete(synchronize_session=False)
     BalancoMensal.query.filter_by(user_id=id).delete()
     EventoCaixaAvulso.query.filter_by(user_id=id).delete()
     # Despesas e receitas têm cascade no relacionamento do User

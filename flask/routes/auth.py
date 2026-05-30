@@ -49,6 +49,9 @@ def login():
         user = User.query.filter_by(username=username).first()
         
         if user and user.check_password(password):
+            if not user.email_confirmado:
+                flash('Confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada.', 'warning')
+                return redirect(url_for('auth.login'))
             if not user.ativo:
                 flash('Sua conta está inativa. Entre em contato com o administrador.', 'warning')
                 return redirect(url_for('auth.login'))
@@ -154,7 +157,7 @@ def reset_password(token):
 
 @auth_bp.route('/solicitar-acesso', methods=['GET', 'POST'])
 def solicitar_acesso():
-    """Auto-cadastro para plano Free"""
+    """Auto-cadastro para plano Free — requer confirmação de e-mail"""
     from flask import render_template, request, flash, redirect, url_for
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
@@ -172,13 +175,17 @@ def solicitar_acesso():
             flash('E-mail já cadastrado.', 'danger')
             return redirect(url_for('auth.solicitar_acesso'))
 
+        import secrets as _sec
+        token = _sec.token_urlsafe(32)
+
         new_user = User(
             username=username,
             email=email,
             nome=nome,
             nivel_acesso='free',
-            ativo=True,
-            email_confirmado=True
+            ativo=False,          # inativo até confirmar e-mail
+            email_confirmado=False,
+            token_confirmacao=token
         )
         new_user.set_password(password)
         db.session.add(new_user)
@@ -188,10 +195,82 @@ def solicitar_acesso():
         criar_dados_padrao_usuario(new_user)
         db.session.commit()
 
-        flash('Conta criada com sucesso! Faça login para continuar.', 'success')
+        # Enviar e-mail de confirmação
+        _enviar_email_confirmacao(new_user, token, request.host_url)
+
+        flash('Conta criada! Verifique seu e-mail e clique no link de confirmação para ativar o acesso.', 'success')
         return redirect(url_for('auth.login'))
 
     return render_template('auth/solicitar_acesso.html')
+
+
+def _enviar_email_confirmacao(user, token, host_url):
+    """Envia e-mail de confirmação de cadastro"""
+    try:
+        from models import ConfigSistema
+        import smtplib, ssl
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        host     = ConfigSistema.get('smtp_host', '')
+        port     = int(ConfigSistema.get('smtp_port', 465) or 465)
+        secure   = (ConfigSistema.get('smtp_secure', 'true') or 'true').lower() == 'true'
+        smtp_user = ConfigSistema.get('smtp_user', '')
+        password = ConfigSistema.get('smtp_password', '')
+        from_    = ConfigSistema.get('smtp_from', smtp_user)
+        if not host or not smtp_user:
+            print('SMTP não configurado — confirmação não enviada')
+            return False
+        link = f"{host_url.rstrip('/')}/confirmar-email/{token}"
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'Confirme seu cadastro — FiNan'
+        msg['From'] = from_
+        msg['To'] = user.email
+        html = f"""
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
+            <h2 style="color:#4361ee;">FiNan — Confirme seu cadastro</h2>
+            <p>Olá, <strong>{user.nome or user.username}</strong>!</p>
+            <p>Obrigado por se cadastrar. Clique no botão abaixo para confirmar seu e-mail e ativar sua conta:</p>
+            <div style="text-align:center;margin:24px 0;">
+                <a href="{link}" style="background:#4361ee;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:1rem;">
+                    ✅ Confirmar E-mail
+                </a>
+            </div>
+            <p style="color:#64748b;font-size:.85rem;">Se você não solicitou este cadastro, ignore este e-mail.</p>
+            <p style="color:#64748b;font-size:.8rem;">Link: <a href="{link}">{link}</a></p>
+        </div>"""
+        msg.attach(MIMEText(html, 'html'))
+        ctx = ssl.create_default_context()
+        if secure:
+            with smtplib.SMTP_SSL(host, port, context=ctx) as s:
+                s.login(smtp_user, password)
+                s.sendmail(from_, [user.email], msg.as_string())
+        else:
+            with smtplib.SMTP(host, port) as s:
+                s.ehlo(); s.starttls(context=ctx); s.login(smtp_user, password)
+                s.sendmail(from_, [user.email], msg.as_string())
+        return True
+    except Exception as e:
+        print(f'Erro ao enviar e-mail de confirmação: {e}')
+        return False
+
+
+@auth_bp.route('/confirmar-email/<token>')
+def confirmar_email(token):
+    """Confirma o e-mail e ativa a conta"""
+    user = User.query.filter_by(token_confirmacao=token).first()
+    if not user:
+        flash('Link de confirmação inválido ou já utilizado.', 'danger')
+        return redirect(url_for('auth.login'))
+    if user.email_confirmado:
+        flash('E-mail já confirmado. Faça login.', 'info')
+        return redirect(url_for('auth.login'))
+
+    user.email_confirmado = True
+    user.ativo = True
+    user.token_confirmacao = None
+    db.session.commit()
+    flash('E-mail confirmado! Sua conta está ativa. Faça login para acessar.', 'success')
+    return redirect(url_for('auth.login'))
 
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required

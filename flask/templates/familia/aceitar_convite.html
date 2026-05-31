@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Aceitar Convite Família — FiNan{% endblock %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-0 shadow">
+                <div class="card-header text-white fw-bold text-center py-3" style="background:#e67e22;border-radius:12px 12px 0 0;">
+                    <i class="bi bi-house-heart-fill fs-4 me-2"></i> Convite para o Plano Família
+                </div>
+                <div class="card-body p-4">
+                    <p class="text-center mb-3">Você foi convidado para entrar no grupo:</p>
+                    <h4 class="text-center fw-bold mb-4">{{ grupo.nome }}</h4>
+
+                    {% if tem_dados %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Atenção!</strong> Você já possui despesas e receitas cadastradas.<br><br>
+                        Ao entrar no grupo família, <strong>seus dados anteriores não serão compartilhados</strong>
+                        com o grupo e ficarão inacessíveis enquanto você estiver no plano família.<br><br>
+                        <strong>Recomendamos exportar seus dados antes de continuar:</strong>
+                        <div class="mt-2 d-flex gap-2">
+                            <a href="{{ url_for('despesas.exportar') }}" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-download me-1"></i> Exportar Despesas
+                            </a>
+                            <a href="{{ url_for('receitas.exportar') }}" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-download me-1"></i> Exportar Receitas
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Ao entrar no grupo, você passará a compartilhar despesas, receitas e categorias com os membros.
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid gap-2 mt-3">
+                        <form method="POST" action="{{ url_for('familia.confirmar_entrada', token=token) }}">
+                            <button type="submit" class="btn w-100 fw-bold py-2" style="background:#e67e22;color:#fff;">
+                                <i class="bi bi-check-circle me-1"></i>
+                                {% if tem_dados %}Entendi, entrar mesmo assim{% else %}Aceitar e Entrar no Grupo{% endif %}
+                            </button>
+                        </form>
+                        <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+                            Cancelar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

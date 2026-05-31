@@ -3,6 +3,8 @@ from flask_login import login_required, current_user
 from models import db, Despesa, CategoriaDespesa, MeioPagamento
 from datetime import datetime, date
 from sqlalchemy import extract, func, or_
+from utils.familia import (filtrar_despesas, get_categorias_despesa,
+                           get_meios_pagamento, owner_id_para_novo_registro)
 
 despesas_bp = Blueprint('despesas', __name__)
 
@@ -36,8 +38,8 @@ def lista():
         data_fim = None
     # Se personalizado, usa os valores de data_inicio e data_fim recebidos
     
-    # Cada usuário vê apenas suas próprias despesas
-    query = Despesa.query.filter_by(user_id=current_user.id)
+    # Família compartilha dados; outros veem apenas os seus
+    query = filtrar_despesas()
     
     # Aplicar filtros
     if categoria_id:
@@ -61,8 +63,8 @@ def lista():
     )
     
     # Carregar opções para filtros
-    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
-    meios_pagamento = MeioPagamento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
+    categorias = get_categorias_despesa()
+    meios_pagamento = get_meios_pagamento()
     
     # Args para paginação (excluindo page)
     filtros_url = {k: v for k, v in request.args.items() if k != 'page'}
@@ -123,7 +125,8 @@ def criar():
             num_parcelas=num_parcelas,
             data_pagamento=data_pagamento,
             entidade=entidade,
-            user_id=current_user.id
+            user_id=owner_id_para_novo_registro(),
+            registrado_por=current_user.id
         )
 
         db.session.add(nova_despesa)
@@ -132,8 +135,8 @@ def criar():
         flash('Despesa cadastrada com sucesso!', 'success')
         return redirect(url_for('despesas.lista'))
     
-    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
-    meios_pagamento = MeioPagamento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
+    categorias = get_categorias_despesa()
+    meios_pagamento = get_meios_pagamento()
     
     return render_template('despesas/form.html',
                          categorias=categorias,

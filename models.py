@@ -7,6 +7,56 @@ import hashlib
 
 db = SQLAlchemy()
 
+
+class GrupoFamilia(db.Model):
+    """Grupo do plano família — compartilha banco de dados entre até 5 usuários"""
+    __tablename__ = 'grupos_familia'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False, default='Minha Família')
+    assinante_id = db.Column(db.Integer, nullable=False)  # user_id de quem paga
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+    max_membros = db.Column(db.Integer, default=5)
+
+    membros = db.relationship('User', foreign_keys='User.grupo_familia_id',
+                              backref='grupo', lazy=True)
+    convites = db.relationship('ConviteFamilia', backref='grupo', lazy=True,
+                               cascade='all, delete-orphan')
+
+    def total_membros(self):
+        return len(self.membros)
+
+    def pode_adicionar(self):
+        return self.total_membros() < self.max_membros
+
+    def __repr__(self):
+        return f'<GrupoFamilia {self.id} assinante={self.assinante_id}>'
+
+
+class ConviteFamilia(db.Model):
+    """Convite para entrar em um grupo família"""
+    __tablename__ = 'convites_familia'
+
+    id = db.Column(db.Integer, primary_key=True)
+    grupo_id = db.Column(db.Integer, db.ForeignKey('grupos_familia.id'), nullable=False)
+    email_convidado = db.Column(db.String(120), nullable=True)  # None = convite por link
+    token = db.Column(db.String(100), unique=True, nullable=False)
+    usado = db.Column(db.Boolean, default=False, nullable=False)
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    data_expiracao = db.Column(db.DateTime, nullable=True)
+
+    def esta_valido(self):
+        if self.usado:
+            return False
+        if self.data_expiracao and datetime.utcnow() > self.data_expiracao:
+            return False
+        return True
+
+    def __repr__(self):
+        return f'<ConviteFamilia grupo={self.grupo_id} email={self.email_convidado}>'
+
+
 class User(UserMixin, db.Model):
     """Modelo de usuário com autenticação"""
     __tablename__ = 'users'
@@ -15,7 +65,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    nivel_acesso = db.Column(db.String(20), nullable=False, default='pro')  # admin, promax, pro, free
+    nivel_acesso = db.Column(db.String(20), nullable=False, default='pro')  # admin, promax, pro, free, familia
     modo_conta = db.Column(db.String(10), nullable=False, default='pf')  # pf | pf_pj (apenas promax)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
@@ -23,11 +73,13 @@ class User(UserMixin, db.Model):
     nome = db.Column(db.String(150), nullable=True)
     whatsapp = db.Column(db.String(20), nullable=True)
     foto_perfil = db.Column(db.String(255), nullable=True)
-    cpf = db.Column(db.String(11), nullable=True, unique=True)  # 11 dígitos sem máscara
+    cpf = db.Column(db.String(11), nullable=True, unique=True)
     email_confirmado = db.Column(db.Boolean, default=False, nullable=False)
     token_confirmacao = db.Column(db.String(200), nullable=True)
     allow_supabase = db.Column(db.Boolean, default=False, nullable=False)
     allow_openfinance = db.Column(db.Boolean, default=False, nullable=False)
+    grupo_familia_id = db.Column(db.Integer, db.ForeignKey('grupos_familia.id'), nullable=True)
+    eh_assinante_familia = db.Column(db.Boolean, default=False, nullable=False)  # é quem paga o plano
     
     # Relacionamentos
     despesas = db.relationship('Despesa', backref='usuario', lazy=True, cascade='all, delete-orphan')
@@ -63,6 +115,19 @@ class User(UserMixin, db.Model):
     def usa_separacao_pf_pj(self):
         """Promax com as duas contas ativas"""
         return self.nivel_acesso == 'promax' and self.modo_conta == 'pf_pj'
+
+    def is_familia(self):
+        return self.nivel_acesso == 'familia'
+
+    def grupo_familia(self):
+        """Retorna o grupo família do usuário"""
+        if self.grupo_familia_id:
+            return GrupoFamilia.query.get(self.grupo_familia_id)
+        return None
+
+    def grupo_id_efetivo(self):
+        """ID do grupo para filtrar dados compartilhados"""
+        return self.grupo_familia_id
 
     def is_free(self):
         """Verifica se o usuário é do plano Free"""
@@ -214,12 +279,15 @@ class Despesa(db.Model):
     data_registro = db.Column(db.DateTime, default=datetime.utcnow)
     data_pagamento = db.Column(db.Date, nullable=False)
     entidade = db.Column(db.String(5), nullable=True)  # 'pf' | 'pj' — apenas para promax pf_pj
+    registrado_por = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # familia: quem registrou
 
     # Chaves estrangeiras
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categorias_despesa.id'), nullable=False)
     meio_pagamento_id = db.Column(db.Integer, db.ForeignKey('meios_pagamento.id'), nullable=False)
-    
+
+    registrado_por_usuario = db.relationship('User', foreign_keys=[registrado_por], lazy=True)
+
     def __repr__(self):
         return f'<Despesa {self.descricao} - R$ {self.valor}>'
 
@@ -234,13 +302,16 @@ class Receita(db.Model):
     num_parcelas = db.Column(db.Integer, default=1)
     data_registro = db.Column(db.DateTime, default=datetime.utcnow)
     data_recebimento = db.Column(db.Date, nullable=False)
-    entidade = db.Column(db.String(5), nullable=True)  # 'pf' | 'pj' — apenas para promax pf_pj
+    entidade = db.Column(db.String(5), nullable=True)
+    registrado_por = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
     # Chaves estrangeiras
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categorias_receita.id'), nullable=False)
     meio_recebimento_id = db.Column(db.Integer, db.ForeignKey('meios_recebimento.id'), nullable=False)
-    
+
+    registrado_por_usuario = db.relationship('User', foreign_keys=[registrado_por], lazy=True)
+
     def __repr__(self):
         return f'<Receita {self.descricao} - R$ {self.valor}>'
 
@@ -429,6 +500,14 @@ LIMITES_PLANO = {
         'registros_mensais': None,
         'api_acesso': True,
         'pf_pj': True,
+    },
+    'familia': {
+        'categorias_despesa': None,
+        'categorias_receita': None,
+        'cartoes': None,
+        'registros_mensais': None,
+        'api_acesso': True,
+        'pf_pj': False,
     },
 }
 

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Relatório Família — {{ nome_mes }}/{{ ano }}{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-bar-chart-fill fs-3" style="color:#e67e22;"></i>
+        <div>
+            <h2 class="mb-0 fw-bold">Relatório por Membro</h2>
+            <small class="text-muted">{{ grupo.nome }} · {{ nome_mes }}/{{ ano }}</small>
+        </div>
+    </div>
+
+    <!-- Filtro -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body py-2">
+            <form method="GET" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Mês</label>
+                    <select class="form-select" name="mes">
+                        {% set meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'] %}
+                        {% for i in range(1,13) %}
+                        <option value="{{ i }}" {% if i==mes %}selected{% endif %}>{{ meses_pt[i-1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Ano</label>
+                    <input type="number" class="form-control" name="ano" value="{{ ano }}" min="2020" max="2100">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn w-100" style="background:#e67e22;color:#fff;">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Despesas por membro -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-danger text-white fw-bold">
+                    <i class="bi bi-wallet2 me-2"></i> Despesas por Membro
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Membro</th>
+                                <th class="text-end">Total (R$)</th>
+                                <th>%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in despesas_por_membro %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.membro.nome or item.membro.username }}</strong>
+                                    {% if item.membro.id == current_user.id %}
+                                    <span class="badge bg-info" style="font-size:.6rem;">Você</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end text-danger fw-bold">
+                                    {{ "%.2f"|format(item.total)|replace('.', ',') }}
+                                </td>
+                                <td>
+                                    {% if total_despesas > 0 %}
+                                    <div class="progress" style="height:12px;min-width:60px;">
+                                        <div class="progress-bar bg-danger"
+                                             style="width:{{ (item.total/total_despesas*100)|round(1) }}%"></div>
+                                    </div>
+                                    <small>{{ (item.total/total_despesas*100)|round(1) }}%</small>
+                                    {% else %}—{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-secondary fw-bold">
+                            <tr>
+                                <td>Total</td>
+                                <td class="text-end text-danger">{{ "%.2f"|format(total_despesas)|replace('.', ',') }}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Receitas por membro -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white fw-bold">
+                    <i class="bi bi-cash-coin me-2"></i> Receitas por Membro
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Membro</th>
+                                <th class="text-end">Total (R$)</th>
+                                <th>%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in receitas_por_membro %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.membro.nome or item.membro.username }}</strong>
+                                    {% if item.membro.id == current_user.id %}
+                                    <span class="badge bg-info" style="font-size:.6rem;">Você</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end text-success fw-bold">
+                                    {{ "%.2f"|format(item.total)|replace('.', ',') }}
+                                </td>
+                                <td>
+                                    {% if total_receitas > 0 %}
+                                    <div class="progress" style="height:12px;min-width:60px;">
+                                        <div class="progress-bar bg-success"
+                                             style="width:{{ (item.total/total_receitas*100)|round(1) }}%"></div>
+                                    </div>
+                                    <small>{{ (item.total/total_receitas*100)|round(1) }}%</small>
+                                    {% else %}—{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-secondary fw-bold">
+                            <tr>
+                                <td>Total</td>
+                                <td class="text-end text-success">{{ "%.2f"|format(total_receitas)|replace('.', ',') }}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico -->
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-bold border-bottom">
+                    <i class="bi bi-bar-chart me-2" style="color:#e67e22;"></i> Comparativo por Membro
+                </div>
+                <div class="card-body">
+                    <canvas id="grafico" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const labels = [{% for item in despesas_por_membro %}'{{ item.membro.nome or item.membro.username }}'{% if not loop.last %},{% endif %}{% endfor %}];
+const despesas = [{% for item in despesas_por_membro %}{{ item.total }}{% if not loop.last %},{% endif %}{% endfor %}];
+const receitas = [{% for item in receitas_por_membro %}{{ item.total }}{% if not loop.last %},{% endif %}{% endfor %}];
+new Chart(document.getElementById('grafico'), {
+    type: 'bar',
+    data: {
+        labels,
+        datasets: [
+            { label: 'Despesas', data: despesas, backgroundColor: 'rgba(239,68,68,.7)', borderColor: 'rgba(239,68,68,1)', borderWidth: 1 },
+            { label: 'Receitas', data: receitas, backgroundColor: 'rgba(16,185,129,.7)', borderColor: 'rgba(16,185,129,1)', borderWidth: 1 }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => c.dataset.label + ': R$ ' + c.parsed.y.toFixed(2).replace('.', ',') } } },
+        scales: { y: { beginAtZero: true, ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR') } } }
+    }
+});
+</script>
+{% endblock %}

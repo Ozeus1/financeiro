@@ -3,6 +3,8 @@ from flask_login import login_required, current_user
 from models import db, Receita, CategoriaReceita, MeioRecebimento
 from datetime import datetime, date
 from sqlalchemy import extract, func, or_
+from utils.familia import (filtrar_receitas, get_categorias_receita,
+                           get_meios_recebimento, owner_id_para_novo_registro)
 
 receitas_bp = Blueprint('receitas', __name__)
 
@@ -36,8 +38,7 @@ def lista():
         data_fim = None
     # Se personalizado, usa os valores de data_inicio e data_fim recebidos
     
-    # Cada usuário vê apenas suas próprias receitas
-    query = Receita.query.filter_by(user_id=current_user.id)
+    query = filtrar_receitas()
     
     # Aplicar filtros
     if categoria_id:
@@ -61,8 +62,8 @@ def lista():
     )
     
     # Carregar opções para filtros
-    categorias = CategoriaReceita.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaReceita.nome).all()
-    meios_recebimento = MeioRecebimento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioRecebimento.nome).all()
+    categorias = get_categorias_receita()
+    meios_recebimento = get_meios_recebimento()
     
     # Args para paginação (excluindo page)
     filtros_url = {k: v for k, v in request.args.items() if k != 'page'}
@@ -120,7 +121,8 @@ def criar():
             num_parcelas=num_parcelas,
             data_recebimento=data_recebimento,
             entidade=entidade,
-            user_id=current_user.id
+            user_id=owner_id_para_novo_registro(),
+            registrado_por=current_user.id
         )
 
         db.session.add(nova_receita)
@@ -129,8 +131,8 @@ def criar():
         flash('Receita cadastrada com sucesso!', 'success')
         return redirect(url_for('receitas.lista'))
     
-    categorias = CategoriaReceita.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaReceita.nome).all()
-    meios_recebimento = MeioRecebimento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioRecebimento.nome).all()
+    categorias = get_categorias_receita()
+    meios_recebimento = get_meios_recebimento()
     
     return render_template('receitas/form.html',
                          categorias=categorias,

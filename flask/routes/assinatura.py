@@ -8,6 +8,23 @@ import json
 assinatura_bp = Blueprint('assinatura', __name__, url_prefix='/assinatura')
 
 PLANOS = {
+    'familia': {
+        'nome': 'Família',
+        'preco': 34.90,
+        'cor': '#e67e22',
+        'icone': 'bi-house-heart-fill',
+        'descricao': 'Para famílias que querem gerenciar finanças juntas — até 5 usuários',
+        'recursos': [
+            ('check-circle-fill text-success', 'Até 5 usuários no mesmo banco'),
+            ('check-circle-fill text-success', 'Banco de dados compartilhado'),
+            ('check-circle-fill text-success', 'Despesas e receitas ilimitadas'),
+            ('check-circle-fill text-success', 'Categorias e meios compartilhados'),
+            ('check-circle-fill text-success', 'Relatório por membro do grupo'),
+            ('check-circle-fill text-success', 'Acesso ao Robô de IA via WhatsApp'),
+            ('check-circle-fill text-success', 'Convite por e-mail ou link'),
+            ('x-circle-fill text-danger', 'Separação PF/PJ — apenas ProMax'),
+        ],
+    },
     'pro': {
         'nome': 'Pro',
         'preco': 19.90,
@@ -237,6 +254,24 @@ def _aprovar_assinatura(payment_id, external_ref):
         # Ativa plano do usuário
         user.nivel_acesso = plano
         user.data_validade = date.today() + relativedelta(months=1)
+
+        # Plano família: criar grupo se ainda não tem
+        if plano == 'familia':
+            from models import GrupoFamilia
+            if not user.grupo_familia_id:
+                grupo = GrupoFamilia(
+                    nome=f'Família de {user.nome or user.username}',
+                    assinante_id=user.id,
+                    ativo=True
+                )
+                db.session.add(grupo)
+                db.session.flush()  # gera o id
+                user.grupo_familia_id = grupo.id
+                user.eh_assinante_familia = True
+            else:
+                # Reativação — garante que é assinante
+                user.eh_assinante_familia = True
+
         db.session.commit()
 
     except Exception as e:

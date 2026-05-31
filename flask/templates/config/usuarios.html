@@ -212,6 +212,7 @@
                             <option value="free" {% if usuario.nivel_acesso=='free' %}selected{% endif %}>Free</option>
                             <option value="pro" {% if usuario.nivel_acesso=='pro' %}selected{% endif %}>Pro</option>
                             <option value="promax" {% if usuario.nivel_acesso=='promax' %}selected{% endif %}>ProMax</option>
+                            <option value="familia" {% if usuario.nivel_acesso=='familia' %}selected{% endif %}>Família</option>
                             {% if eh_admin %}
                             <option value="gerente" {% if usuario.nivel_acesso=='gerente' %}selected{% endif %}>Gerente</option>
                             <option value="admin" {% if usuario.nivel_acesso=='admin' %}selected{% endif %}>Admin</option>

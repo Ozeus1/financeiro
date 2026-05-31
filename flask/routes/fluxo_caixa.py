@@ -6,8 +6,37 @@ from sqlalchemy import extract, and_, func, or_
 import calendar
 import pandas as pd
 import io
+from utils.familia import get_user_ids_grupo, assinante_id_grupo
 
 fluxo_caixa_bp = Blueprint('fluxo_caixa', __name__, url_prefix='/fluxo-caixa')
+
+
+def _ids_familia():
+    """IDs para leitura: todos membros do grupo família ou só o próprio user"""
+    if current_user.is_familia() and current_user.grupo_familia_id:
+        return get_user_ids_grupo()
+    return [current_user.id]
+
+
+def _filtro_rec_fc():
+    ids = _ids_familia()
+    return Receita.user_id.in_(ids) if len(ids) > 1 else (Receita.user_id == ids[0])
+
+
+def _filtro_desp_fc():
+    ids = _ids_familia()
+    return Despesa.user_id.in_(ids) if len(ids) > 1 else (Despesa.user_id == ids[0])
+
+
+def _filtro_evento_fc():
+    ids = _ids_familia()
+    return EventoCaixaAvulso.user_id.in_(ids) if len(ids) > 1 else (EventoCaixaAvulso.user_id == ids[0])
+
+
+def _filtro_balanco_fc():
+    """Balanço usa user_id do assinante (é salvo por ele)"""
+    dono = assinante_id_grupo()
+    return {'user_id': dono}
 
 # Meios de pagamento considerados como saída de caixa
 MEIOS_PAGAMENTO_CAIXA = ['Boleto', 'Dinheiro', 'PIX', 'Transferência', 'Débito em Conta']
@@ -18,11 +47,11 @@ MEIOS_PAGAMENTO_CAIXA = ['Boleto', 'Dinheiro', 'PIX', 'Transferência', 'Débito
 def index():
     """Página principal do fluxo de caixa"""
     # Buscar balanços mensais do usuário
-    balancos = BalancoMensal.query.filter_by(user_id=current_user.id)\
+    balancos = BalancoMensal.query.filter_by(**_filtro_balanco_fc())\
         .order_by(BalancoMensal.ano.desc(), BalancoMensal.mes.desc()).all()
     
     # Buscar eventos de caixa avulsos
-    eventos = EventoCaixaAvulso.query.filter_by(user_id=current_user.id)\
+    eventos = EventoCaixaAvulso.query.filter(_filtro_evento_fc())\
         .order_by(EventoCaixaAvulso.data.desc()).all()
     # Obter ano e mês atual para o formulário
     hoje = date.today()
@@ -105,7 +134,7 @@ def calcular_entradas():
         # Somar todas as receitas do usuário no mês/ano especificado
         total = db.session.query(func.sum(Receita.valor)).filter(
             and_(
-                Receita.user_id == current_user.id,
+                _filtro_rec_fc(),
                 extract('year', Receita.data_recebimento) == ano,
                 extract('month', Receita.data_recebimento) == mes
             )
@@ -132,7 +161,7 @@ def calcular_saidas():
             Despesa.categoria
         ).filter(
             and_(
-                Despesa.user_id == current_user.id,
+                _filtro_desp_fc(),
                 extract('year', Despesa.data_pagamento) == ano,
                 extract('month', Despesa.data_pagamento) == mes,
                 or_(
@@ -145,7 +174,7 @@ def calcular_saidas():
         # Somar eventos de caixa avulsos
         total_eventos = db.session.query(func.sum(EventoCaixaAvulso.valor)).filter(
             and_(
-                EventoCaixaAvulso.user_id == current_user.id,
+                _filtro_evento_fc(),
                 extract('year', EventoCaixaAvulso.data) == ano,
                 extract('month', EventoCaixaAvulso.data) == mes
             )
@@ -176,17 +205,17 @@ def recalcular_tudo():
         meses_receitas = db.session.query(
             extract('year', Receita.data_recebimento).label('ano'),
             extract('month', Receita.data_recebimento).label('mes')
-        ).filter_by(user_id=current_user.id).distinct().all()
+        ).filter(**_filtro_balanco_fc()).distinct().all()
         
         meses_despesas = db.session.query(
             extract('year', Despesa.data_pagamento).label('ano'),
             extract('month', Despesa.data_pagamento).label('mes')
-        ).filter_by(user_id=current_user.id).distinct().all()
+        ).filter(**_filtro_balanco_fc()).distinct().all()
         
         meses_eventos = db.session.query(
             extract('year', EventoCaixaAvulso.data).label('ano'),
             extract('month', EventoCaixaAvulso.data).label('mes')
-        ).filter_by(user_id=current_user.id).distinct().all()
+        ).filter(**_filtro_balanco_fc()).distinct().all()
         
         # Combinar todos os meses únicos
         meses_unicos = set()
@@ -202,7 +231,7 @@ def recalcular_tudo():
             # Calcular entradas
             total_entradas = db.session.query(func.sum(Receita.valor)).filter(
                 and_(
-                    Receita.user_id == current_user.id,
+                    _filtro_rec_fc(),
                     extract('year', Receita.data_recebimento) == ano,
                     extract('month', Receita.data_recebimento) == mes
                 )
@@ -215,7 +244,7 @@ def recalcular_tudo():
                 Despesa.categoria
             ).filter(
                 and_(
-                    Despesa.user_id == current_user.id,
+                    _filtro_desp_fc(),
                     extract('year', Despesa.data_pagamento) == ano,
                     extract('month', Despesa.data_pagamento) == mes,
                     or_(
@@ -228,7 +257,7 @@ def recalcular_tudo():
             # Calcular saídas (eventos avulsos)
             total_eventos = db.session.query(func.sum(EventoCaixaAvulso.valor)).filter(
                 and_(
-                    EventoCaixaAvulso.user_id == current_user.id,
+                    _filtro_evento_fc(),
                     extract('year', EventoCaixaAvulso.data) == ano,
                     extract('month', EventoCaixaAvulso.data) == mes
                 )
@@ -378,7 +407,7 @@ def grafico_dados():
         mes_fim = request.args.get('mes_fim', type=int)
         
         # Construir query
-        query = BalancoMensal.query.filter_by(user_id=current_user.id)
+        query = BalancoMensal.query.filter_by(**_filtro_balanco_fc())
         
         if ano_inicio and mes_inicio:
             query = query.filter(
@@ -435,7 +464,7 @@ def exportar_excel(ano, mes):
         # Buscar receitas do mês
         receitas = Receita.query.filter(
             and_(
-                Receita.user_id == current_user.id,
+                _filtro_rec_fc(),
                 extract('year', Receita.data_recebimento) == ano,
                 extract('month', Receita.data_recebimento) == mes
             )
@@ -444,7 +473,7 @@ def exportar_excel(ano, mes):
         # Buscar despesas de caixa do mês OU Pagamentos
         despesas = Despesa.query.join(Despesa.meio_pagamento).join(Despesa.categoria).filter(
             and_(
-                Despesa.user_id == current_user.id,
+                _filtro_desp_fc(),
                 extract('year', Despesa.data_pagamento) == ano,
                 extract('month', Despesa.data_pagamento) == mes,
                 or_(
@@ -457,7 +486,7 @@ def exportar_excel(ano, mes):
         # Buscar eventos avulsos do mês
         eventos = EventoCaixaAvulso.query.filter(
             and_(
-                EventoCaixaAvulso.user_id == current_user.id,
+                _filtro_evento_fc(),
                 extract('year', EventoCaixaAvulso.data) == ano,
                 extract('month', EventoCaixaAvulso.data) == mes
             )
@@ -518,7 +547,7 @@ def detalhes_mes(ano, mes):
     # Buscar receitas
     receitas = Receita.query.filter(
         and_(
-            Receita.user_id == current_user.id,
+            _filtro_rec_fc(),
             extract('year', Receita.data_recebimento) == ano,
             extract('month', Receita.data_recebimento) == mes
         )
@@ -527,7 +556,7 @@ def detalhes_mes(ano, mes):
     # Buscar despesas de caixa OU Pagamentos
     despesas = Despesa.query.join(Despesa.meio_pagamento).join(Despesa.categoria).filter(
         and_(
-            Despesa.user_id == current_user.id,
+            _filtro_desp_fc(),
             extract('year', Despesa.data_pagamento) == ano,
             extract('month', Despesa.data_pagamento) == mes,
             or_(
@@ -540,7 +569,7 @@ def detalhes_mes(ano, mes):
     # Buscar eventos avulsos
     eventos = EventoCaixaAvulso.query.filter(
         and_(
-            EventoCaixaAvulso.user_id == current_user.id,
+            _filtro_evento_fc(),
             extract('year', EventoCaixaAvulso.data) == ano,
             extract('month', EventoCaixaAvulso.data) == mes
         )

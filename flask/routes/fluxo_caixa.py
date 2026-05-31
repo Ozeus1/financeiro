@@ -45,24 +45,75 @@ MEIOS_PAGAMENTO_CAIXA = ['Boleto', 'Dinheiro', 'PIX', 'Transferência', 'Débito
 @fluxo_caixa_bp.route('/')
 @login_required
 def index():
-    """Página principal do fluxo de caixa"""
-    # Buscar balanços mensais do usuário
-    balancos = BalancoMensal.query.filter_by(**_filtro_balanco_fc())\
-        .order_by(BalancoMensal.ano.desc(), BalancoMensal.mes.desc()).all()
-    
-    # Buscar eventos de caixa avulsos
-    eventos = EventoCaixaAvulso.query.filter(_filtro_evento_fc())\
-        .order_by(EventoCaixaAvulso.data.desc()).all()
-    # Obter ano e mês atual para o formulário
+    """Página principal do fluxo de caixa — calcula automaticamente das transações"""
     hoje = date.today()
     ano_atual = hoje.year
     mes_atual = hoje.month
-    
+
     MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
+    # Calcular balanços automaticamente dos últimos 13 meses a partir das transações
+    from dateutil.relativedelta import relativedelta as _rd
+    balancos_auto = []
+    data_ref = hoje.replace(day=1)
+    for _ in range(13):
+        ano, mes = data_ref.year, data_ref.month
+
+        entradas = db.session.query(func.sum(Receita.valor)).filter(
+            _filtro_rec_fc(),
+            extract('year', Receita.data_recebimento) == ano,
+            extract('month', Receita.data_recebimento) == mes
+        ).scalar() or 0.0
+
+        saidas_desp = db.session.query(func.sum(Despesa.valor)).join(
+            Despesa.meio_pagamento
+        ).join(Despesa.categoria).filter(
+            _filtro_desp_fc(),
+            extract('year', Despesa.data_pagamento) == ano,
+            extract('month', Despesa.data_pagamento) == mes,
+            or_(
+                func.lower(MeioPagamento.nome).in_([m.lower() for m in MEIOS_PAGAMENTO_CAIXA]),
+                func.lower(CategoriaDespesa.nome) == 'pagamentos'
+            )
+        ).scalar() or 0.0
+
+        saidas_eventos = db.session.query(func.sum(EventoCaixaAvulso.valor)).filter(
+            _filtro_evento_fc(),
+            extract('year', EventoCaixaAvulso.data) == ano,
+            extract('month', EventoCaixaAvulso.data) == mes
+        ).scalar() or 0.0
+
+        saidas = saidas_desp + saidas_eventos
+        saldo = entradas - saidas
+
+        if entradas > 0 or saidas > 0:
+            balancos_auto.append({
+                'ano': ano, 'mes': mes,
+                'nome_mes': MESES_PT[mes - 1],
+                'total_entradas': entradas,
+                'total_saidas': saidas,
+                'saldo_mes': saldo,
+                'automatico': True
+            })
+
+        data_ref = data_ref - _rd(months=1)
+
+    # Eventos avulsos ainda existem como registros manuais
+    eventos = EventoCaixaAvulso.query.filter(_filtro_evento_fc())\
+        .order_by(EventoCaixaAvulso.data.desc()).all()
+
+    # Converter dicts para objetos para compatibilidade com o template
+    from types import SimpleNamespace
+    balancos_obj = []
+    for b in balancos_auto:
+        obj = SimpleNamespace(**b)
+        obj.id = None  # sem ID pois é calculado automaticamente
+        obj.observacoes = ''
+        balancos_obj.append(obj)
+
     return render_template('fluxo_caixa/index.html',
-                         balancos=balancos,
+                         balancos=balancos_obj,
                          eventos=eventos,
                          ano_atual=ano_atual,
                          mes_atual=mes_atual,

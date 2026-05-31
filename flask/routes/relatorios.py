@@ -6,8 +6,30 @@ from sqlalchemy import func, extract, desc
 from datetime import datetime, timedelta, date
 import calendar
 from dateutil.relativedelta import relativedelta
+from utils.familia import get_user_ids_grupo
 
 relatorios_bp = Blueprint('relatorios', __name__)
+
+
+def _user_ids():
+    """Retorna lista de user_ids para filtrar relatórios (grupo família ou só o próprio)"""
+    if current_user.is_familia() and current_user.grupo_familia_id:
+        return get_user_ids_grupo()
+    return [current_user.id]
+
+
+def _filtro_desp():
+    ids = _user_ids()
+    if len(ids) == 1:
+        return Despesa.user_id == ids[0]
+    return Despesa.user_id.in_(ids)
+
+
+def _filtro_rec():
+    ids = _user_ids()
+    if len(ids) == 1:
+        return Receita.user_id == ids[0]
+    return Receita.user_id.in_(ids)
 
 @relatorios_bp.route('/balanco')
 @login_required
@@ -23,7 +45,7 @@ def balanco():
         func.sum(Despesa.valor).label('total')
     ).join(Despesa.categoria).filter(
         func.lower(CategoriaDespesa.nome) != 'pagamentos',
-        Despesa.user_id == current_user.id
+        _filtro_desp()
     ).group_by('ano', 'mes').order_by('ano', 'mes').all()
 
     receitas_mensais = db.session.query(
@@ -31,7 +53,7 @@ def balanco():
         extract('month', Receita.data_recebimento).label('mes'),
         func.sum(Receita.valor).label('total')
     ).filter(
-        Receita.user_id == current_user.id
+        _filtro_rec()
     ).group_by('ano', 'mes').order_by('ano', 'mes').all()
     
     return render_template('relatorios/balanco.html',
@@ -58,7 +80,7 @@ def despesas_mensal():
         func.lower(CategoriaDespesa.nome) != 'pagamentos'
     )
 
-    query = query.filter(Despesa.user_id == current_user.id)
+    query = query.filter(_filtro_desp())
     if entidade and current_user.usa_separacao_pf_pj():
         query = query.filter(Despesa.entidade == entidade)
 
@@ -94,7 +116,7 @@ def receitas_mensal():
         extract('year', Receita.data_recebimento) == ano
     )
 
-    query = query.filter(Receita.user_id == current_user.id)
+    query = query.filter(_filtro_rec())
     if entidade and current_user.usa_separacao_pf_pj():
         query = query.filter(Receita.entidade == entidade)
 
@@ -129,7 +151,7 @@ def top_contas():
         func.lower(CategoriaDespesa.nome) != 'pagamentos'
     )
     
-    query = query.filter(Despesa.user_id == current_user.id)
+    query = query.filter(_filtro_desp())
     
     top_contas = query.group_by(CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).limit(10).all()
     
@@ -140,7 +162,7 @@ def top_contas():
         func.lower(CategoriaDespesa.nome) != 'pagamentos'
     )
     
-    total_mes_query = total_mes_query.filter(Despesa.user_id == current_user.id)
+    total_mes_query = total_mes_query.filter(_filtro_desp())
     
     total_mes = total_mes_query.scalar() or 0
     
@@ -172,7 +194,7 @@ def detalhes_despesas():
     )
     
     # Filtrar por usuário se não for gerente
-    query = query.filter(Despesa.user_id == current_user.id)
+    query = query.filter(_filtro_desp())
     
     # Ordenar por data
     despesas = query.order_by(Despesa.data_pagamento.desc()).all()
@@ -208,7 +230,7 @@ def orcado_vs_gasto():
             Despesa.categoria_id == orc.categoria_id,
             extract('month', Despesa.data_pagamento) == mes,
             extract('year', Despesa.data_pagamento) == ano,
-            Despesa.user_id == current_user.id
+            _filtro_desp()
         ).scalar() or 0
         
         diferenca = orc.valor_orcado - gasto
@@ -258,7 +280,7 @@ def previsao_cartoes():
         Despesa.num_parcelas > 1
     )
     
-    query_parcelas = query_parcelas.filter(Despesa.user_id == current_user.id)
+    query_parcelas = query_parcelas.filter(_filtro_desp())
         
     despesas_parceladas = query_parcelas.all()
     
@@ -309,7 +331,7 @@ def previsao_cartoes():
         dia_fechamento = config.dia_fechamento if config else 31 # Se não tem fechamento, considera fim do mês
         
         # Buscar TODAS as despesas deste cartão
-        query_despesas = Despesa.query.filter_by(meio_pagamento_id=cartao.id, user_id=current_user.id)
+        query_despesas = Despesa.query.filter_by(meio_pagamento_id=cartao.id).filter(_filtro_desp())
         
         despesas = query_despesas.all()
         
@@ -420,7 +442,7 @@ def api_fatura_detalhes(cartao_id, mes, ano):
     """API para retornar detalhes da fatura (transações)"""
     try:
         # Buscar TODAS as despesas deste cartão
-        query = Despesa.query.filter_by(meio_pagamento_id=cartao_id, user_id=current_user.id)
+        query = Despesa.query.filter_by(meio_pagamento_id=cartao_id).filter(_filtro_desp())
             
         despesas = query.order_by(Despesa.data_pagamento, Despesa.id).all()
         
@@ -479,7 +501,7 @@ def api_despesas_categoria():
         func.lower(CategoriaDespesa.nome) != 'pagamentos'
     )
     
-    query = query.filter(Despesa.user_id == current_user.id)
+    query = query.filter(_filtro_desp())
     
     dados = query.group_by(CategoriaDespesa.nome).all()
     
@@ -512,8 +534,8 @@ def api_balanco_mensal():
             extract('month', Despesa.data_pagamento) == mes,
             extract('year', Despesa.data_pagamento) == ano,
         )
-        q_rec = q_rec.filter(Receita.user_id == current_user.id)
-        q_desp = q_desp.filter(Despesa.user_id == current_user.id)
+        q_rec = q_rec.filter(_filtro_rec())
+        q_desp = q_desp.filter(_filtro_desp())
 
         receita = q_rec.scalar() or 0.0
         despesa = q_desp.scalar() or 0.0
@@ -831,7 +853,7 @@ def pf_pj_despesas():
         ).join(CategoriaDespesa).filter(
             extract('year', Despesa.data_pagamento) == ano,
             func.lower(CategoriaDespesa.nome) != 'pagamentos',
-            Despesa.user_id == current_user.id
+            _filtro_desp()
         )
         if sem_entidade:
             q = q.filter(Despesa.entidade == None)
@@ -887,7 +909,7 @@ def pf_pj_receitas():
             func.sum(Receita.valor).label('total')
         ).filter(
             extract('year', Receita.data_recebimento) == ano,
-            Receita.user_id == current_user.id
+            _filtro_rec()
         )
         if entidade == 'sem_entidade':
             q = q.filter(Receita.entidade == None)

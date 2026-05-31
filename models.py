@@ -82,8 +82,8 @@ class User(UserMixin, db.Model):
     eh_assinante_familia = db.Column(db.Boolean, default=False, nullable=False)  # é quem paga o plano
     
     # Relacionamentos
-    despesas = db.relationship('Despesa', backref='usuario', lazy=True, cascade='all, delete-orphan')
-    receitas = db.relationship('Receita', backref='usuario', lazy=True, cascade='all, delete-orphan')
+    despesas = db.relationship('Despesa', foreign_keys='Despesa.user_id', backref='usuario', lazy=True, cascade='all, delete-orphan')
+    receitas = db.relationship('Receita', foreign_keys='Receita.user_id', backref='usuario', lazy=True, cascade='all, delete-orphan')
     balancos_mensais = db.relationship('BalancoMensal', backref='usuario', lazy=True, cascade='all, delete-orphan')
     eventos_caixa = db.relationship('EventoCaixaAvulso', backref='usuario', lazy=True, cascade='all, delete-orphan')
     orcamentos = db.relationship('Orcamento', backref='usuario', lazy=True, cascade='all, delete-orphan')

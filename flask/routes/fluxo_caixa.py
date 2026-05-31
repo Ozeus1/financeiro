@@ -205,17 +205,17 @@ def recalcular_tudo():
         meses_receitas = db.session.query(
             extract('year', Receita.data_recebimento).label('ano'),
             extract('month', Receita.data_recebimento).label('mes')
-        ).filter(**_filtro_balanco_fc()).distinct().all()
+        ).filter_by(**_filtro_balanco_fc()).distinct().all()
         
         meses_despesas = db.session.query(
             extract('year', Despesa.data_pagamento).label('ano'),
             extract('month', Despesa.data_pagamento).label('mes')
-        ).filter(**_filtro_balanco_fc()).distinct().all()
+        ).filter_by(**_filtro_balanco_fc()).distinct().all()
         
         meses_eventos = db.session.query(
             extract('year', EventoCaixaAvulso.data).label('ano'),
             extract('month', EventoCaixaAvulso.data).label('mes')
-        ).filter(**_filtro_balanco_fc()).distinct().all()
+        ).filter_by(**_filtro_balanco_fc()).distinct().all()
         
         # Combinar todos os meses únicos
         meses_unicos = set()

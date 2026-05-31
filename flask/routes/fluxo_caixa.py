@@ -449,60 +449,64 @@ def atualizar_evento(id):
 @fluxo_caixa_bp.route('/api/grafico-dados')
 @login_required
 def grafico_dados():
-    """API para dados do gráfico de fluxo de caixa"""
+    """API para dados do gráfico — calculado diretamente das transações"""
     try:
-        # Parâmetros de filtro
+        from dateutil.relativedelta import relativedelta as _rd
         ano_inicio = request.args.get('ano_inicio', type=int)
         mes_inicio = request.args.get('mes_inicio', type=int)
         ano_fim = request.args.get('ano_fim', type=int)
         mes_fim = request.args.get('mes_fim', type=int)
-        
-        # Construir query
-        query = BalancoMensal.query.filter_by(**_filtro_balanco_fc())
-        
-        if ano_inicio and mes_inicio:
-            query = query.filter(
-                db.or_(
-                    BalancoMensal.ano > ano_inicio,
-                    db.and_(
-                        BalancoMensal.ano == ano_inicio,
-                        BalancoMensal.mes >= mes_inicio
-                    )
+
+        hoje = date.today()
+        if not ano_fim or not mes_fim:
+            ano_fim, mes_fim = hoje.year, hoje.month
+        if not ano_inicio or not mes_inicio:
+            inicio = hoje.replace(day=1) - _rd(months=11)
+            ano_inicio, mes_inicio = inicio.year, inicio.month
+
+        labels, entradas_list, saidas_list, saldos_list = [], [], [], []
+
+        data_ref = date(ano_inicio, mes_inicio, 1)
+        data_fim = date(ano_fim, mes_fim, 1)
+
+        while data_ref <= data_fim:
+            ano, mes = data_ref.year, data_ref.month
+
+            ent = db.session.query(func.sum(Receita.valor)).filter(
+                _filtro_rec_fc(),
+                extract('year', Receita.data_recebimento) == ano,
+                extract('month', Receita.data_recebimento) == mes
+            ).scalar() or 0.0
+
+            sai_desp = db.session.query(func.sum(Despesa.valor)).join(
+                Despesa.meio_pagamento
+            ).join(Despesa.categoria).filter(
+                _filtro_desp_fc(),
+                extract('year', Despesa.data_pagamento) == ano,
+                extract('month', Despesa.data_pagamento) == mes,
+                or_(
+                    func.lower(MeioPagamento.nome).in_([m.lower() for m in MEIOS_PAGAMENTO_CAIXA]),
+                    func.lower(CategoriaDespesa.nome) == 'pagamentos'
                 )
-            )
-        
-        if ano_fim and mes_fim:
-            query = query.filter(
-                db.or_(
-                    BalancoMensal.ano < ano_fim,
-                    db.and_(
-                        BalancoMensal.ano == ano_fim,
-                        BalancoMensal.mes <= mes_fim
-                    )
-                )
-            )
-        
-        balancos = query.order_by(BalancoMensal.ano, BalancoMensal.mes).all()
-        
-        # Formatar dados para o gráfico
-        labels = []
-        entradas = []
-        saidas = []
-        saldos = []
-        
-        for balanco in balancos:
-            labels.append(f'{balanco.mes:02d}/{balanco.ano}')
-            entradas.append(balanco.total_entradas)
-            saidas.append(balanco.total_saidas)
-            saldos.append(balanco.saldo_mes)
-        
-        return jsonify({
-            'labels': labels,
-            'entradas': entradas,
-            'saidas': saidas,
-            'saldos': saldos
-        })
-        
+            ).scalar() or 0.0
+
+            sai_ev = db.session.query(func.sum(EventoCaixaAvulso.valor)).filter(
+                _filtro_evento_fc(),
+                extract('year', EventoCaixaAvulso.data) == ano,
+                extract('month', EventoCaixaAvulso.data) == mes
+            ).scalar() or 0.0
+
+            sai = sai_desp + sai_ev
+            labels.append(f'{mes:02d}/{ano}')
+            entradas_list.append(float(ent))
+            saidas_list.append(float(sai))
+            saldos_list.append(float(ent - sai))
+
+            data_ref = data_ref + _rd(months=1)
+
+        return jsonify({'labels': labels, 'entradas': entradas_list,
+                        'saidas': saidas_list, 'saldos': saldos_list})
+
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 

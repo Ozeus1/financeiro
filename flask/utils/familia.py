@@ -31,7 +31,7 @@ def filtrar_receitas(query=None):
     return query.filter_by(user_id=current_user.id)
 
 
-def _assinante_id():
+def assinante_id_grupo():
     """Retorna o user_id do assinante do grupo (dono dos dados compartilhados)"""
     if current_user.is_familia() and current_user.grupo_familia_id:
         from models import GrupoFamilia
@@ -43,28 +43,28 @@ def _assinante_id():
 
 def get_categorias_despesa():
     """Categorias do assinante do grupo (evita duplicação entre membros)"""
-    dono = _assinante_id()
+    dono = assinante_id_grupo()
     return CategoriaDespesa.query.filter_by(
         user_id=dono, ativo=True
     ).order_by(CategoriaDespesa.nome).all()
 
 
 def get_categorias_receita():
-    dono = _assinante_id()
+    dono = assinante_id_grupo()
     return CategoriaReceita.query.filter_by(
         user_id=dono, ativo=True
     ).order_by(CategoriaReceita.nome).all()
 
 
 def get_meios_pagamento():
-    dono = _assinante_id()
+    dono = assinante_id_grupo()
     return MeioPagamento.query.filter_by(
         user_id=dono, ativo=True
     ).order_by(MeioPagamento.nome).all()
 
 
 def get_meios_recebimento():
-    dono = _assinante_id()
+    dono = assinante_id_grupo()
     return MeioRecebimento.query.filter_by(
         user_id=dono, ativo=True
     ).order_by(MeioRecebimento.nome).all()

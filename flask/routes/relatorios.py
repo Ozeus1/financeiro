@@ -219,8 +219,10 @@ def orcado_vs_gasto():
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
     
-    # Buscar orçamentos do usuário (orçamento é geral, não mensal)
-    orcamentos = Orcamento.query.filter_by(user_id=current_user.id).all()
+    # Orçamentos: usar user_id do assinante se for membro família
+    from utils.familia import assinante_id_grupo
+    dono_orcamento = assinante_id_grupo()
+    orcamentos = Orcamento.query.filter_by(user_id=dono_orcamento).all()
     
     # Para cada orçamento, calcular o gasto
     comparativo = []

@@ -12,67 +12,61 @@ def get_user_ids_grupo():
 
 
 def filtrar_despesas(query=None):
-    """Filtra despesas pelo grupo ou pelo usuário"""
+    """Filtra despesas do grupo — usa user_id do assinante para evitar dados anteriores de convidados"""
     if query is None:
         query = Despesa.query
     if current_user.is_familia() and current_user.grupo_familia_id:
-        ids = get_user_ids_grupo()
-        return query.filter(Despesa.user_id.in_(ids))
+        dono = _assinante_id()
+        return query.filter_by(user_id=dono)
     return query.filter_by(user_id=current_user.id)
 
 
 def filtrar_receitas(query=None):
-    """Filtra receitas pelo grupo ou pelo usuário"""
+    """Filtra receitas do grupo — usa user_id do assinante para evitar dados anteriores de convidados"""
     if query is None:
         query = Receita.query
     if current_user.is_familia() and current_user.grupo_familia_id:
-        ids = get_user_ids_grupo()
-        return query.filter(Receita.user_id.in_(ids))
+        dono = _assinante_id()
+        return query.filter_by(user_id=dono)
     return query.filter_by(user_id=current_user.id)
 
 
-def get_categorias_despesa():
-    """Retorna categorias de despesa do grupo ou do usuário"""
+def _assinante_id():
+    """Retorna o user_id do assinante do grupo (dono dos dados compartilhados)"""
     if current_user.is_familia() and current_user.grupo_familia_id:
-        ids = get_user_ids_grupo()
-        return CategoriaDespesa.query.filter(
-            CategoriaDespesa.user_id.in_(ids), CategoriaDespesa.ativo == True
-        ).order_by(CategoriaDespesa.nome).all()
+        from models import GrupoFamilia
+        grupo = GrupoFamilia.query.get(current_user.grupo_familia_id)
+        if grupo:
+            return grupo.assinante_id
+    return current_user.id
+
+
+def get_categorias_despesa():
+    """Categorias do assinante do grupo (evita duplicação entre membros)"""
+    dono = _assinante_id()
     return CategoriaDespesa.query.filter_by(
-        user_id=current_user.id, ativo=True
+        user_id=dono, ativo=True
     ).order_by(CategoriaDespesa.nome).all()
 
 
 def get_categorias_receita():
-    if current_user.is_familia() and current_user.grupo_familia_id:
-        ids = get_user_ids_grupo()
-        return CategoriaReceita.query.filter(
-            CategoriaReceita.user_id.in_(ids), CategoriaReceita.ativo == True
-        ).order_by(CategoriaReceita.nome).all()
+    dono = _assinante_id()
     return CategoriaReceita.query.filter_by(
-        user_id=current_user.id, ativo=True
+        user_id=dono, ativo=True
     ).order_by(CategoriaReceita.nome).all()
 
 
 def get_meios_pagamento():
-    if current_user.is_familia() and current_user.grupo_familia_id:
-        ids = get_user_ids_grupo()
-        return MeioPagamento.query.filter(
-            MeioPagamento.user_id.in_(ids), MeioPagamento.ativo == True
-        ).order_by(MeioPagamento.nome).all()
+    dono = _assinante_id()
     return MeioPagamento.query.filter_by(
-        user_id=current_user.id, ativo=True
+        user_id=dono, ativo=True
     ).order_by(MeioPagamento.nome).all()
 
 
 def get_meios_recebimento():
-    if current_user.is_familia() and current_user.grupo_familia_id:
-        ids = get_user_ids_grupo()
-        return MeioRecebimento.query.filter(
-            MeioRecebimento.user_id.in_(ids), MeioRecebimento.ativo == True
-        ).order_by(MeioRecebimento.nome).all()
+    dono = _assinante_id()
     return MeioRecebimento.query.filter_by(
-        user_id=current_user.id, ativo=True
+        user_id=dono, ativo=True
     ).order_by(MeioRecebimento.nome).all()
 
 

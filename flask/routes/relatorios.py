@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 from flask_login import login_required, current_user
 from routes.auth import gerente_required
 from models import db, Despesa, Receita, CategoriaDespesa, Orcamento, MeioPagamento, FechamentoCartao
@@ -214,7 +214,6 @@ def detalhes_despesas():
 
 @relatorios_bp.route('/orcado-vs-gasto')
 @login_required
-@gerente_required
 def orcado_vs_gasto():
     """Relatório de orçado vs gasto"""
     mes = request.args.get('mes', datetime.now().month, type=int)

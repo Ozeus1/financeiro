@@ -28,6 +28,11 @@ class ProductionConfig(Config):
     """Configurações para ambiente de produção"""
     DEBUG = False
     FLASK_ENV = 'production'
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
 
 class TestingConfig(Config):
     """Configurações para testes"""

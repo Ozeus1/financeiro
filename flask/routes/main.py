@@ -4,6 +4,7 @@ from models import db, Despesa, Receita, CategoriaDespesa
 from sqlalchemy import func, extract, or_
 from datetime import datetime, timedelta
 import calendar
+from utils.familia import filtrar_despesas, filtrar_receitas, get_user_ids_grupo
 
 main_bp = Blueprint('main', __name__)
 
@@ -27,13 +28,9 @@ def dashboard():
     if current_user.usa_separacao_pf_pj():
         entidade_filtro = request.args.get('entidade', '')  # '' = todas, 'pf', 'pj'
 
-    # Query base
-    if current_user.is_gerente():
-        despesas_query = Despesa.query
-        receitas_query = Receita.query
-    else:
-        despesas_query = Despesa.query.filter_by(user_id=current_user.id)
-        receitas_query = Receita.query.filter_by(user_id=current_user.id)
+    # Query base — família compartilha dados de todos os membros
+    despesas_query = filtrar_despesas()
+    receitas_query = filtrar_receitas()
 
     # Filtro de entidade: entidade == valor OU entidade IS NULL (cartão, sem separação)
     if entidade_filtro:
@@ -45,26 +42,36 @@ def dashboard():
         )
 
     # Total de despesas do mês
+    # IDs para filtrar (grupo família ou só o próprio usuário)
+    if current_user.is_familia() and current_user.grupo_familia_id:
+        user_ids = get_user_ids_grupo()
+        filtro_user_desp = Despesa.user_id.in_(user_ids)
+        filtro_user_rec = Receita.user_id.in_(user_ids)
+        filtro_user_caixa = Despesa.user_id.in_(user_ids)
+        filtro_user_evento = None
+    else:
+        filtro_user_desp = (Despesa.user_id == current_user.id)
+        filtro_user_rec = (Receita.user_id == current_user.id)
+        filtro_user_caixa = (Despesa.user_id == current_user.id)
+        filtro_user_evento = current_user.id
+
     total_despesas_mes = db.session.query(func.sum(Despesa.valor)).join(CategoriaDespesa).filter(
         extract('month', Despesa.data_pagamento) == mes_atual,
         extract('year', Despesa.data_pagamento) == ano_atual,
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        filtro_user_desp
     )
-    if not current_user.is_gerente():
-        total_despesas_mes = total_despesas_mes.filter(Despesa.user_id == current_user.id)
     if entidade_filtro:
         total_despesas_mes = total_despesas_mes.filter(
             or_(Despesa.entidade == entidade_filtro, Despesa.entidade == None)
         )
     total_despesas_mes = total_despesas_mes.scalar() or 0
 
-    # Total de receitas do mês
     total_receitas_mes = db.session.query(func.sum(Receita.valor)).filter(
         extract('month', Receita.data_recebimento) == mes_atual,
-        extract('year', Receita.data_recebimento) == ano_atual
+        extract('year', Receita.data_recebimento) == ano_atual,
+        filtro_user_rec
     )
-    if not current_user.is_gerente():
-        total_receitas_mes = total_receitas_mes.filter(Receita.user_id == current_user.id)
     if entidade_filtro:
         total_receitas_mes = total_receitas_mes.filter(
             or_(Receita.entidade == entidade_filtro, Receita.entidade == None)
@@ -90,8 +97,7 @@ def dashboard():
             func.lower(CategoriaDespesa.nome) == 'pagamentos'
         )
     )
-    if not current_user.is_gerente():
-        saidas_caixa_query = saidas_caixa_query.filter(Despesa.user_id == current_user.id)
+    saidas_caixa_query = saidas_caixa_query.filter(filtro_user_caixa)
     if entidade_filtro:
         saidas_caixa_query = saidas_caixa_query.filter(
             or_(Despesa.entidade == entidade_filtro, Despesa.entidade == None)
@@ -102,8 +108,8 @@ def dashboard():
         extract('month', EventoCaixaAvulso.data) == mes_atual,
         extract('year', EventoCaixaAvulso.data) == ano_atual
     )
-    if not current_user.is_gerente():
-        eventos_caixa_query = eventos_caixa_query.filter(EventoCaixaAvulso.user_id == current_user.id)
+    if filtro_user_evento:
+        eventos_caixa_query = eventos_caixa_query.filter(EventoCaixaAvulso.user_id == filtro_user_evento)
     eventos_caixa = eventos_caixa_query.scalar() or 0.0
 
     fluxo_saidas = saidas_caixa + eventos_caixa

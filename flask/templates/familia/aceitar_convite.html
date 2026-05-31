@@ -15,11 +15,15 @@
                     {% if tem_dados %}
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        <strong>Atenção!</strong> Você já possui despesas e receitas cadastradas.<br><br>
-                        Ao entrar no grupo família, <strong>seus dados anteriores não serão compartilhados</strong>
-                        com o grupo e ficarão inacessíveis enquanto você estiver no plano família.<br><br>
-                        <strong>Recomendamos exportar seus dados antes de continuar:</strong>
-                        <div class="mt-2 d-flex gap-2">
+                        <strong>Atenção — Integração de Dados!</strong><br><br>
+                        Você já possui despesas e receitas cadastradas. Ao entrar no grupo família:<br>
+                        <ul class="mt-2 mb-2">
+                            <li><strong>Seus dados existentes ficarão integrados</strong> ao banco do grupo — todos os membros poderão vê-los.</li>
+                            <li>Da mesma forma, você passará a ver os dados de todos os outros membros.</li>
+                            <li>Suas categorias e meios de pagamento poderão ser fundidos com os do grupo.</li>
+                        </ul>
+                        <strong>Se não quiser compartilhar seus dados anteriores, exporte-os antes:</strong>
+                        <div class="mt-2 d-flex gap-2 flex-wrap">
                             <a href="{{ url_for('despesas.exportar') }}" class="btn btn-sm btn-outline-warning">
                                 <i class="bi bi-download me-1"></i> Exportar Despesas
                             </a>
@@ -31,7 +35,9 @@
                     {% else %}
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
-                        Ao entrar no grupo, você passará a compartilhar despesas, receitas e categorias com os membros.
+                        <strong>Banco de dados compartilhado!</strong><br>
+                        Ao entrar no grupo, <strong>todas as despesas, receitas e categorias serão visíveis para todos os membros</strong>.
+                        Qualquer membro poderá registrar e editar lançamentos que todos verão.
                     </div>
                     {% endif %}
 

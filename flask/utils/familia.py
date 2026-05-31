@@ -12,22 +12,22 @@ def get_user_ids_grupo():
 
 
 def filtrar_despesas(query=None):
-    """Filtra despesas do grupo — usa user_id do assinante para evitar dados anteriores de convidados"""
+    """Filtra despesas de todos os membros do grupo"""
     if query is None:
         query = Despesa.query
     if current_user.is_familia() and current_user.grupo_familia_id:
-        dono = _assinante_id()
-        return query.filter_by(user_id=dono)
+        ids = get_user_ids_grupo()
+        return query.filter(Despesa.user_id.in_(ids))
     return query.filter_by(user_id=current_user.id)
 
 
 def filtrar_receitas(query=None):
-    """Filtra receitas do grupo — usa user_id do assinante para evitar dados anteriores de convidados"""
+    """Filtra receitas de todos os membros do grupo"""
     if query is None:
         query = Receita.query
     if current_user.is_familia() and current_user.grupo_familia_id:
-        dono = _assinante_id()
-        return query.filter_by(user_id=dono)
+        ids = get_user_ids_grupo()
+        return query.filter(Receita.user_id.in_(ids))
     return query.filter_by(user_id=current_user.id)
 
 

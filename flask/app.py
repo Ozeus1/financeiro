@@ -2,15 +2,19 @@ from flask import Flask
 from flask_login import LoginManager
 from config import config
 from models import db, init_db, User
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 
 def create_app(config_name='default'):
     """Factory function para criar a aplicação Flask"""
     app = Flask(__name__)
-    
+
+    # Confiar no proxy reverso (Nginx) para HTTPS
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
     # Carregar configurações
     app.config.from_object(config[config_name])
-    
+
     # Inicializar extensões
     init_db(app)
     

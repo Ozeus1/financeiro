@@ -57,6 +57,8 @@
                                     <span class="badge bg-purple" style="background-color:#6f42c1">ProMax</span>
                                     {% elif usuario.nivel_acesso == 'pro' %}
                                     <span class="badge bg-primary">Pro</span>
+                                    {% elif usuario.nivel_acesso == 'familia' %}
+                                    <span class="badge" style="background-color:#e67e22;">Família</span>
                                     {% elif usuario.nivel_acesso == 'gerente' %}
                                     <span class="badge bg-warning text-dark">Gerente</span>
                                     {% else %}

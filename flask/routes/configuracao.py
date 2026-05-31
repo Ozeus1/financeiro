@@ -386,6 +386,21 @@ def usuarios():
                 flash('Você não pode atribuir este nível.', 'danger')
             elif user and user.id != current_user.id:
                 user.nivel_acesso = nivel
+                # Família: criar grupo automaticamente se não tiver
+                if nivel == 'familia' and not user.grupo_familia_id:
+                    from models import GrupoFamilia
+                    grupo = GrupoFamilia(
+                        nome=f'Família de {user.nome or user.username}',
+                        assinante_id=user.id,
+                        ativo=True
+                    )
+                    db.session.add(grupo)
+                    db.session.flush()
+                    user.grupo_familia_id = grupo.id
+                    user.eh_assinante_familia = True
+                elif nivel != 'familia':
+                    # Saindo do plano família via admin — não remove do grupo, apenas muda nível
+                    user.eh_assinante_familia = False
                 db.session.commit()
                 flash('Nível de acesso alterado!', 'success')
 

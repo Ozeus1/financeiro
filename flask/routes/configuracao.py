@@ -9,6 +9,18 @@ import os
 
 config_bp = Blueprint('config', __name__)
 
+
+def _bloquear_membro_familia(f):
+    """Bloqueia acesso de membros não-assinantes do plano família"""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if current_user.is_familia() and not current_user.eh_assinante_familia:
+            flash('Configurações são gerenciadas pelo assinante do plano família.', 'info')
+            return redirect(url_for('main.dashboard'))
+        return f(*args, **kwargs)
+    return decorated
+
 @config_bp.route('/importar-dados-antigos', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -134,6 +146,7 @@ def importar_dados_antigos():
 
 @config_bp.route('/categorias-despesa', methods=['GET', 'POST'])
 @login_required
+@_bloquear_membro_familia
 def categorias_despesa():
     """Gerenciar categorias de despesa"""
     if request.method == 'POST':
@@ -180,6 +193,7 @@ def categorias_despesa():
 
 @config_bp.route('/categorias-receita', methods=['GET', 'POST'])
 @login_required
+@_bloquear_membro_familia
 def categorias_receita():
     """Gerenciar categorias de receita"""
     if request.method == 'POST':
@@ -220,6 +234,7 @@ def categorias_receita():
 
 @config_bp.route('/meios-pagamento', methods=['GET', 'POST'])
 @login_required
+@_bloquear_membro_familia
 def meios_pagamento():
     """Gerenciar meios de pagamento"""
     if request.method == 'POST':
@@ -270,6 +285,7 @@ def meios_pagamento():
 
 @config_bp.route('/meios-recebimento', methods=['GET', 'POST'])
 @login_required
+@_bloquear_membro_familia
 def meios_recebimento():
     """Gerenciar meios de recebimento"""
     if request.method == 'POST':
@@ -571,6 +587,7 @@ def excluir_usuario(id):
 
 @config_bp.route('/orcamento', methods=['GET', 'POST'])
 @login_required
+@_bloquear_membro_familia
 def orcamento():
     """Gerenciar orçamento geral por categoria"""
     if request.method == 'POST':
@@ -618,6 +635,7 @@ def orcamento():
 
 @config_bp.route('/cartoes', methods=['GET', 'POST'])
 @login_required
+@_bloquear_membro_familia
 def cartoes():
     """Configurar fechamento de cartões"""
     if request.method == 'POST':

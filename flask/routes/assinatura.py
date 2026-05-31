@@ -100,6 +100,7 @@ def minha_assinatura():
                            planos_lista=planos_lista,
                            plano_pro=PLANOS['pro'],
                            plano_promax=PLANOS['promax'],
+                           plano_familia=PLANOS['familia'],
                            plano_free=PLANO_FREE,
                            historico=historico)
 

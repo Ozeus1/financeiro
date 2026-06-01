@@ -219,6 +219,9 @@ def criar_despesa(usuario):
         return jsonify({'erro': 'JSON inválido ou ausente'}), 400
 
     erros = []
+    # Aceita tanto categoria_codigo quanto categoria_despesa_codigo (bot)
+    data['categoria_codigo'] = data.get('categoria_codigo') or data.get('categoria_despesa_codigo')
+
     for campo in ('descricao', 'valor', 'data_pagamento', 'categoria_codigo', 'meio_pagamento_codigo'):
         if not data.get(campo) and data.get(campo) != 0:
             erros.append(f'Campo "{campo}" é obrigatório')
@@ -789,3 +792,42 @@ def resumo_cartoes(usuario):
         'total_geral': round(total_geral, 2),
         'meios_pagamento': dados,
     })
+
+@api_bp.route('/resumo/despesas', methods=['GET'])
+@api_key_required
+def resumo_despesas(usuario):
+    mes = request.args.get('mes', type=int)
+    ano = request.args.get('ano', type=int)
+    if not mes or not ano:
+        hoje = _date.today()
+        mes = mes or hoje.month
+        ano = ano or hoje.year
+    q = Despesa.query.filter_by(user_id=usuario.id).filter(
+        extract('month', Despesa.data_pagamento) == mes,
+        extract('year', Despesa.data_pagamento) == ano)
+    despesas = q.order_by(Despesa.data_pagamento.desc()).all()
+    MESES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    return jsonify({'mes': mes, 'ano': ano, 'nome_mes': MESES[mes-1],
+                    'total_registros': len(despesas),
+                    'total_valor': round(sum(d.valor for d in despesas), 2),
+                    'itens': [_despesa_dict(d) for d in despesas]})
+
+
+@api_bp.route('/resumo/receitas', methods=['GET'])
+@api_key_required
+def resumo_receitas(usuario):
+    mes = request.args.get('mes', type=int)
+    ano = request.args.get('ano', type=int)
+    if not mes or not ano:
+        hoje = _date.today()
+        mes = mes or hoje.month
+        ano = ano or hoje.year
+    q = Receita.query.filter_by(user_id=usuario.id).filter(
+        extract('month', Receita.data_recebimento) == mes,
+        extract('year', Receita.data_recebimento) == ano)
+    receitas = q.order_by(Receita.data_recebimento.desc()).all()
+    MESES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    return jsonify({'mes': mes, 'ano': ano, 'nome_mes': MESES[mes-1],
+                    'total_registros': len(receitas),
+                    'total_valor': round(sum(r.valor for r in receitas), 2),
+                    'itens': [_receita_dict(r) for r in receitas]})

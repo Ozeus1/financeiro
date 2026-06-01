@@ -39,6 +39,7 @@ def create_app(config_name='default'):
     from routes.fluxo_caixa import fluxo_caixa_bp
     from routes.assinatura import assinatura_bp
     from routes.familia import familia_bp
+    from routes.api_v1 import api_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -49,6 +50,7 @@ def create_app(config_name='default'):
     app.register_blueprint(fluxo_caixa_bp)
     app.register_blueprint(assinatura_bp)
     app.register_blueprint(familia_bp)
+    app.register_blueprint(api_bp, url_prefix='/api/v1')
 
     @app.template_filter('moeda')
     def formatar_moeda(valor):

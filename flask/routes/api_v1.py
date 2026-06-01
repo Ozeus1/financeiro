@@ -867,3 +867,74 @@ def resumo_receitas(usuario):
         'total_valor': total_valor,
         'itens': [_receita_dict(r) for r in receitas],
     })
+
+
+# ── Orçamento por categoria ────────────────────────────────────────────────────
+
+@api_bp.route('/orcamento', methods=['GET'])
+@api_key_required
+def consultar_orcamento(usuario):
+    """
+    Consulta orçamento de categorias e compara com gasto real do mês.
+    Params opcionais:
+      categoria_codigo — filtra uma categoria específica
+      mes, ano        — mês/ano para calcular o gasto real (padrão: mês atual)
+    Retorna: lista com orcado, gasto_real, saldo e status (dentro/estourado)
+    """
+    mes = request.args.get('mes', type=int)
+    ano = request.args.get('ano', type=int)
+    cat_cod = request.args.get('categoria_codigo', type=int)
+
+    if not mes or not ano:
+        hoje = _date.today()
+        mes = mes or hoje.month
+        ano = ano or hoje.year
+
+    MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+             'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+    q = Orcamento.query.filter_by(user_id=usuario.id)
+    if cat_cod:
+        q = q.filter_by(categoria_id=cat_cod)
+    orcamentos = q.all()
+
+    resultado = []
+    total_orcado = 0
+    total_gasto = 0
+
+    for orc in orcamentos:
+        gasto = db.session.query(db.func.sum(Despesa.valor)).filter(
+            Despesa.user_id == usuario.id,
+            Despesa.categoria_id == orc.categoria_id,
+            extract('month', Despesa.data_pagamento) == mes,
+            extract('year', Despesa.data_pagamento) == ano
+        ).scalar() or 0.0
+
+        gasto = round(gasto, 2)
+        orcado = round(orc.valor_orcado, 2)
+        saldo = round(orcado - gasto, 2)
+        percentual = round(gasto / orcado * 100, 1) if orcado > 0 else 0
+        status = 'estourado' if gasto > orcado else 'dentro'
+
+        total_orcado += orcado
+        total_gasto += gasto
+
+        resultado.append({
+            'categoria_codigo': orc.categoria_id,
+            'categoria_nome': orc.categoria.nome if orc.categoria else None,
+            'orcado': orcado,
+            'gasto_real': gasto,
+            'saldo': saldo,
+            'percentual_executado': percentual,
+            'status': status,
+        })
+
+    return jsonify({
+        'mes': mes,
+        'ano': ano,
+        'nome_mes': MESES[mes - 1],
+        'total_orcado': round(total_orcado, 2),
+        'total_gasto': round(total_gasto, 2),
+        'total_saldo': round(total_orcado - total_gasto, 2),
+        'categorias': resultado,
+    })

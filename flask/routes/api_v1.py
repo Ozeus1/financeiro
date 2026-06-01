@@ -218,6 +218,9 @@ def criar_despesa(usuario):
     if not data:
         return jsonify({'erro': 'JSON inválido ou ausente'}), 400
 
+    # Aceita tanto categoria_codigo quanto categoria_despesa_codigo (compatibilidade com bot)
+    data['categoria_codigo'] = data.get('categoria_codigo') or data.get('categoria_despesa_codigo')
+
     erros = []
     for campo in ('descricao', 'valor', 'data_pagamento', 'categoria_codigo', 'meio_pagamento_codigo'):
         if not data.get(campo) and data.get(campo) != 0:

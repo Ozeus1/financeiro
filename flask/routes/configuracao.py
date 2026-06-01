@@ -891,7 +891,13 @@ def api_key():
             return redirect(url_for('config.api_key'))
 
     from models import ApiKey, CategoriaReceita, ConfigSistema
-    usuarios  = User.query.order_by(User.username).all()
+    # Excluir membros não-assinantes do plano família (só o assinante tem API key)
+    usuarios = User.query.filter(
+        db.or_(
+            User.nivel_acesso != 'familia',
+            User.eh_assinante_familia == True
+        )
+    ).order_by(User.username).all()
     keys_map  = {ak.user_id: ak for ak in ApiKey.query.all()}
     raw_map   = {}
     for u in usuarios:

@@ -244,9 +244,13 @@ def iniciar(plano):
         return redirect(init_point)
 
     except ImportError:
+        import logging
+        logging.error('MERCADOPAGO: biblioteca nao instalada')
         flash('Biblioteca mercadopago não instalada no servidor.', 'danger')
         return redirect(url_for('assinatura.minha_assinatura'))
     except Exception as e:
+        import logging, traceback
+        logging.error(f'MERCADOPAGO ERRO: {e}\n{traceback.format_exc()}')
         flash(f'Erro ao iniciar pagamento: {e}', 'danger')
         return redirect(url_for('assinatura.minha_assinatura'))
 

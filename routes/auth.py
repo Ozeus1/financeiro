@@ -191,6 +191,18 @@ def supabase_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def nao_free_required(f):
+    """Decorator: bloqueia apenas usuários free"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+        if current_user.is_free():
+            flash('Esta funcionalidade não está disponível no plano Free. Faça upgrade para acessar.', 'warning')
+            return redirect(url_for('assinatura.minha_assinatura'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 def openfinance_required(f):
     """Decorator: admin ou pro com allow_openfinance"""
     @wraps(f)

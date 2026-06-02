@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+{% block title %}Importar Fatura Cartão — FiNan{% endblock %}
+
+{% block extra_css %}
+<style>
+.step-header { background:#f8fafc; border-radius:12px; padding:1rem 1.25rem; border:1px solid #e2e8f0; margin-bottom:1rem; }
+.step-num { width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+            font-size:.8rem; font-weight:700; flex-shrink:0; }
+.tabela-fatura { font-size:.83rem; }
+.tabela-fatura td, .tabela-fatura th { vertical-align:middle; padding:.4rem .6rem; }
+.duplicata-row { background:#fff3cd !important; }
+.campo-edit { border:none; background:transparent; width:100%; font-size:.83rem; padding:0; }
+.campo-edit:focus { outline:1px solid #4361ee; border-radius:4px; background:#fff; padding:2px 4px; }
+.badge-parcela { font-size:.68rem; }
+#dropzone { border:2px dashed #cbd5e1; border-radius:12px; padding:2.5rem; text-align:center;
+            cursor:pointer; transition:border-color .2s, background .2s; }
+#dropzone.drag-over { border-color:#4361ee; background:#f0f4ff; }
+#dropzone.has-file { border-color:#22c55e; background:#f0fdf4; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" style="max-width:1200px;">
+
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <div>
+      <h4 class="fw-bold mb-0"><i class="bi bi-credit-card-2-front me-2 text-primary"></i>Importar Fatura de Cartão</h4>
+      <small class="text-muted">Importe despesas a partir do CSV da fatura do seu cartão de crédito.</small>
+    </div>
+  </div>
+
+  {# ── PASSO 1: Escolher cartão e arquivo ── #}
+  <div class="card shadow-sm mb-4" id="passo1">
+    <div class="card-body">
+      <div class="step-header d-flex align-items-center gap-2 mb-3">
+        <span class="step-num bg-primary text-white">1</span>
+        <span class="fw-semibold">Selecione o cartão e envie o arquivo CSV</span>
+      </div>
+
+      {% if not cartoes %}
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        Nenhum cartão de crédito cadastrado. Vá em
+        <a href="{{ url_for('config.meios_pagamento') }}">Meios de Pagamento</a>
+        e cadastre um cartão com tipo <strong>Cartão</strong>.
+      </div>
+      {% else %}
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Cartão de crédito <span class="text-danger">*</span></label>
+          <select class="form-select" id="selectCartao">
+            <option value="">— Selecione —</option>
+            {% for c in cartoes %}
+            {% set fc = fechamentos.get(c.id) %}
+            <option value="{{ c.id }}"
+                    data-fech="{{ fc.dia_fechamento if fc else '' }}"
+                    data-venc="{{ fc.dia_vencimento if fc else '' }}">
+              {{ c.nome }}
+              {% if fc %} (fecha dia {{ fc.dia_fechamento }}, vence dia {{ fc.dia_vencimento }}){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+          <div id="avisoSemFechamento" class="form-text text-warning d-none">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Este cartão não tem datas de fechamento configuradas.
+            <a href="{{ url_for('config.cartoes') }}" target="_blank">Configurar agora</a>
+          </div>
+        </div>
+
+        <div class="col-md-5">
+          <label class="form-label fw-semibold">Arquivo CSV da fatura <span class="text-danger">*</span></label>
+          <div id="dropzone" onclick="document.getElementById('inputCsv').click()">
+            <i class="bi bi-file-earmark-arrow-up fs-3 text-muted"></i>
+            <div class="mt-2 text-muted small">Clique ou arraste o arquivo CSV aqui</div>
+            <div id="nomeArquivo" class="mt-1 fw-semibold text-success d-none"></div>
+          </div>
+          <input type="file" id="inputCsv" accept=".csv" class="d-none">
+        </div>
+
+        <div class="col-md-3 d-flex align-items-end">
+          <button class="btn btn-primary w-100" id="btnProcessar" disabled>
+            <i class="bi bi-search me-1"></i> Processar Fatura
+          </button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── PASSO 2: Revisar dados ── #}
+  <div class="card shadow-sm mb-4 d-none" id="passo2">
+    <div class="card-body">
+      <div class="step-header d-flex align-items-center gap-2 mb-3">
+        <span class="step-num bg-warning text-dark">2</span>
+        <span class="fw-semibold">Revise e edite os dados antes de importar</span>
+        <span class="ms-auto">
+          <span class="badge bg-secondary" id="totalLinhas">0 registros</span>
+          <span class="badge bg-warning text-dark ms-1 d-none" id="totalDuplicatas"></span>
+        </span>
+      </div>
+
+      <div id="avisoErros" class="alert alert-warning d-none mb-3"></div>
+
+      <div class="d-flex gap-2 mb-3 flex-wrap">
+        <button class="btn btn-sm btn-outline-secondary" id="btnSelecionarTodos">
+          <i class="bi bi-check2-all me-1"></i>Selecionar Todos
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" id="btnDesmarcarDuplicatas">
+          <i class="bi bi-exclamation-triangle me-1"></i>Desmarcar Duplicatas
+        </button>
+        <div class="ms-auto d-flex gap-2">
+          <input type="text" class="form-control form-control-sm" id="filtroDescricao"
+                 placeholder="Filtrar descrição..." style="width:200px;">
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover tabela-fatura mb-0" id="tabelaFatura">
+          <thead class="table-dark">
+            <tr>
+              <th style="width:36px;"><input type="checkbox" id="checkTodos" checked></th>
+              <th>Descrição</th>
+              <th style="width:100px;">Valor (R$)</th>
+              <th style="width:110px;">Data Compra</th>
+              <th style="width:115px;">Data Pagto</th>
+              <th style="width:85px;">Parcela</th>
+              <th style="width:160px;">Categoria</th>
+              <th style="width:46px;"></th>
+            </tr>
+          </thead>
+          <tbody id="tbodyFatura"></tbody>
+        </table>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <button class="btn btn-outline-secondary" onclick="document.getElementById('passo2').classList.add('d-none')">
+          <i class="bi bi-arrow-left me-1"></i> Voltar
+        </button>
+        <button class="btn btn-success px-4" id="btnImportar">
+          <i class="bi bi-cloud-arrow-up me-1"></i> Importar Selecionados
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {# ── PASSO 3: Resultado ── #}
+  <div class="alert d-none" id="resultadoImport"></div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Dados das categorias disponíveis ──
+const categorias = {{ categorias | map(attribute='nome') | list | tojson }};
+
+let dadosProcessados = [];
+let cartaoId = null;
+let cartaoNome = '';
+
+// ── Dropzone ──
+const dropzone = document.getElementById('dropzone');
+const inputCsv = document.getElementById('inputCsv');
+
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) setArquivo(f);
+});
+inputCsv.addEventListener('change', () => { if (inputCsv.files[0]) setArquivo(inputCsv.files[0]); });
+
+function setArquivo(f) {
+    inputCsv.files = createFileList(f);
+    dropzone.classList.add('has-file');
+    document.getElementById('nomeArquivo').textContent = f.name;
+    document.getElementById('nomeArquivo').classList.remove('d-none');
+    verificarBotao();
+}
+
+function createFileList(f) {
+    const dt = new DataTransfer();
+    dt.items.add(f);
+    return dt.files;
+}
+
+// ── Select cartão ──
+document.getElementById('selectCartao').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    const fech = opt.dataset.fech;
+    document.getElementById('avisoSemFechamento').classList.toggle('d-none', !!fech);
+    verificarBotao();
+});
+
+function verificarBotao() {
+    const temCartao = document.getElementById('selectCartao').value;
+    const temArquivo = inputCsv.files && inputCsv.files.length > 0;
+    document.getElementById('btnProcessar').disabled = !(temCartao && temArquivo);
+}
+
+// ── Processar CSV ──
+document.getElementById('btnProcessar').addEventListener('click', async function() {
+    cartaoId = document.getElementById('selectCartao').value;
+    const arquivo = inputCsv.files[0];
+    if (!cartaoId || !arquivo) return;
+
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processando...';
+
+    const form = new FormData();
+    form.append('cartao_id', cartaoId);
+    form.append('arquivo', arquivo);
+
+    try {
+        const resp = await fetch('{{ url_for("config.processar_fatura_cartao") }}', {
+            method: 'POST', body: form
+        });
+        const data = await resp.json();
+
+        if (!data.success) {
+            alert('Erro: ' + data.error);
+            return;
+        }
+
+        cartaoNome = data.cartao_nome;
+        dadosProcessados = data.linhas;
+        renderizarTabela(dadosProcessados);
+
+        // Erros de parsing
+        if (data.erros && data.erros.length > 0) {
+            const div = document.getElementById('avisoErros');
+            div.innerHTML = '<strong>Avisos:</strong><br>' + data.erros.join('<br>');
+            div.classList.remove('d-none');
+        }
+
+        document.getElementById('passo2').classList.remove('d-none');
+        document.getElementById('passo2').scrollIntoView({ behavior: 'smooth' });
+
+    } finally {
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-search me-1"></i> Processar Fatura';
+    }
+});
+
+// ── Renderizar tabela ──
+function renderizarTabela(linhas) {
+    const tbody = document.getElementById('tbodyFatura');
+    tbody.innerHTML = '';
+
+    const dupl = linhas.filter(l => l.duplicata).length;
+    document.getElementById('totalLinhas').textContent = linhas.length + ' registro(s)';
+
+    if (dupl > 0) {
+        const bd = document.getElementById('totalDuplicatas');
+        bd.textContent = dupl + ' possível(is) duplicata(s)';
+        bd.classList.remove('d-none');
+    }
+
+    linhas.forEach((l, i) => {
+        const tr = document.createElement('tr');
+        if (l.duplicata) tr.classList.add('duplicata-row');
+        tr.dataset.idx = i;
+
+        const catOpts = categorias.map(c =>
+            `<option value="${esc(c)}" ${c === l.categoria ? 'selected' : ''}>${esc(c)}</option>`
+        ).join('');
+
+        tr.innerHTML = `
+            <td><input type="checkbox" class="check-linha" ${l.duplicata ? '' : 'checked'}></td>
+            <td><input class="campo-edit" value="${esc(l.descricao)}" data-field="descricao"></td>
+            <td><input class="campo-edit text-end" value="${l.valor.toFixed(2).replace('.',',')}" data-field="valor" style="width:90px;"></td>
+            <td><input class="campo-edit" value="${esc(l.data_compra)}" data-field="data_compra" style="width:100px;"></td>
+            <td><input class="campo-edit" value="${esc(l.data_pagamento)}" data-field="data_pagamento" style="width:105px;"></td>
+            <td class="text-center">
+                ${l.num_parcelas > 1
+                    ? `<span class="badge bg-info badge-parcela">${l.parcela_atual}/${l.num_parcelas}</span>`
+                    : '<span class="badge bg-secondary badge-parcela">única</span>'}
+            </td>
+            <td>
+                <select class="form-select form-select-sm p-0 border-0 campo-edit" data-field="categoria" style="font-size:.83rem;">
+                    ${catOpts}
+                    <option value="Outros" ${l.categoria === 'Outros' ? 'selected' : ''}>Outros</option>
+                </select>
+            </td>
+            <td>
+                ${l.duplicata ? '<i class="bi bi-exclamation-triangle text-warning" title="Possível duplicata — já existe registro similar"></i>' : ''}
+            </td>
+        `;
+
+        // Atualizar dados ao editar
+        tr.querySelectorAll('.campo-edit').forEach(inp => {
+            inp.addEventListener('change', function() {
+                const field = this.dataset.field;
+                let val = this.value.trim();
+                if (field === 'valor') val = parseFloat(val.replace(',', '.')) || 0;
+                dadosProcessados[i][field] = val;
+            });
+        });
+
+        tbody.appendChild(tr);
+    });
+}
+
+function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Selecionar todos / desmarcar duplicatas ──
+document.getElementById('checkTodos').addEventListener('change', function() {
+    document.querySelectorAll('.check-linha').forEach(c => c.checked = this.checked);
+});
+document.getElementById('btnSelecionarTodos').addEventListener('click', () => {
+    document.querySelectorAll('.check-linha').forEach(c => c.checked = true);
+    document.getElementById('checkTodos').checked = true;
+});
+document.getElementById('btnDesmarcarDuplicatas').addEventListener('click', () => {
+    document.querySelectorAll('#tbodyFatura tr.duplicata-row .check-linha').forEach(c => c.checked = false);
+});
+
+// ── Filtro de descrição ──
+document.getElementById('filtroDescricao').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#tbodyFatura tr').forEach(tr => {
+        const desc = tr.querySelector('[data-field="descricao"]');
+        tr.style.display = (!q || (desc && desc.value.toLowerCase().includes(q))) ? '' : 'none';
+    });
+});
+
+// ── Importar ──
+document.getElementById('btnImportar').addEventListener('click', async function() {
+    const linhasSel = [];
+    document.querySelectorAll('#tbodyFatura tr').forEach(tr => {
+        const check = tr.querySelector('.check-linha');
+        if (!check || !check.checked) return;
+        const idx = parseInt(tr.dataset.idx);
+        const item = { ...dadosProcessados[idx] };
+        // Pegar valores editados dos campos
+        tr.querySelectorAll('.campo-edit').forEach(inp => {
+            const f = inp.dataset.field;
+            if (f) {
+                let v = inp.value.trim();
+                if (f === 'valor') v = parseFloat(v.replace(',', '.')) || 0;
+                item[f] = v;
+            }
+        });
+        linhasSel.push(item);
+    });
+
+    if (linhasSel.length === 0) {
+        alert('Selecione pelo menos um item para importar.');
+        return;
+    }
+
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Importando...';
+
+    try {
+        const resp = await fetch('{{ url_for("config.importar_fatura_cartao_confirmar") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: linhasSel, cartao_id: parseInt(cartaoId) })
+        });
+        const data = await resp.json();
+
+        const div = document.getElementById('resultadoImport');
+        div.classList.remove('d-none', 'alert-success', 'alert-danger');
+        if (data.success) {
+            div.classList.add('alert-success');
+            div.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>${data.message}</strong>` +
+                (data.erros && data.erros.length ? '<br><small>Erros: ' + data.erros.join(', ') + '</small>' : '');
+            document.getElementById('passo2').classList.add('d-none');
+        } else {
+            div.classList.add('alert-danger');
+            div.innerHTML = '<i class="bi bi-x-circle me-2"></i>' + data.error;
+        }
+        div.scrollIntoView({ behavior: 'smooth' });
+    } finally {
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-cloud-arrow-up me-1"></i> Importar Selecionados';
+    }
+});
+</script>
+{% endblock %}

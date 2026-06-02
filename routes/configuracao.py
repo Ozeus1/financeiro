@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
 from flask_login import login_required, current_user
-from routes.auth import admin_required, gerente_required, supabase_required, openfinance_required
+from routes.auth import admin_required, gerente_required, supabase_required, openfinance_required, nao_free_required
 from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa, Receita, BalancoMensal, EventoCaixaAvulso, ConfigSistema, ApiKey
 from utils.supabase_client import SupabaseClient
 import json
@@ -2175,3 +2175,229 @@ def openfinance_token():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+# ─── Importar Fatura Cartão ───────────────────────────────────────────────────
+
+@config_bp.route('/importar-fatura-cartao', methods=['GET'])
+@login_required
+@nao_free_required
+def importar_fatura_cartao():
+    """Página de importação de fatura de cartão CSV"""
+    cartoes = MeioPagamento.query.filter_by(
+        tipo='cartao', ativo=True, user_id=current_user.id
+    ).order_by(MeioPagamento.nome).all()
+    fechamentos = {fc.meio_pagamento_id: fc for fc in FechamentoCartao.query.all()}
+    categorias = CategoriaDespesa.query.filter_by(
+        user_id=current_user.id, ativo=True
+    ).order_by(CategoriaDespesa.nome).all()
+    return render_template('config/importar_fatura_cartao.html',
+                           cartoes=cartoes,
+                           fechamentos=fechamentos,
+                           categorias=categorias)
+
+
+@config_bp.route('/importar-fatura-cartao/processar', methods=['POST'])
+@login_required
+@nao_free_required
+def processar_fatura_cartao():
+    """Processa o CSV enviado e retorna os dados para revisão"""
+    import io, csv
+    from werkzeug.utils import secure_filename
+
+    cartao_id = request.form.get('cartao_id', type=int)
+    if not cartao_id:
+        return jsonify({'success': False, 'error': 'Selecione um cartão.'})
+
+    cartao = MeioPagamento.query.filter_by(
+        id=cartao_id, user_id=current_user.id, tipo='cartao'
+    ).first()
+    if not cartao:
+        return jsonify({'success': False, 'error': 'Cartão não encontrado.'})
+
+    fechamento = FechamentoCartao.query.filter_by(meio_pagamento_id=cartao_id).first()
+
+    arquivo = request.files.get('arquivo')
+    if not arquivo or not arquivo.filename.endswith('.csv'):
+        return jsonify({'success': False, 'error': 'Envie um arquivo CSV válido.'})
+
+    # Detectar encoding
+    raw = arquivo.read()
+    for enc in ('utf-8-sig', 'latin-1', 'cp1252'):
+        try:
+            texto = raw.decode(enc)
+            break
+        except Exception:
+            continue
+    else:
+        return jsonify({'success': False, 'error': 'Encoding do arquivo não reconhecido.'})
+
+    # Detectar separador
+    amostra = texto[:2000]
+    sep = ';' if amostra.count(';') > amostra.count(',') else ','
+
+    reader = csv.DictReader(io.StringIO(texto), delimiter=sep)
+
+    # Mapear colunas (case-insensitive, sem acentos)
+    def _norm(s):
+        import unicodedata
+        s = unicodedata.normalize('NFKD', s or '').encode('ascii', 'ignore').decode().lower().strip()
+        return s
+
+    linhas = []
+    erros = []
+
+    for i, row in enumerate(reader):
+        cols = {_norm(k): v for k, v in row.items()}
+
+        # Data
+        data_raw = (cols.get('data de compra') or cols.get('data') or cols.get('date') or '').strip()
+        try:
+            from datetime import datetime as _dt, date as _date, timedelta
+            if '/' in data_raw:
+                data_compra = _dt.strptime(data_raw, '%d/%m/%Y').date()
+            elif '-' in data_raw:
+                data_compra = _dt.strptime(data_raw, '%Y-%m-%d').date()
+            else:
+                erros.append(f'Linha {i+2}: data inválida "{data_raw}"')
+                continue
+        except Exception:
+            erros.append(f'Linha {i+2}: data inválida "{data_raw}"')
+            continue
+
+        # Descrição
+        descricao = (cols.get('descricao') or cols.get('description') or
+                     cols.get('estabelecimento') or cols.get('nome') or '').strip()
+
+        # Valor em R$
+        valor_raw = (cols.get('valor (em r$)') or cols.get('valor') or
+                     cols.get('value') or cols.get('amount') or '0').strip()
+        try:
+            valor_str = valor_raw.replace('.', '').replace(',', '.').replace(' ', '')
+            valor = float(valor_str)
+        except Exception:
+            erros.append(f'Linha {i+2}: valor inválido "{valor_raw}"')
+            continue
+
+        # Ignorar créditos (valores negativos = estornos/pagamentos)
+        if valor <= 0:
+            continue
+
+        # Parcelas — ex: "07/dez" ou "única" ou "1"
+        parcela_raw = (cols.get('parcela') or cols.get('parcelas') or 'única').strip()
+        num_parcelas = 1
+        parcela_atual = 1
+        if '/' in parcela_raw:
+            try:
+                partes = parcela_raw.split('/')
+                parcela_atual = int(partes[0])
+                num_parcelas = int(partes[1]) if partes[1].isdigit() else 1
+            except Exception:
+                pass
+
+        # Categoria
+        cat_raw = (cols.get('categoria') or cols.get('category') or 'Outros').strip()
+
+        # Calcular data de pagamento considerando fechamento do cartão
+        data_pagamento = data_compra
+        if fechamento and num_parcelas > 1:
+            from dateutil.relativedelta import relativedelta as _rd
+            dia_fech = fechamento.dia_fechamento
+            dia_venc = fechamento.dia_vencimento
+            # Determinar mês de vencimento da 1ª parcela
+            if data_compra.day <= dia_fech:
+                base = data_compra.replace(day=1)
+            else:
+                base = (data_compra.replace(day=1) + _rd(months=1))
+            # Adicionar parcelas já pagas
+            mes_pag = base + _rd(months=parcela_atual - 1)
+            try:
+                data_pagamento = mes_pag.replace(day=dia_venc)
+            except Exception:
+                data_pagamento = mes_pag
+
+        # Verificar duplicata
+        duplicata = Despesa.query.filter_by(
+            user_id=current_user.id,
+            descricao=descricao,
+            meio_pagamento_id=cartao_id,
+            data_pagamento=data_pagamento
+        ).filter(Despesa.valor.between(valor - 0.01, valor + 0.01)).first()
+
+        linhas.append({
+            'descricao': descricao,
+            'valor': round(valor, 2),
+            'data_compra': data_compra.strftime('%d/%m/%Y'),
+            'data_pagamento': data_pagamento.strftime('%d/%m/%Y'),
+            'parcela_atual': parcela_atual,
+            'num_parcelas': num_parcelas,
+            'categoria': cat_raw,
+            'duplicata': bool(duplicata),
+        })
+
+    return jsonify({
+        'success': True,
+        'linhas': linhas,
+        'erros': erros,
+        'cartao_nome': cartao.nome,
+        'cartao_id': cartao_id,
+    })
+
+
+@config_bp.route('/importar-fatura-cartao/importar', methods=['POST'])
+@login_required
+@nao_free_required
+def importar_fatura_cartao_confirmar():
+    """Importa os itens selecionados para o banco"""
+    from datetime import datetime as _dt
+
+    data = request.get_json()
+    items = data.get('items', [])
+    cartao_id = data.get('cartao_id')
+
+    if not cartao_id:
+        return jsonify({'success': False, 'error': 'Cartão não informado.'})
+
+    cartao = MeioPagamento.query.filter_by(
+        id=cartao_id, user_id=current_user.id, tipo='cartao'
+    ).first()
+    if not cartao:
+        return jsonify({'success': False, 'error': 'Cartão não encontrado.'})
+
+    importados = 0
+    erros = []
+
+    for item in items:
+        try:
+            # Categoria — cria se não existir
+            cat_nome = (item.get('categoria') or 'Outros').strip()
+            categoria = CategoriaDespesa.query.filter_by(
+                nome=cat_nome, user_id=current_user.id
+            ).first()
+            if not categoria:
+                categoria = CategoriaDespesa(nome=cat_nome, ativo=True, user_id=current_user.id)
+                db.session.add(categoria)
+                db.session.flush()
+
+            # Data de pagamento
+            data_pag = _dt.strptime(item['data_pagamento'], '%d/%m/%Y').date()
+
+            nova = Despesa(
+                descricao=item['descricao'],
+                valor=float(item['valor']),
+                data_pagamento=data_pag,
+                num_parcelas=int(item.get('num_parcelas', 1)),
+                categoria_id=categoria.id,
+                meio_pagamento_id=cartao_id,
+                user_id=current_user.id,
+            )
+            db.session.add(nova)
+            importados += 1
+        except Exception as e:
+            erros.append(f'{item.get("descricao","?")}: {e}')
+
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'message': f'{importados} despesa(s) importada(s) com sucesso!',
+        'erros': erros,
+    })

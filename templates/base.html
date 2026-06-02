@@ -108,6 +108,9 @@
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('config.orcamento') }}">Orçamentos</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('config.cartoes') }}">Configurar Cartões</a></li>
+                        {% if not current_user.is_free() %}
+                        <li><a class="dropdown-item" href="{{ url_for('config.importar_fatura_cartao') }}"><i class="bi bi-credit-card-2-front me-1 text-primary"></i>Importar Fatura Cartão</a></li>
+                        {% endif %}
                         {% if current_user.is_admin() or current_user.is_gerente() %}
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('config.usuarios') }}">Gerenciar Usuários</a></li>
@@ -223,6 +226,9 @@
         <a class="nav-link dropdown-sub" href="{{ url_for('config.meios_recebimento') }}"><i class="bi bi-bank"></i>Meios de Recebimento</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.orcamento') }}"><i class="bi bi-calculator"></i>Orçamentos</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('config.cartoes') }}"><i class="bi bi-credit-card"></i>Configurar Cartões</a>
+        {% if not current_user.is_free() %}
+        <a class="nav-link dropdown-sub" href="{{ url_for('config.importar_fatura_cartao') }}"><i class="bi bi-credit-card-2-front text-primary"></i>Importar Fatura Cartão</a>
+        {% endif %}
         {% if current_user.is_admin() or current_user.is_gerente() %}
         <a class="nav-link dropdown-sub" href="{{ url_for('config.usuarios') }}"><i class="bi bi-people"></i>Gerenciar Usuários</a>
         {% endif %}

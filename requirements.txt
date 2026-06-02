@@ -17,6 +17,7 @@ psycopg2-binary>=2.9.9
 
 # HTTP e API
 requests>=2.31.0
+mercadopago>=2.2.0
 
 # Servidor de produção
 gunicorn>=21.2.0

@@ -186,6 +186,7 @@ def iniciar(plano):
         ciclo = 'mensal'
 
     mp_access_token = ConfigSistema.get('mp_access_token', '')
+    logging.warning(f'TOKEN: existe={bool(mp_access_token)} valor={repr(mp_access_token[:10]) if mp_access_token else "VAZIO"}')
     if not mp_access_token:
         flash('Sistema de pagamento não configurado. Entre em contato com o administrador.', 'danger')
         return redirect(url_for('assinatura.minha_assinatura'))

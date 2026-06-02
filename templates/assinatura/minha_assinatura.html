@@ -3,315 +3,226 @@
 
 {% block extra_css %}
 <style>
-/* ── toggle ── */
 .ciclo-toggle { display:inline-flex; background:#f1f5f9; border-radius:50px; padding:4px; gap:4px; }
 .ciclo-btn { border:none; background:transparent; padding:.35rem 1.1rem; border-radius:50px;
              font-size:.85rem; font-weight:600; cursor:pointer; transition:all .2s; color:#64748b; }
 .ciclo-btn.active { background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.12); color:#0d1b2a; }
-.badge-economia { font-size:.65rem; background:#22c55e; color:#fff;
-                  padding:.2em .55em; border-radius:20px; vertical-align:middle; }
-
-/* ── cards ── */
+.badge-economia { font-size:.65rem; background:#22c55e; color:#fff; padding:.2em .55em; border-radius:20px; vertical-align:middle; }
 .plano-card { border-radius:16px; transition:transform .18s, box-shadow .18s; border:2px solid #e2e8f0; }
 .plano-card:hover { transform:translateY(-4px); box-shadow:0 8px 30px rgba(0,0,0,.1); }
 .plano-card.atual { border-width:3px; }
 .plano-card.destaque { position:relative; }
 .destaque-ribbon { position:absolute; top:-13px; left:50%; transform:translateX(-50%);
     background:#6f42c1; color:#fff; font-size:.68rem; font-weight:700;
-    padding:.25em .9em; border-radius:20px; white-space:nowrap; letter-spacing:.03em; }
-
+    padding:.25em .9em; border-radius:20px; white-space:nowrap; }
 .preco-val { font-size:2.4rem; font-weight:800; line-height:1; }
 .preco-por { font-size:.78rem; color:#94a3b8; }
 .preco-original { font-size:.8rem; color:#94a3b8; text-decoration:line-through; }
-
 .recurso-row { display:flex; gap:.5rem; align-items:flex-start; padding:.28rem 0; font-size:.85rem; }
-.recurso-row i { flex-shrink:0; margin-top:2px; font-size:.95rem; }
-
-/* ── plano atual badge ── */
-.atual-badge { display:inline-block; font-size:.68rem; font-weight:700;
-               padding:.2em .75em; border-radius:20px; letter-spacing:.04em; }
+.recurso-row i { flex-shrink:0; margin-top:2px; }
+.atual-badge { display:inline-block; font-size:.68rem; font-weight:700; padding:.2em .75em; border-radius:20px; }
 </style>
 {% endblock %}
 
 {% block content %}
 {% set nivel = current_user.nivel_acesso %}
 
+{# ── Macro para renderizar um card de plano ── #}
+{% macro card_plano(plano_id, nome, cor, icone, preco, recursos, destaque=false) %}
+{% set eh_atual = (nivel == plano_id) %}
+{% set eh_gratis = (preco == 0) %}
+<div class="col-6 col-md-4" style="flex:0 0 auto;width:19%;">
+  <div class="card plano-card h-100 {% if eh_atual %}atual{% endif %} {% if destaque %}destaque{% endif %}"
+       style="border-color:{{ cor }}{% if eh_atual %};background:{{ cor }}08{% endif %};">
+    {% if destaque %}<span class="destaque-ribbon">MAIS POPULAR</span>{% endif %}
+    <div class="card-body p-3 d-flex flex-column">
+
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi {{ icone }}" style="color:{{ cor }};font-size:1.3rem;"></i>
+        <span class="fw-bold" style="font-size:.95rem;">{{ nome }}</span>
+        {% if eh_atual %}
+        <span class="atual-badge ms-auto text-white" style="background:{{ cor }};">Atual</span>
+        {% endif %}
+      </div>
+
+      {% if eh_atual and current_user.data_validade %}
+      <div class="alert py-1 px-2 mb-2 small {% if current_user.esta_valido() %}alert-info{% else %}alert-danger{% endif %}"
+           style="font-size:.75rem;">
+        {% if current_user.esta_valido() %}
+        <i class="bi bi-calendar-check me-1"></i>Válido até {{ current_user.data_validade.strftime('%d/%m/%Y') }} ({{ current_user.dias_restantes() }}d)
+        {% else %}
+        <i class="bi bi-exclamation-triangle me-1"></i>Expirado em {{ current_user.data_validade.strftime('%d/%m/%Y') }}
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <div class="mb-1 preco-mensal">
+        {% if eh_gratis %}
+        <span class="preco-val" style="color:{{ cor }};">Grátis</span>
+        {% else %}
+        <span class="preco-val" style="color:{{ cor }};">R$ {{ "%.2f"|format(preco)|replace('.', ',') }}</span>
+        <span class="preco-por">/mês</span>
+        {% endif %}
+      </div>
+      {% if not eh_gratis %}
+      <div class="mb-1 preco-anual d-none">
+        {% set preco_mes_anual = (preco * 0.80)|round(2) %}
+        {% set preco_total_anual = (preco * 12 * 0.80)|round(2) %}
+        <span class="preco-original">R$ {{ "%.2f"|format(preco)|replace('.', ',') }}/mês</span><br>
+        <span class="preco-val" style="color:{{ cor }};">R$ {{ "%.2f"|format(preco_mes_anual)|replace('.', ',') }}</span>
+        <span class="preco-por">/mês</span>
+        <br><small class="text-muted" style="font-size:.72rem;">R$ {{ "%.2f"|format(preco_total_anual)|replace('.', ',') }}/ano</small>
+      </div>
+      {% endif %}
+
+      <hr class="my-2">
+
+      <ul class="list-unstyled mb-3 flex-grow-1">
+        {% for rec in recursos %}
+        <li class="recurso-row">
+          <i class="bi bi-{{ rec[0] }}"></i>
+          <span>{{ rec[1] }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+
+      {% if eh_atual %}
+      <button class="btn btn-sm w-100 fw-bold" style="background:{{ cor }};color:#fff;opacity:.75;" disabled>
+        <i class="bi bi-check-lg me-1"></i> Plano Atual
+      </button>
+      {% elif not eh_gratis %}
+      <form method="POST" action="/assinatura/iniciar/{{ plano_id }}" class="form-assinar">
+        <input type="hidden" name="ciclo" value="mensal" class="input-ciclo">
+        <button type="submit" class="btn btn-sm w-100 fw-bold" style="background:{{ cor }};color:#fff;">
+          <i class="bi bi-credit-card me-1"></i>
+          <span class="txt-assinar">Assinar</span>
+        </button>
+      </form>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
 <div class="container py-4" style="max-width:1100px;">
 
-    <!-- ── Cabeçalho ── -->
-    <div class="text-center mb-4">
-        <h2 class="fw-bold mb-1">Minha Assinatura</h2>
-        <p class="text-muted mb-3">Gerencie seu plano e faça upgrade quando quiser.</p>
-
-        <!-- Toggle mensal / anual -->
-        <div class="ciclo-toggle" id="cicloToggle">
-            <button class="ciclo-btn active" data-ciclo="mensal" onclick="setCiclo('mensal')">Mensal</button>
-            <button class="ciclo-btn" data-ciclo="anual" onclick="setCiclo('anual')">
-                Anual <span class="badge-economia ms-1">−20%</span>
-            </button>
-        </div>
+  <div class="text-center mb-4">
+    <h2 class="fw-bold mb-1">Minha Assinatura</h2>
+    <p class="text-muted mb-3">Gerencie seu plano e faça upgrade quando quiser.</p>
+    <div class="ciclo-toggle">
+      <button class="ciclo-btn active" onclick="setCiclo('mensal')">Mensal</button>
+      <button class="ciclo-btn" onclick="setCiclo('anual')">Anual <span class="badge-economia ms-1">−20%</span></button>
     </div>
+  </div>
 
-    <!-- ── Grade de planos ── -->
-    <div class="row g-3 mb-4 justify-content-center">
+  <div class="row g-3 mb-4 justify-content-center">
+    {{ card_plano('free', 'Free', '#6c757d', 'bi-gift', 0, [
+        ('dash-circle text-warning',       '300 registros/mês'),
+        ('dash-circle text-warning',       '10 categorias de despesa'),
+        ('dash-circle text-warning',       '2 cartões'),
+        ('check-circle-fill text-success', 'Todos os relatórios'),
+        ('x-circle text-danger',           'Sem Robô de IA'),
+        ('x-circle text-danger',           'Sem separação PF/PJ'),
+    ]) }}
+    {{ card_plano('basic', 'Basic', '#20c997', 'bi-rocket-takeoff-fill', 6.90, [
+        ('check-circle-fill text-success', 'Registros ilimitados'),
+        ('check-circle-fill text-success', 'Categorias ilimitadas'),
+        ('check-circle-fill text-success', 'Cartões ilimitados'),
+        ('check-circle-fill text-success', 'Todos os relatórios'),
+        ('x-circle text-danger',           'Sem Robô de IA'),
+        ('x-circle text-danger',           'Sem separação PF/PJ'),
+    ]) }}
+    {{ card_plano('pro', 'Pro', '#4361ee', 'bi-star-fill', 19.90, [
+        ('check-circle-fill text-success', 'Registros ilimitados'),
+        ('check-circle-fill text-success', 'Categorias ilimitadas'),
+        ('check-circle-fill text-success', 'Cartões ilimitados'),
+        ('check-circle-fill text-success', 'Todos os relatórios'),
+        ('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
+        ('x-circle text-danger',           'Sem separação PF/PJ'),
+    ], destaque=true) }}
+    {{ card_plano('promax', 'ProMax', '#6f42c1', 'bi-stars', 27.90, [
+        ('check-circle-fill text-success', 'Tudo do plano Pro'),
+        ('check-circle-fill text-success', 'Separação PF/PJ'),
+        ('check-circle-fill text-success', 'Relatórios PF vs PJ'),
+        ('check-circle-fill text-success', 'Dashboard por entidade'),
+        ('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
+        ('check-circle-fill text-success', 'Filtros PF/PJ em todas as telas'),
+    ]) }}
+    {{ card_plano('familia', 'Família', '#e67e22', 'bi-house-heart-fill', 34.90, [
+        ('check-circle-fill text-success', 'Até 5 usuários compartilhados'),
+        ('check-circle-fill text-success', 'Banco de dados compartilhado'),
+        ('check-circle-fill text-success', 'Registros ilimitados'),
+        ('check-circle-fill text-success', 'Relatório por membro'),
+        ('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
+        ('x-circle text-danger',           'Sem separação PF/PJ'),
+    ]) }}
+  </div>
 
-        {% for p in todos_planos %}
-        {% set pid       = p['pid'] %}
-        {% set pnome     = p['nome'] %}
-        {% set pcor      = p['cor'] %}
-        {% set picone    = p['icone'] %}
-        {% set ppreco    = p['preco'] %}
-        {% set precursos = p['recursos'] %}
-        {% set eh_atual  = (nivel == pid) %}
-        {% set eh_gratis = (ppreco == 0) %}
+  <div class="alert alert-light border text-center small mb-4">
+    <i class="bi bi-shield-check text-success me-1"></i>
+    Pagamento seguro via <strong>Mercado Pago</strong> — Cartão, PIX, boleto e débito aceitos.
+    Plano ativado imediatamente após aprovação.
+  </div>
 
-        <div class="col-6 col-md-4 col-lg-2-4" style="flex:0 0 auto;width:19%;">
-            <div class="card plano-card h-100 {% if eh_atual %}atual{% endif %}
-                        {% if pid == 'pro' %}destaque{% endif %}"
-                 style="border-color:{{ pcor }}{% if eh_atual %};background:{{ pcor }}08{% endif %};">
-
-                {% if pid == 'pro' %}
-                <span class="destaque-ribbon">MAIS POPULAR</span>
-                {% endif %}
-
-                <div class="card-body p-3 d-flex flex-column">
-
-                    <!-- ícone + nome -->
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                        <i class="bi {{ picone }}" style="color:{{ pcor }};font-size:1.3rem;"></i>
-                        <span class="fw-bold" style="font-size:.95rem;">{{ pnome }}</span>
-                        {% if eh_atual %}
-                        <span class="atual-badge ms-auto text-white" style="background:{{ pcor }};">Atual</span>
-                        {% endif %}
-                    </div>
-
-                    <!-- validade (só no plano atual) -->
-                    {% if eh_atual and current_user.data_validade %}
-                    <div class="alert alert-sm py-1 px-2 mb-2 small
-                        {% if current_user.esta_valido() %}alert-info{% else %}alert-danger{% endif %}"
-                         style="font-size:.75rem;">
-                        {% if current_user.esta_valido() %}
-                        <i class="bi bi-calendar-check me-1"></i>Válido até {{ current_user.data_validade.strftime('%d/%m/%Y') }}
-                        ({{ current_user.dias_restantes() }}d)
-                        {% else %}
-                        <i class="bi bi-exclamation-triangle me-1"></i>Expirado em {{ current_user.data_validade.strftime('%d/%m/%Y') }}
-                        {% endif %}
-                    </div>
-                    {% endif %}
-
-                    <!-- preço mensal -->
-                    <div class="mb-1 preco-mensal">
-                        {% if eh_gratis %}
-                        <span class="preco-val" style="color:{{ pcor }};">Grátis</span>
-                        {% else %}
-                        <span class="preco-val" style="color:{{ pcor }};">
-                            R$ {{ "%.2f"|format(ppreco)|replace('.', ',') }}
-                        </span>
-                        <span class="preco-por">/mês</span>
-                        {% endif %}
-                    </div>
-
-                    <!-- preço anual (oculto por JS inicialmente) -->
-                    {% if not eh_gratis %}
-                    <div class="mb-1 preco-anual d-none">
-                        {% set preco_anual_mes = (ppreco * 0.80)|round(2) %}
-                        {% set preco_anual_total = (ppreco * 12 * 0.80)|round(2) %}
-                        <span class="preco-original">R$ {{ "%.2f"|format(ppreco)|replace('.', ',') }}/mês</span><br>
-                        <span class="preco-val" style="color:{{ pcor }};">
-                            R$ {{ "%.2f"|format(preco_anual_mes)|replace('.', ',') }}
-                        </span>
-                        <span class="preco-por">/mês</span>
-                        <br><small class="text-muted" style="font-size:.72rem;">
-                            R$ {{ "%.2f"|format(preco_anual_total)|replace('.', ',') }}/ano — economia de
-                            R$ {{ "%.2f"|format(ppreco * 12 * 0.20)|replace('.', ',') }}
-                        </small>
-                    </div>
-                    {% endif %}
-
-                    <hr class="my-2">
-
-                    <!-- recursos -->
-                    <ul class="list-unstyled mb-3 flex-grow-1">
-                        {% for r in precursos %}
-                        <li class="recurso-row">
-                            <i class="bi bi-{{ r['icone'] }}"></i>
-                            <span>{{ r['texto'] }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-
-                    <!-- botão -->
-                    {% if eh_atual %}
-                        <button class="btn btn-sm w-100 fw-bold" style="background:{{ pcor }};color:#fff;opacity:.75;" disabled>
-                            <i class="bi bi-check-lg me-1"></i> Plano Atual
-                        </button>
-                    {% elif eh_gratis %}
-                        {# Free não tem botão de assinatura #}
-                    {% else %}
-                        <form method="POST" action="/assinatura/iniciar/{{ pid }}" class="form-assinar">
-                            <input type="hidden" name="ciclo" value="mensal" class="input-ciclo">
-                            <button type="submit" class="btn btn-sm w-100 fw-bold"
-                                    style="background:{{ pcor }};color:#fff;">
-                                <i class="bi bi-credit-card me-1"></i>
-                                <span class="txt-assinar">Assinar</span>
-                            </button>
-                        </form>
-                    {% endif %}
-
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-
-    </div><!-- /row planos -->
-
-    <!-- ── Aviso pagamento seguro ── -->
-    <div class="alert alert-light border text-center small mb-4">
-        <i class="bi bi-shield-check text-success me-1"></i>
-        Pagamento seguro via <strong>Mercado Pago</strong> — Cartão, PIX, boleto e débito aceitos.
-        Plano ativado imediatamente após aprovação.
+  <!-- Tabela comparativa -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-bold border-bottom">
+      <i class="bi bi-table me-2"></i> Comparativo de Planos
     </div>
-
-    <!-- ── Tabela comparativa ── -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white fw-bold border-bottom">
-            <i class="bi bi-table me-2"></i> Comparativo de Planos
-        </div>
-        <div class="table-responsive">
-            <table class="table table-bordered align-middle mb-0" style="font-size:.83rem;">
-                <thead class="table-dark">
-                    <tr>
-                        <th style="min-width:180px;">Recurso</th>
-                        <th class="text-center">Free</th>
-                        <th class="text-center" style="color:#20c997;">Basic</th>
-                        <th class="text-center" style="color:#7ba7f7;">Pro</th>
-                        <th class="text-center" style="color:#b39ddb;">ProMax</th>
-                        <th class="text-center" style="color:#f0a868;">Família</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% macro check(ok) %}
-                        {% if ok %}<i class="bi bi-check-circle-fill text-success"></i>
-                        {% else %}<i class="bi bi-x-circle text-danger"></i>{% endif %}
-                    {% endmacro %}
-                    <tr>
-                        <td>Registros mensais</td>
-                        <td class="text-center"><small class="text-warning fw-bold">300</small></td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Categorias de despesa</td>
-                        <td class="text-center"><small class="text-warning fw-bold">10</small></td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Cartões</td>
-                        <td class="text-center"><small class="text-warning fw-bold">2</small></td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Todos os relatórios</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Robô de IA (WhatsApp)</td>
-                        <td class="text-center">{{ check(false) }}</td>
-                        <td class="text-center">{{ check(false) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Separação PF/PJ</td>
-                        <td class="text-center">{{ check(false) }}</td>
-                        <td class="text-center">{{ check(false) }}</td>
-                        <td class="text-center">{{ check(false) }}</td>
-                        <td class="text-center">{{ check(true) }}</td>
-                        <td class="text-center">{{ check(false) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Usuários compartilhados</td>
-                        <td class="text-center">{{ check(false) }}</td>
-                        <td class="text-center">{{ check(false) }}</td>
-                        <td class="text-center">{{ check(false) }}</td>
-                        <td class="text-center">{{ check(false) }}</td>
-                        <td class="text-center"><small class="fw-bold" style="color:#e67e22;">Até 5</small></td>
-                    </tr>
-                    <tr class="table-light fw-bold">
-                        <td>Preço mensal</td>
-                        <td class="text-center">Grátis</td>
-                        <td class="text-center">R$ 6,90</td>
-                        <td class="text-center">R$ 19,90</td>
-                        <td class="text-center">R$ 27,90</td>
-                        <td class="text-center">R$ 34,90</td>
-                    </tr>
-                    <tr class="table-light">
-                        <td>Preço anual <span class="badge-economia">−20%</span></td>
-                        <td class="text-center">—</td>
-                        <td class="text-center">R$ 66,24/ano</td>
-                        <td class="text-center">R$ 191,04/ano</td>
-                        <td class="text-center">R$ 267,84/ano</td>
-                        <td class="text-center">R$ 334,80/ano</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+    <div class="table-responsive">
+      <table class="table table-bordered align-middle mb-0" style="font-size:.83rem;">
+        <thead class="table-dark">
+          <tr>
+            <th style="min-width:180px;">Recurso</th>
+            <th class="text-center">FREE</th>
+            <th class="text-center" style="color:#20c997;">BASIC</th>
+            <th class="text-center" style="color:#7ba7f7;">PRO</th>
+            <th class="text-center" style="color:#b39ddb;">PROMAX</th>
+            <th class="text-center" style="color:#f0a868;">FAMÍLIA</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% macro ck(ok) %}{% if ok %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle text-danger"></i>{% endif %}{% endmacro %}
+          <tr><td>Registros mensais</td><td class="text-center"><small class="text-warning fw-bold">300</small></td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td></tr>
+          <tr><td>Categorias de despesa</td><td class="text-center"><small class="text-warning fw-bold">10</small></td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td></tr>
+          <tr><td>Cartões</td><td class="text-center"><small class="text-warning fw-bold">2</small></td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td></tr>
+          <tr><td>Todos os relatórios</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td></tr>
+          <tr><td>Robô de IA (WhatsApp)</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td></tr>
+          <tr><td>Separação PF/PJ</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(false) }}</td></tr>
+          <tr><td>Usuários compartilhados</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(false) }}</td><td class="text-center"><small class="fw-bold" style="color:#e67e22;">Até 5</small></td></tr>
+          <tr class="table-light fw-bold"><td>Preço mensal</td><td class="text-center">Grátis</td><td class="text-center">R$ 6,90</td><td class="text-center">R$ 19,90</td><td class="text-center">R$ 27,90</td><td class="text-center">R$ 34,90</td></tr>
+          <tr class="table-light"><td>Preço anual <span class="badge-economia">−20%</span></td><td class="text-center">—</td><td class="text-center">R$ 66,24/ano</td><td class="text-center">R$ 191,04/ano</td><td class="text-center">R$ 267,84/ano</td><td class="text-center">R$ 334,80/ano</td></tr>
+        </tbody>
+      </table>
     </div>
+  </div>
 
-    <!-- ── Histórico ── -->
-    {% if historico %}
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white fw-bold border-bottom">
-            <i class="bi bi-clock-history me-2"></i> Histórico de Assinaturas
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover mb-0" style="font-size:.85rem;">
-                <thead class="table-light">
-                    <tr>
-                        <th>Data</th><th>Plano</th><th>Valor</th><th>Status</th><th>Válido até</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for a in historico %}
-                    <tr>
-                        <td>{{ a.data_criacao.strftime('%d/%m/%Y') }}</td>
-                        <td>
-                            <span class="badge" style="background:
-                                {%- if a.plano == 'promax' %}#6f42c1
-                                {%- elif a.plano == 'pro' %}#4361ee
-                                {%- elif a.plano == 'familia' %}#e67e22
-                                {%- elif a.plano == 'basic' %}#20c997
-                                {%- else %}#6c757d{%- endif %};">
-                                {{ a.plano.upper() }}
-                            </span>
-                        </td>
-                        <td>R$ {{ "%.2f"|format(a.valor)|replace('.', ',') }}</td>
-                        <td>
-                            {% if a.status == 'aprovado' %}<span class="badge bg-success">Aprovado</span>
-                            {% elif a.status == 'pendente' %}<span class="badge bg-warning text-dark">Pendente</span>
-                            {% else %}<span class="badge bg-secondary">{{ a.status.title() }}</span>{% endif %}
-                        </td>
-                        <td>{{ a.data_expiracao.strftime('%d/%m/%Y') if a.data_expiracao else '—' }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+  {% if historico %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-bold border-bottom">
+      <i class="bi bi-clock-history me-2"></i> Histórico de Assinaturas
     </div>
-    {% endif %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0" style="font-size:.85rem;">
+        <thead class="table-light">
+          <tr><th>Data</th><th>Plano</th><th>Valor</th><th>Status</th><th>Válido até</th></tr>
+        </thead>
+        <tbody>
+          {% for a in historico %}
+          <tr>
+            <td>{{ a.data_criacao.strftime('%d/%m/%Y') }}</td>
+            <td><span class="badge" style="background:{% if a.plano=='promax' %}#6f42c1{% elif a.plano=='pro' %}#4361ee{% elif a.plano=='familia' %}#e67e22{% elif a.plano=='basic' %}#20c997{% else %}#6c757d{% endif %};">{{ a.plano.upper() }}</span></td>
+            <td>R$ {{ "%.2f"|format(a.valor)|replace('.', ',') }}</td>
+            <td>{% if a.status=='aprovado' %}<span class="badge bg-success">Aprovado</span>{% elif a.status=='pendente' %}<span class="badge bg-warning text-dark">Pendente</span>{% else %}<span class="badge bg-secondary">{{ a.status }}</span>{% endif %}</td>
+            <td>{{ a.data_expiracao.strftime('%d/%m/%Y') if a.data_expiracao else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
 
 </div>
 {% endblock %}
@@ -319,25 +230,13 @@
 {% block extra_js %}
 <script>
 function setCiclo(ciclo) {
-    // toggle botões
-    document.querySelectorAll('.ciclo-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.ciclo === ciclo);
+    document.querySelectorAll('.ciclo-btn').forEach(function(b) {
+        b.classList.toggle('active', b.textContent.trim().startsWith(ciclo === 'mensal' ? 'Mensal' : 'Anual'));
     });
-    // mostrar/ocultar preços
-    document.querySelectorAll('.preco-mensal').forEach(el => {
-        el.classList.toggle('d-none', ciclo === 'anual');
-    });
-    document.querySelectorAll('.preco-anual').forEach(el => {
-        el.classList.toggle('d-none', ciclo === 'mensal');
-    });
-    // atualizar hidden input dos formulários
-    document.querySelectorAll('.input-ciclo').forEach(inp => {
-        inp.value = ciclo;
-    });
-    // atualizar texto dos botões
-    document.querySelectorAll('.txt-assinar').forEach(el => {
-        el.textContent = ciclo === 'anual' ? 'Assinar (anual)' : 'Assinar';
-    });
+    document.querySelectorAll('.preco-mensal').forEach(function(el) { el.classList.toggle('d-none', ciclo === 'anual'); });
+    document.querySelectorAll('.preco-anual').forEach(function(el) { el.classList.toggle('d-none', ciclo === 'mensal'); });
+    document.querySelectorAll('.input-ciclo').forEach(function(inp) { inp.value = ciclo; });
+    document.querySelectorAll('.txt-assinar').forEach(function(el) { el.textContent = ciclo === 'anual' ? 'Assinar (anual)' : 'Assinar'; });
 }
 </script>
 {% endblock %}

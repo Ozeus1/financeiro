@@ -115,7 +115,7 @@ def minha_assinatura():
         return {'icone': icone, 'texto': texto}
 
     todos_planos = [
-        {'id': 'free', 'nome': 'Free', 'cor': '#6c757d', 'icone': 'bi-gift', 'preco': 0,
+        {'pid': 'free', 'nome': 'Free', 'cor': '#6c757d', 'icone': 'bi-gift', 'preco': 0,
          'recursos': [
              _r('dash-circle text-warning',       '300 registros/mês'),
              _r('dash-circle text-warning',       '10 categorias de despesa'),
@@ -124,7 +124,7 @@ def minha_assinatura():
              _r('x-circle text-danger',           'Sem Robô de IA'),
              _r('x-circle text-danger',           'Sem separação PF/PJ'),
          ]},
-        {'id': 'basic', 'nome': 'Basic', 'cor': '#20c997', 'icone': 'bi-rocket-takeoff-fill', 'preco': 6.90,
+        {'pid': 'basic', 'nome': 'Basic', 'cor': '#20c997', 'icone': 'bi-rocket-takeoff-fill', 'preco': 6.90,
          'recursos': [
              _r('check-circle-fill text-success', 'Registros ilimitados'),
              _r('check-circle-fill text-success', 'Categorias ilimitadas'),
@@ -133,7 +133,7 @@ def minha_assinatura():
              _r('x-circle text-danger',           'Sem Robô de IA'),
              _r('x-circle text-danger',           'Sem separação PF/PJ'),
          ]},
-        {'id': 'pro', 'nome': 'Pro', 'cor': '#4361ee', 'icone': 'bi-star-fill', 'preco': 19.90,
+        {'pid': 'pro', 'nome': 'Pro', 'cor': '#4361ee', 'icone': 'bi-star-fill', 'preco': 19.90,
          'recursos': [
              _r('check-circle-fill text-success', 'Registros ilimitados'),
              _r('check-circle-fill text-success', 'Categorias ilimitadas'),
@@ -142,7 +142,7 @@ def minha_assinatura():
              _r('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
              _r('x-circle text-danger',           'Sem separação PF/PJ'),
          ]},
-        {'id': 'promax', 'nome': 'ProMax', 'cor': '#6f42c1', 'icone': 'bi-stars', 'preco': 27.90,
+        {'pid': 'promax', 'nome': 'ProMax', 'cor': '#6f42c1', 'icone': 'bi-stars', 'preco': 27.90,
          'recursos': [
              _r('check-circle-fill text-success', 'Tudo do plano Pro'),
              _r('check-circle-fill text-success', 'Separação PF/PJ'),
@@ -151,7 +151,7 @@ def minha_assinatura():
              _r('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
              _r('check-circle-fill text-success', 'Filtros PF/PJ em todas as telas'),
          ]},
-        {'id': 'familia', 'nome': 'Família', 'cor': '#e67e22', 'icone': 'bi-house-heart-fill', 'preco': 34.90,
+        {'pid': 'familia', 'nome': 'Família', 'cor': '#e67e22', 'icone': 'bi-house-heart-fill', 'preco': 34.90,
          'recursos': [
              _r('check-circle-fill text-success', 'Até 5 usuários compartilhados'),
              _r('check-circle-fill text-success', 'Banco de dados compartilhado'),

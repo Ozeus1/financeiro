@@ -148,7 +148,7 @@
                     {% elif eh_gratis %}
                         {# Free não tem botão de assinatura #}
                     {% else %}
-                        <form method="POST" action="{{ url_for('assinatura.iniciar', plano=pid) }}" class="form-assinar">
+                        <form method="POST" action="/assinatura/iniciar/{{ pid }}" class="form-assinar">
                             <input type="hidden" name="ciclo" value="mensal" class="input-ciclo">
                             <button type="submit" class="btn btn-sm w-100 fw-bold"
                                     style="background:{{ pcor }};color:#fff;">

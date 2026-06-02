@@ -338,21 +338,20 @@ document.getElementById('btnImportar').addEventListener('click', async function(
         const check = tr.querySelector('.check-linha');
         if (!check || !check.checked) return;
         const idx = parseInt(tr.dataset.idx);
-        const item = { ...dadosProcessados[idx] };
-        // Pegar valores editados dos campos
-        tr.querySelectorAll('.campo-edit').forEach(inp => {
+        if (isNaN(idx) || idx < 0 || idx >= dadosProcessados.length) return;
+        // Clonar dado original e sobrescrever com o que foi editado
+        const item = Object.assign({}, dadosProcessados[idx]);
+        tr.querySelectorAll('[data-field]').forEach(inp => {
             const f = inp.dataset.field;
-            if (f) {
-                let v = inp.value.trim();
-                if (f === 'valor') v = parseFloat(v.replace(',', '.')) || 0;
-                item[f] = v;
-            }
+            let v = (inp.tagName === 'SELECT' ? inp.value : inp.value.trim());
+            if (f === 'valor') v = parseFloat(String(v).replace(',', '.')) || 0;
+            item[f] = v;
         });
         linhasSel.push(item);
     });
 
     if (linhasSel.length === 0) {
-        alert('Selecione pelo menos um item para importar.');
+        alert('Nenhum item selecionado. Marque os checkboxes e tente novamente.');
         return;
     }
 

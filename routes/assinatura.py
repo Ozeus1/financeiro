@@ -171,14 +171,8 @@ def minha_assinatura():
 @login_required
 def iniciar(plano):
     """Cria preferência de pagamento no Mercado Pago e redireciona"""
-    import logging
-    logging.warning(f'INICIAR chamado: plano_url={repr(plano)} metodo={request.method} form={dict(request.form)}')
     plano = plano.strip().lower() if plano else ''
-    logging.warning(f'INICIAR apos normalize: plano={repr(plano)} in_PLANOS={plano in PLANOS} PLANOS_keys={list(PLANOS.keys())}')
     if plano not in PLANOS:
-        import logging
-        logging.warning(f'PLANO INVALIDO: "{plano}" | URL: {request.url} | Referer: {request.referrer} | User: {current_user.username}')
-        # Redireciona silenciosamente sem flash para não poluir a tela
         return redirect(url_for('assinatura.minha_assinatura'))
 
     ciclo = request.form.get('ciclo', 'mensal').strip().lower()
@@ -186,7 +180,6 @@ def iniciar(plano):
         ciclo = 'mensal'
 
     mp_access_token = ConfigSistema.get('mp_access_token', '')
-    logging.warning(f'TOKEN: existe={bool(mp_access_token)} valor={repr(mp_access_token[:10]) if mp_access_token else "VAZIO"}')
     if not mp_access_token:
         flash('Sistema de pagamento não configurado. Entre em contato com o administrador.', 'danger')
         return redirect(url_for('assinatura.minha_assinatura'))
@@ -248,13 +241,9 @@ def iniciar(plano):
         return redirect(init_point)
 
     except ImportError:
-        import logging
-        logging.error('MERCADOPAGO: biblioteca nao instalada')
         flash('Biblioteca mercadopago não instalada no servidor.', 'danger')
         return redirect(url_for('assinatura.minha_assinatura'))
     except Exception as e:
-        import logging, traceback
-        logging.error(f'MERCADOPAGO ERRO: {e}\n{traceback.format_exc()}')
         flash(f'Erro ao iniciar pagamento: {e}', 'danger')
         return redirect(url_for('assinatura.minha_assinatura'))
 

@@ -6,4 +6,5 @@ threads = 2
 timeout = 120
 accesslog = "-"
 errorlog = "-"
-loglevel = "info"
+loglevel = "warning"
+preload_app = False

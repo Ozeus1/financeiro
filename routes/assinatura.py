@@ -10,7 +10,7 @@ assinatura_bp = Blueprint('assinatura', __name__, url_prefix='/assinatura')
 PLANOS = {
     'basic': {
         'nome': 'Basic',
-        'preco': 6.90,
+        'preco': 9.90,
         'cor': '#20c997',
         'icone': 'bi-rocket-takeoff-fill',
         'descricao': 'Tudo do Free, sem nenhum limite — ideal para quem quer crescer',
@@ -124,7 +124,7 @@ def minha_assinatura():
              _r('x-circle text-danger',           'Sem Robô de IA'),
              _r('x-circle text-danger',           'Sem separação PF/PJ'),
          ]},
-        {'pid': 'basic', 'nome': 'Basic', 'cor': '#20c997', 'icone': 'bi-rocket-takeoff-fill', 'preco': 6.90,
+        {'pid': 'basic', 'nome': 'Basic', 'cor': '#20c997', 'icone': 'bi-rocket-takeoff-fill', 'preco': 9.90,
          'recursos': [
              _r('check-circle-fill text-success', 'Registros ilimitados'),
              _r('check-circle-fill text-success', 'Categorias ilimitadas'),

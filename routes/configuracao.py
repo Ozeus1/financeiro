@@ -2243,16 +2243,58 @@ def processar_fatura_cartao():
         s = unicodedata.normalize('NFKD', s or '').encode('ascii', 'ignore').decode().lower().strip()
         return s
 
-    linhas = []
+    from datetime import datetime as _dt, date as _date
+    from dateutil.relativedelta import relativedelta as _rd
+
+    # Meses abreviados em PT para converter "07/dez" → parcela_atual=7
+    MESES_PT = {'jan':1,'fev':2,'mar':3,'abr':4,'mai':5,'jun':6,
+                'jul':7,'ago':8,'set':9,'out':10,'nov':11,'dez':12}
+
+    def _parse_valor(s):
+        """Valor no CSV usa ponto como decimal: 60.48 → 60.48, não 6048"""
+        s = s.strip().replace(' ', '')
+        if not s:
+            return 0.0
+        # Se tem vírgula → formato BR com ponto milhar: 1.234,56 → 1234.56
+        if ',' in s:
+            s = s.replace('.', '').replace(',', '.')
+        # Caso contrário ponto já é decimal: 60.48 → 60.48
+        return float(s)
+
+    def _parse_parcela(s):
+        """
+        Retorna (parcela_atual, num_parcelas).
+        Formatos: "07/dez" → (7, None), "1/10" → (1, 10), "única"/"unica" → (1, 1)
+        Quando o total é mês abreviado (dez), num_parcelas = None (calculado depois).
+        """
+        s = s.strip().lower()
+        if not s or s in ('unica', 'única', '-', ''):
+            return 1, 1
+        if '/' in s:
+            partes = s.split('/')
+            try:
+                atual = int(partes[0])
+            except ValueError:
+                return 1, 1
+            total_str = partes[1].strip()
+            if total_str.isdigit():
+                return atual, int(total_str)
+            # mês abreviado — total desconhecido agora, resolvido em 2ª passagem
+            return atual, None
+        try:
+            return int(s), 1
+        except ValueError:
+            return 1, 1
+
+    # 1ª passagem: ler todas as linhas brutas
+    linhas_brutas = []
     erros = []
 
     for i, row in enumerate(reader):
         cols = {_norm(k): v for k, v in row.items()}
 
-        # Data
         data_raw = (cols.get('data de compra') or cols.get('data') or cols.get('date') or '').strip()
         try:
-            from datetime import datetime as _dt, date as _date, timedelta
             if '/' in data_raw:
                 data_compra = _dt.strptime(data_raw, '%d/%m/%Y').date()
             elif '-' in data_raw:
@@ -2264,68 +2306,90 @@ def processar_fatura_cartao():
             erros.append(f'Linha {i+2}: data inválida "{data_raw}"')
             continue
 
-        # Descrição
         descricao = (cols.get('descricao') or cols.get('description') or
                      cols.get('estabelecimento') or cols.get('nome') or '').strip()
 
-        # Valor em R$
         valor_raw = (cols.get('valor (em r$)') or cols.get('valor') or
                      cols.get('value') or cols.get('amount') or '0').strip()
         try:
-            valor_str = valor_raw.replace('.', '').replace(',', '.').replace(' ', '')
-            valor = float(valor_str)
+            valor_parcela = _parse_valor(valor_raw)
         except Exception:
             erros.append(f'Linha {i+2}: valor inválido "{valor_raw}"')
             continue
 
-        # Ignorar créditos (valores negativos = estornos/pagamentos)
-        if valor <= 0:
-            continue
+        if valor_parcela <= 0:
+            continue  # ignora estornos/pagamentos
 
-        # Parcelas — ex: "07/dez" ou "única" ou "1"
         parcela_raw = (cols.get('parcela') or cols.get('parcelas') or 'única').strip()
-        num_parcelas = 1
-        parcela_atual = 1
-        if '/' in parcela_raw:
-            try:
-                partes = parcela_raw.split('/')
-                parcela_atual = int(partes[0])
-                num_parcelas = int(partes[1]) if partes[1].isdigit() else 1
-            except Exception:
-                pass
+        parcela_atual, num_parcelas = _parse_parcela(parcela_raw)
 
-        # Categoria
         cat_raw = (cols.get('categoria') or cols.get('category') or 'Outros').strip()
 
-        # Calcular data de pagamento considerando fechamento do cartão
+        linhas_brutas.append({
+            'descricao': descricao,
+            'valor_parcela': valor_parcela,
+            'data_compra': data_compra,
+            'parcela_atual': parcela_atual,
+            'num_parcelas': num_parcelas,  # None se mês abreviado
+            'categoria': cat_raw,
+        })
+
+    # 2ª passagem: resolver num_parcelas=None agrupando por descrição+valor_parcela
+    # O maior parcela_atual de cada grupo é o total de parcelas
+    grupo_max = {}
+    for lb in linhas_brutas:
+        if lb['num_parcelas'] is None:
+            chave = (lb['descricao'], round(lb['valor_parcela'], 2))
+            grupo_max[chave] = max(grupo_max.get(chave, 0), lb['parcela_atual'])
+
+    for lb in linhas_brutas:
+        if lb['num_parcelas'] is None:
+            chave = (lb['descricao'], round(lb['valor_parcela'], 2))
+            lb['num_parcelas'] = grupo_max.get(chave, lb['parcela_atual'])
+
+    # 3ª passagem: calcular valor total e datas de pagamento
+    linhas = []
+    for lb in linhas_brutas:
+        descricao   = lb['descricao']
+        valor_parcela = lb['valor_parcela']
+        data_compra = lb['data_compra']
+        parcela_atual = lb['parcela_atual']
+        num_parcelas  = lb['num_parcelas']
+        cat_raw       = lb['categoria']
+
+        # Valor total = valor da parcela × total de parcelas
+        valor_total = round(valor_parcela * num_parcelas, 2)
+
+        # Calcular data de pagamento desta parcela
         data_pagamento = data_compra
-        if fechamento and num_parcelas > 1:
-            from dateutil.relativedelta import relativedelta as _rd
+        if fechamento:
             dia_fech = fechamento.dia_fechamento
             dia_venc = fechamento.dia_vencimento
-            # Determinar mês de vencimento da 1ª parcela
+            # Mês base de vencimento da 1ª parcela
             if data_compra.day <= dia_fech:
                 base = data_compra.replace(day=1)
             else:
                 base = (data_compra.replace(day=1) + _rd(months=1))
-            # Adicionar parcelas já pagas
             mes_pag = base + _rd(months=parcela_atual - 1)
             try:
                 data_pagamento = mes_pag.replace(day=dia_venc)
             except Exception:
-                data_pagamento = mes_pag
+                import calendar
+                ultimo_dia = calendar.monthrange(mes_pag.year, mes_pag.month)[1]
+                data_pagamento = mes_pag.replace(day=min(dia_venc, ultimo_dia))
 
-        # Verificar duplicata
+        # Verificar duplicata: mesma descrição + cartão + valor_parcela + data_pagamento
         duplicata = Despesa.query.filter_by(
             user_id=current_user.id,
             descricao=descricao,
             meio_pagamento_id=cartao_id,
-            data_pagamento=data_pagamento
-        ).filter(Despesa.valor.between(valor - 0.01, valor + 0.01)).first()
+            data_pagamento=data_pagamento,
+        ).filter(Despesa.valor.between(valor_total - 0.01, valor_total + 0.01)).first()
 
         linhas.append({
             'descricao': descricao,
-            'valor': round(valor, 2),
+            'valor': valor_total,
+            'valor_parcela': round(valor_parcela, 2),
             'data_compra': data_compra.strftime('%d/%m/%Y'),
             'data_pagamento': data_pagamento.strftime('%d/%m/%Y'),
             'parcela_atual': parcela_atual,

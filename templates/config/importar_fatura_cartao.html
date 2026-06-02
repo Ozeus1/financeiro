@@ -120,7 +120,8 @@
             <tr>
               <th style="width:36px;"><input type="checkbox" id="checkTodos" checked></th>
               <th>Descrição</th>
-              <th style="width:100px;">Valor (R$)</th>
+              <th style="width:105px;">Valor Total</th>
+              <th style="width:100px;">Vr. Parcela</th>
               <th style="width:110px;">Data Compra</th>
               <th style="width:115px;">Data Pagto</th>
               <th style="width:85px;">Parcela</th>
@@ -267,10 +268,12 @@ function renderizarTabela(linhas) {
             `<option value="${esc(c)}" ${c === l.categoria ? 'selected' : ''}>${esc(c)}</option>`
         ).join('');
 
+        const valorParc = l.valor_parcela ? l.valor_parcela.toFixed(2).replace('.',',') : '';
         tr.innerHTML = `
             <td><input type="checkbox" class="check-linha" ${l.duplicata ? '' : 'checked'}></td>
             <td><input class="campo-edit" value="${esc(l.descricao)}" data-field="descricao"></td>
-            <td><input class="campo-edit text-end" value="${l.valor.toFixed(2).replace('.',',')}" data-field="valor" style="width:90px;"></td>
+            <td><input class="campo-edit text-end fw-bold" value="${l.valor.toFixed(2).replace('.',',')}" data-field="valor" style="width:95px;" title="Valor total (parcela × qtd)"></td>
+            <td class="text-muted text-end" style="font-size:.78rem;">${valorParc}</td>
             <td><input class="campo-edit" value="${esc(l.data_compra)}" data-field="data_compra" style="width:100px;"></td>
             <td><input class="campo-edit" value="${esc(l.data_pagamento)}" data-field="data_pagamento" style="width:105px;"></td>
             <td class="text-center">

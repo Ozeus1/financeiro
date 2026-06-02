@@ -32,7 +32,7 @@
     <div class="row g-4 mb-5 justify-content-center">
 
         <!-- Free -->
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card plano-card h-100 border-0">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center gap-2 mb-3">
@@ -63,8 +63,48 @@
             </div>
         </div>
 
+        <!-- Basic -->
+        <div class="col-md-3">
+            <div class="card plano-card h-100 border-0" style="border:2px solid #20c997 !important;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi {{ planos.basic.icone }} fs-3" style="color:#20c997;"></i>
+                        <h3 class="mb-0">{{ planos.basic.nome }}</h3>
+                        <span class="badge ms-auto" style="background:#20c997;font-size:.65rem;">NOVO</span>
+                    </div>
+                    <p class="text-muted mb-3" style="font-size:.88rem;">{{ planos.basic.descricao }}</p>
+                    <div class="mb-4">
+                        <span class="plano-preco" style="color:#20c997;">R$ 6,90</span>
+                        <span class="plano-periodo">/mês</span>
+                    </div>
+                    <hr>
+                    <ul class="list-unstyled mb-4">
+                        {% for icone, texto in planos.basic.recursos %}
+                        <li class="recurso-item">
+                            <i class="bi bi-{{ icone }} flex-shrink-0 mt-1"></i>
+                            <span>{{ texto }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.nivel_acesso == 'basic' %}
+                        <button class="btn w-100" style="background:#20c997;color:#fff;" disabled>Plano Atual</button>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('assinatura.iniciar', plano='basic') }}">
+                            <button type="submit" class="btn w-100 fw-bold" style="background:#20c997;color:#fff;">
+                                <i class="bi bi-credit-card me-1"></i> Assinar Basic
+                            </button>
+                        </form>
+                        {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="btn w-100 fw-bold" style="background:#20c997;color:#fff;">Assinar Basic</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
         <!-- Pro -->
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card plano-card h-100 border-0" style="border:2px solid {{ planos.pro.cor }} !important;">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center gap-2 mb-3">
@@ -103,7 +143,7 @@
         </div>
 
         <!-- ProMax -->
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card plano-card h-100 border-0 destaque-card">
                 <span class="destaque-badge"><i class="bi bi-stars me-1"></i> Mais Completo</span>
                 <div class="card-body p-4">

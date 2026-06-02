@@ -133,6 +133,10 @@ class User(UserMixin, db.Model):
         """Verifica se o usuário é do plano Free"""
         return self.nivel_acesso == 'free'
 
+    def is_basic(self):
+        """Verifica se o usuário é do plano Basic"""
+        return self.nivel_acesso == 'basic'
+
     def limite_registros_mensais(self):
         """Retorna o limite mensal de registros (None = ilimitado)"""
         if self.nivel_acesso == 'free':
@@ -463,9 +467,17 @@ class Assinatura(db.Model):
 LIMITES_PLANO = {
     'free': {
         'categorias_despesa': 10,
-        'categorias_receita': None,  # ilimitado
+        'categorias_receita': None,
         'cartoes': 2,
         'registros_mensais': 300,
+        'api_acesso': False,
+        'pf_pj': False,
+    },
+    'basic': {
+        'categorias_despesa': None,
+        'categorias_receita': None,
+        'cartoes': None,
+        'registros_mensais': None,
         'api_acesso': False,
         'pf_pj': False,
     },

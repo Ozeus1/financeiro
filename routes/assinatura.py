@@ -8,6 +8,22 @@ import json
 assinatura_bp = Blueprint('assinatura', __name__, url_prefix='/assinatura')
 
 PLANOS = {
+    'basic': {
+        'nome': 'Basic',
+        'preco': 6.90,
+        'cor': '#20c997',
+        'icone': 'bi-rocket-takeoff-fill',
+        'descricao': 'Tudo do Free, sem nenhum limite — ideal para quem quer crescer',
+        'recursos': [
+            ('check-circle-fill text-success', 'Registros mensais ilimitados'),
+            ('check-circle-fill text-success', 'Categorias ilimitadas'),
+            ('check-circle-fill text-success', 'Cartões ilimitados'),
+            ('check-circle-fill text-success', 'Todos os relatórios'),
+            ('check-circle-fill text-success', 'Fluxo de caixa'),
+            ('x-circle-fill text-danger', 'Sem Robô de IA via WhatsApp'),
+            ('x-circle-fill text-danger', 'Sem separação PF/PJ'),
+        ],
+    },
     'familia': {
         'nome': 'Família',
         'preco': 34.90,
@@ -98,6 +114,7 @@ def minha_assinatura():
     return render_template('assinatura/minha_assinatura.html',
                            planos=PLANOS,
                            planos_lista=planos_lista,
+                           plano_basic=PLANOS['basic'],
                            plano_pro=PLANOS['pro'],
                            plano_promax=PLANOS['promax'],
                            plano_familia=PLANOS['familia'],

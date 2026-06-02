@@ -370,10 +370,21 @@ document.getElementById('btnImportar').addEventListener('click', async function(
             },
             body: JSON.stringify({ items: linhasSel, cartao_id: parseInt(cartaoId) })
         });
-        const data = await resp.json();
 
         const div = document.getElementById('resultadoImport');
-        div.classList.remove('d-none', 'alert-success', 'alert-danger');
+        div.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-warning');
+
+        // Verificar se a resposta é JSON antes de parsear
+        const contentType = resp.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            // Servidor retornou HTML (redirect ou erro) — não é JSON
+            div.classList.add('alert-danger');
+            div.innerHTML = `<i class="bi bi-x-circle me-2"></i>Erro HTTP ${resp.status}: sessão expirada ou acesso negado. <a href="/auth/login">Faça login novamente</a>.`;
+            div.scrollIntoView({ behavior: 'smooth' });
+            return;
+        }
+
+        const data = await resp.json();
         if (data.success) {
             div.classList.add('alert-success');
             div.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>${data.message}</strong>` +
@@ -381,7 +392,7 @@ document.getElementById('btnImportar').addEventListener('click', async function(
             document.getElementById('passo2').classList.add('d-none');
         } else {
             div.classList.add('alert-danger');
-            div.innerHTML = '<i class="bi bi-x-circle me-2"></i>' + data.error;
+            div.innerHTML = '<i class="bi bi-x-circle me-2"></i>' + (data.error || 'Erro desconhecido.');
         }
         div.scrollIntoView({ behavior: 'smooth' });
     } finally {

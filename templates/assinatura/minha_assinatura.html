@@ -56,12 +56,12 @@
     <div class="row g-3 mb-4 justify-content-center">
 
         {% for p in todos_planos %}
-        {% set pid       = p['id'] %}
-        {% set pnome     = p['nome'] %}
-        {% set pcor      = p['cor'] %}
-        {% set picone    = p['icone'] %}
-        {% set ppreco    = p['preco'] %}
-        {% set precursos = p['recursos'] %}
+        {% set pid       = p.id %}
+        {% set pnome     = p.nome %}
+        {% set pcor      = p.cor %}
+        {% set picone    = p.icone %}
+        {% set ppreco    = p.preco %}
+        {% set precursos = p.recursos %}
         {% set eh_atual  = (nivel == pid) %}
         {% set eh_gratis = (ppreco == 0) %}
 
@@ -132,10 +132,10 @@
 
                     <!-- recursos -->
                     <ul class="list-unstyled mb-3 flex-grow-1">
-                        {% for ricone, rtexto in precursos %}
+                        {% for r in precursos %}
                         <li class="recurso-row">
-                            <i class="bi bi-{{ ricone }}"></i>
-                            <span>{{ rtexto }}</span>
+                            <i class="bi bi-{{ r.icone }}"></i>
+                            <span>{{ r.texto }}</span>
                         </li>
                         {% endfor %}
                     </ul>

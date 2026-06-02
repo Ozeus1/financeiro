@@ -198,7 +198,10 @@ def iniciar(plano):
             valor = preco_mensal
             titulo = f'FiNan {info["nome"]} — Assinatura Mensal'
 
-        base_url = request.host_url.rstrip('/')
+        # Usar X-Forwarded-Proto para garantir HTTPS atrás do Nginx
+        proto = request.headers.get('X-Forwarded-Proto', request.scheme)
+        host = request.headers.get('X-Forwarded-Host', request.host)
+        base_url = f'{proto}://{host}'
 
         preference_data = {
             'items': [{

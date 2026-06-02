@@ -236,8 +236,11 @@ def iniciar(plano):
         db.session.add(ass)
         db.session.commit()
 
-        # Redireciona para checkout do MP
-        init_point = preference.get('init_point')
+        # init_point em produção, sandbox_init_point em ambiente de testes
+        init_point = preference.get('init_point') or preference.get('sandbox_init_point')
+        if not init_point:
+            flash('Erro ao obter link de pagamento. Tente novamente.', 'danger')
+            return redirect(url_for('assinatura.minha_assinatura'))
         return redirect(init_point)
 
     except ImportError:

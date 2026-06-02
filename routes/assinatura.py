@@ -109,16 +109,58 @@ def minha_assinatura():
     """Tela do usuário com seu plano atual e opção de assinar"""
     historico = Assinatura.query.filter_by(user_id=current_user.id)\
         .order_by(Assinatura.data_criacao.desc()).limit(10).all()
-    # Passa como lista de tuplas para garantir iteração correta no Jinja
-    planos_lista = list(PLANOS.items())
+
+    # Lista de dicts com todos os planos na ordem de exibição
+    todos_planos = [
+        {'id': 'free', 'nome': 'Free', 'cor': '#6c757d', 'icone': 'bi-gift', 'preco': 0,
+         'recursos': [
+             ('dash-circle text-warning',       '300 registros/mês'),
+             ('dash-circle text-warning',       '10 categorias de despesa'),
+             ('dash-circle text-warning',       '2 cartões'),
+             ('check-circle-fill text-success', 'Todos os relatórios'),
+             ('x-circle text-danger',           'Sem Robô de IA'),
+             ('x-circle text-danger',           'Sem separação PF/PJ'),
+         ]},
+        {'id': 'basic', 'nome': 'Basic', 'cor': '#20c997', 'icone': 'bi-rocket-takeoff-fill', 'preco': 6.90,
+         'recursos': [
+             ('check-circle-fill text-success', 'Registros ilimitados'),
+             ('check-circle-fill text-success', 'Categorias ilimitadas'),
+             ('check-circle-fill text-success', 'Cartões ilimitados'),
+             ('check-circle-fill text-success', 'Todos os relatórios'),
+             ('x-circle text-danger',           'Sem Robô de IA'),
+             ('x-circle text-danger',           'Sem separação PF/PJ'),
+         ]},
+        {'id': 'pro', 'nome': 'Pro', 'cor': '#4361ee', 'icone': 'bi-star-fill', 'preco': 19.90,
+         'recursos': [
+             ('check-circle-fill text-success', 'Registros ilimitados'),
+             ('check-circle-fill text-success', 'Categorias ilimitadas'),
+             ('check-circle-fill text-success', 'Cartões ilimitados'),
+             ('check-circle-fill text-success', 'Todos os relatórios'),
+             ('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
+             ('x-circle text-danger',           'Sem separação PF/PJ'),
+         ]},
+        {'id': 'promax', 'nome': 'ProMax', 'cor': '#6f42c1', 'icone': 'bi-stars', 'preco': 27.90,
+         'recursos': [
+             ('check-circle-fill text-success', 'Tudo do plano Pro'),
+             ('check-circle-fill text-success', 'Separação PF/PJ'),
+             ('check-circle-fill text-success', 'Relatórios PF vs PJ'),
+             ('check-circle-fill text-success', 'Dashboard por entidade'),
+             ('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
+             ('check-circle-fill text-success', 'Filtros PF/PJ em todas as telas'),
+         ]},
+        {'id': 'familia', 'nome': 'Família', 'cor': '#e67e22', 'icone': 'bi-house-heart-fill', 'preco': 34.90,
+         'recursos': [
+             ('check-circle-fill text-success', 'Até 5 usuários compartilhados'),
+             ('check-circle-fill text-success', 'Banco de dados compartilhado'),
+             ('check-circle-fill text-success', 'Registros ilimitados'),
+             ('check-circle-fill text-success', 'Relatório por membro'),
+             ('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
+             ('x-circle text-danger',           'Sem separação PF/PJ'),
+         ]},
+    ]
+
     return render_template('assinatura/minha_assinatura.html',
-                           planos=PLANOS,
-                           planos_lista=planos_lista,
-                           plano_basic=PLANOS['basic'],
-                           plano_pro=PLANOS['pro'],
-                           plano_promax=PLANOS['promax'],
-                           plano_familia=PLANOS['familia'],
-                           plano_free=PLANO_FREE,
+                           todos_planos=todos_planos,
                            historico=historico)
 
 

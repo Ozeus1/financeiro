@@ -55,58 +55,14 @@
     <!-- ── Grade de planos ── -->
     <div class="row g-3 mb-4 justify-content-center">
 
-        {# ── definição de todos os planos para o loop ── #}
-        {% set todos = [
-            ('free',    'Free',    '#6c757d', 'bi-gift',               0,     [
-                ('dash-circle text-warning',       '300 registros/mês'),
-                ('dash-circle text-warning',       '10 categorias de despesa'),
-                ('dash-circle text-warning',       '2 cartões'),
-                ('check-circle-fill text-success', 'Todos os relatórios'),
-                ('x-circle text-danger',           'Sem Robô de IA'),
-                ('x-circle text-danger',           'Sem separação PF/PJ'),
-            ]),
-            ('basic',   'Basic',   '#20c997', 'bi-rocket-takeoff-fill', 6.90,  [
-                ('check-circle-fill text-success', 'Registros ilimitados'),
-                ('check-circle-fill text-success', 'Categorias ilimitadas'),
-                ('check-circle-fill text-success', 'Cartões ilimitados'),
-                ('check-circle-fill text-success', 'Todos os relatórios'),
-                ('x-circle text-danger',           'Sem Robô de IA'),
-                ('x-circle text-danger',           'Sem separação PF/PJ'),
-            ]),
-            ('pro',     'Pro',     '#4361ee', 'bi-star-fill',           19.90, [
-                ('check-circle-fill text-success', 'Registros ilimitados'),
-                ('check-circle-fill text-success', 'Categorias ilimitadas'),
-                ('check-circle-fill text-success', 'Cartões ilimitados'),
-                ('check-circle-fill text-success', 'Todos os relatórios'),
-                ('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
-                ('x-circle text-danger',           'Sem separação PF/PJ'),
-            ]),
-            ('promax',  'ProMax',  '#6f42c1', 'bi-stars',              27.90, [
-                ('check-circle-fill text-success', 'Tudo do plano Pro'),
-                ('check-circle-fill text-success', 'Separação PF/PJ'),
-                ('check-circle-fill text-success', 'Relatórios PF vs PJ'),
-                ('check-circle-fill text-success', 'Dashboard separado por entidade'),
-                ('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
-                ('check-circle-fill text-success', 'Filtros PF/PJ em todas as telas'),
-            ]),
-            ('familia', 'Família', '#e67e22', 'bi-house-heart-fill',   34.90, [
-                ('check-circle-fill text-success', 'Até 5 usuários compartilhados'),
-                ('check-circle-fill text-success', 'Banco de dados compartilhado'),
-                ('check-circle-fill text-success', 'Registros ilimitados'),
-                ('check-circle-fill text-success', 'Relatório por membro'),
-                ('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
-                ('x-circle text-danger',           'Sem separação PF/PJ'),
-            ]),
-        ] %}
-
-        {% for item in todos %}
-        {% set pid      = item[0] %}
-        {% set pnome    = item[1] %}
-        {% set pcor     = item[2] %}
-        {% set picone   = item[3] %}
-        {% set ppreco   = item[4] %}
-        {% set precursos = item[5] %}
-        {% set eh_atual = (nivel == pid) %}
+        {% for p in todos_planos %}
+        {% set pid       = p['id'] %}
+        {% set pnome     = p['nome'] %}
+        {% set pcor      = p['cor'] %}
+        {% set picone    = p['icone'] %}
+        {% set ppreco    = p['preco'] %}
+        {% set precursos = p['recursos'] %}
+        {% set eh_atual  = (nivel == pid) %}
         {% set eh_gratis = (ppreco == 0) %}
 
         <div class="col-6 col-md-4 col-lg-2-4" style="flex:0 0 auto;width:19%;">

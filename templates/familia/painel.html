@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Painel Família — FiNan{% endblock %}
+{% block extra_css %}
+<style>
+.membro-card{border-radius:12px;transition:box-shadow .2s;}
+.membro-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1);}
+.badge-assinante{background:#e67e22;color:#fff;font-size:.7rem;padding:.2em .6em;border-radius:10px;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <i class="bi bi-house-heart-fill fs-2" style="color:#e67e22;"></i>
+        <div>
+            <h2 class="mb-0 fw-bold">{{ grupo.nome }}</h2>
+            <small class="text-muted">Plano Família · {{ membros|length }}/{{ grupo.max_membros }} membros</small>
+        </div>
+        <div class="ms-auto">
+            <a href="{{ url_for('familia.relatorio') }}" class="btn btn-outline-warning me-2">
+                <i class="bi bi-bar-chart me-1"></i> Relatório por Membro
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Membros -->
+        <div class="col-md-7">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-bold border-bottom">
+                    <i class="bi bi-people me-2" style="color:#e67e22;"></i> Membros do Grupo
+                </div>
+                <div class="card-body p-0">
+                    {% for membro in membros %}
+                    <div class="d-flex align-items-center gap-3 p-3 border-bottom membro-card">
+                        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white fw-bold"
+                             style="width:44px;height:44px;font-size:1.1rem;flex-shrink:0;">
+                            {{ (membro.nome or membro.username)[0].upper() }}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">
+                                {{ membro.nome or membro.username }}
+                                {% if membro.eh_assinante_familia %}
+                                <span class="badge-assinante ms-1">Assinante</span>
+                                {% endif %}
+                                {% if membro.id == current_user.id %}
+                                <span class="badge bg-info ms-1" style="font-size:.65rem;">Você</span>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">{{ membro.email }}</small>
+                            {% if membro.whatsapp %}
+                            <small class="text-muted ms-2"><i class="bi bi-whatsapp text-success"></i> {{ membro.whatsapp }}</small>
+                            {% endif %}
+                        </div>
+                        {% if eh_assinante and membro.id != current_user.id %}
+                        <form method="POST" action="{{ url_for('familia.remover_membro', membro_id=membro.id) }}"
+                              onsubmit="return confirm('Remover {{ membro.nome or membro.username }} do grupo?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover">
+                                <i class="bi bi-person-dash"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Convidar -->
+        <div class="col-md-5">
+            {% if eh_assinante %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white fw-bold border-bottom">
+                    <i class="bi bi-person-plus me-2 text-success"></i> Convidar Membro
+                </div>
+                <div class="card-body">
+                    {% if grupo.pode_adicionar() %}
+                    <form method="POST" action="{{ url_for('familia.convidar') }}">
+                        <div class="mb-3">
+                            <label class="form-label">E-mail do convidado <small class="text-muted">(opcional)</small></label>
+                            <input type="email" class="form-control" name="email"
+                                   placeholder="deixe em branco para gerar link">
+                            <small class="text-muted">Se informar, enviaremos o convite por e-mail.</small>
+                        </div>
+                        <button type="submit" class="btn w-100 fw-bold" style="background:#e67e22;color:#fff;">
+                            <i class="bi bi-envelope-plus me-1"></i> Gerar Convite
+                        </button>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-people-fill me-1"></i>
+                        Grupo completo ({{ grupo.max_membros }} membros).
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Convites ativos -->
+            {% if convites_ativos %}
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-bold border-bottom">
+                    <i class="bi bi-clock me-2 text-warning"></i> Convites Pendentes
+                </div>
+                <div class="card-body p-0">
+                    {% for c in convites_ativos %}
+                    <div class="p-3 border-bottom">
+                        <small class="text-muted d-block">{{ c.email_convidado or 'Link geral' }}</small>
+                        <div class="input-group input-group-sm mt-1">
+                            <input type="text" class="form-control font-monospace"
+                                   value="{{ url_for('familia.aceitar_convite', token=c.token, _external=True) }}"
+                                   readonly id="link{{ c.id }}">
+                            <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('link{{ c.id }}').value);this.innerHTML='<i class=\'bi bi-check-lg\'></i>'">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">Expira: {{ c.data_expiracao.strftime('%d/%m/%Y') }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-info-circle fs-2 text-muted"></i>
+                    <p class="mt-2 text-muted">Apenas o assinante do plano pode convidar e remover membros.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

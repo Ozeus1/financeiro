@@ -630,10 +630,16 @@ def categorias_despesa():
             if CategoriaDespesa.query.filter_by(nome=nome, user_id=current_user.id).first():
                 flash('Categoria já existe.', 'warning')
             else:
-                nova_categoria = CategoriaDespesa(nome=nome, ativo=True, user_id=current_user.id)
-                db.session.add(nova_categoria)
-                db.session.commit()
-                flash('Categoria criada com sucesso!', 'success')
+                from models import LIMITES_PLANO
+                limite = LIMITES_PLANO.get(current_user.nivel_acesso, {}).get('categorias_despesa')
+                total = CategoriaDespesa.query.filter_by(user_id=current_user.id).count()
+                if limite is not None and total >= limite:
+                    flash(f'Limite do plano {current_user.nivel_acesso.upper()}: máximo {limite} categorias de despesa. Faça upgrade para adicionar mais.', 'warning')
+                else:
+                    nova_categoria = CategoriaDespesa(nome=nome, ativo=True, user_id=current_user.id)
+                    db.session.add(nova_categoria)
+                    db.session.commit()
+                    flash('Categoria criada com sucesso!', 'success')
         
         elif action == 'editar':
             id = int(request.form.get('id'))
@@ -756,6 +762,13 @@ def meios_pagamento():
             if MeioPagamento.query.filter_by(nome=nome, user_id=current_user.id).first():
                 flash('Meio de pagamento já existe.', 'warning')
             else:
+                from models import LIMITES_PLANO
+                limite_cartoes = LIMITES_PLANO.get(current_user.nivel_acesso, {}).get('cartoes')
+                if tipo == 'cartao' and limite_cartoes is not None:
+                    total_cartoes = MeioPagamento.query.filter_by(user_id=current_user.id, tipo='cartao').count()
+                    if total_cartoes >= limite_cartoes:
+                        flash(f'Limite do plano {current_user.nivel_acesso.upper()}: máximo {limite_cartoes} cartões. Faça upgrade para adicionar mais.', 'warning')
+                        return redirect(url_for('config.meios_pagamento'))
                 novo_meio = MeioPagamento(nome=nome, tipo=tipo, ativo=True, user_id=current_user.id)
                 db.session.add(novo_meio)
                 db.session.commit()

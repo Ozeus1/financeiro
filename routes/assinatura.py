@@ -171,7 +171,10 @@ def minha_assinatura():
 @login_required
 def iniciar(plano):
     """Cria preferência de pagamento no Mercado Pago e redireciona"""
+    import logging
+    logging.warning(f'INICIAR chamado: plano_url={repr(plano)} metodo={request.method} form={dict(request.form)}')
     plano = plano.strip().lower() if plano else ''
+    logging.warning(f'INICIAR apos normalize: plano={repr(plano)} in_PLANOS={plano in PLANOS} PLANOS_keys={list(PLANOS.keys())}')
     if plano not in PLANOS:
         import logging
         logging.warning(f'PLANO INVALIDO: "{plano}" | URL: {request.url} | Referer: {request.referrer} | User: {current_user.username}')

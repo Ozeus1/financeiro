@@ -360,45 +360,46 @@ document.getElementById('btnImportar').addEventListener('click', async function(
     this.disabled = true;
     this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Importando...';
 
-    try {
-        const resp = await fetch('{{ url_for("config.importar_fatura_cartao_confirmar") }}', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({ items: linhasSel, cartao_id: parseInt(cartaoId) })
-        });
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Importando...';
 
+    const mostrarResultado = (sucesso, msg) => {
         const div = document.getElementById('resultadoImport');
-        div.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-warning');
+        if (!div) { alert(msg); return; }
+        div.className = 'alert ' + (sucesso ? 'alert-success' : 'alert-danger');
+        div.innerHTML = `<i class="bi bi-${sucesso ? 'check-circle-fill' : 'x-circle'} me-2"></i>${msg}`;
+        div.scrollIntoView({ behavior: 'smooth' });
+    };
 
-        // Verificar se a resposta é JSON antes de parsear
-        const contentType = resp.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-            // Servidor retornou HTML (redirect ou erro) — não é JSON
-            div.classList.add('alert-danger');
-            div.innerHTML = `<i class="bi bi-x-circle me-2"></i>Erro HTTP ${resp.status}: sessão expirada ou acesso negado. <a href="/auth/login">Faça login novamente</a>.`;
-            div.scrollIntoView({ behavior: 'smooth' });
-            return;
+    fetch('{{ url_for("config.importar_fatura_cartao_confirmar") }}', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ items: linhasSel, cartao_id: parseInt(cartaoId) })
+    })
+    .then(resp => {
+        const ct = resp.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+            throw new Error('Resposta HTTP ' + resp.status + ' — sessão pode ter expirado. Recarregue a página.');
         }
-
-        const data = await resp.json();
+        return resp.json();
+    })
+    .then(data => {
         if (data.success) {
-            div.classList.add('alert-success');
-            div.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>${data.message}</strong>` +
-                (data.erros && data.erros.length ? '<br><small>Erros: ' + data.erros.join(', ') + '</small>' : '');
+            mostrarResultado(true, data.message + (data.erros && data.erros.length ? '<br><small>' + data.erros.join(', ') + '</small>' : ''));
             document.getElementById('passo2').classList.add('d-none');
         } else {
-            div.classList.add('alert-danger');
-            div.innerHTML = '<i class="bi bi-x-circle me-2"></i>' + (data.error || 'Erro desconhecido.');
+            mostrarResultado(false, data.error || 'Erro desconhecido.');
         }
-        div.scrollIntoView({ behavior: 'smooth' });
-    } finally {
-        this.disabled = false;
-        this.innerHTML = '<i class="bi bi-cloud-arrow-up me-1"></i> Importar Selecionados';
-    }
+    })
+    .catch(err => {
+        mostrarResultado(false, 'Erro: ' + err.message);
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-cloud-arrow-up me-1"></i> Importar Selecionados';
+    });
 });
 </script>
 {% endblock %}

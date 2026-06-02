@@ -13,6 +13,67 @@ from utils.pluggy_client import PluggyClient
 
 config_bp = Blueprint('config', __name__)
 
+
+def _bloquear_membro_familia(f):
+    """Bloqueia acesso de membros família que não são assinantes."""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if current_user.is_familia() and not current_user.eh_assinante_familia:
+            flash('Membros do plano Família não podem alterar configurações. '
+                  'Solicite ao assinante principal.', 'warning')
+            return redirect(url_for('main.dashboard'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _enviar_email_reset(user, nova_senha):
+    """Envia e-mail com nova senha temporária para o usuário."""
+    try:
+        from models import ConfigSistema
+        import smtplib, ssl
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        host     = ConfigSistema.get('smtp_host', '')
+        port     = int(ConfigSistema.get('smtp_port', 465) or 465)
+        secure   = (ConfigSistema.get('smtp_secure', 'true') or 'true').lower() == 'true'
+        smtp_user = ConfigSistema.get('smtp_user', '')
+        password = ConfigSistema.get('smtp_password', '')
+        from_    = ConfigSistema.get('smtp_from', smtp_user)
+
+        if not host or not smtp_user:
+            return False
+
+        html = f"""
+        <div style="font-family:sans-serif;max-width:500px;margin:auto">
+          <h2 style="color:#4361ee">Sua senha foi redefinida — FiNan</h2>
+          <p>Olá, <strong>{user.nome or user.username}</strong>!</p>
+          <p>Um administrador redefiniu sua senha. Sua nova senha temporária é:</p>
+          <p style="font-size:1.4rem;font-weight:700;letter-spacing:2px;color:#4361ee">{nova_senha}</p>
+          <p>Acesse o sistema e altere sua senha em <strong>Meu Perfil</strong>.</p>
+        </div>
+        """
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'Sua senha foi redefinida — FiNan'
+        msg['From']    = from_
+        msg['To']      = user.email
+        msg.attach(MIMEText(html, 'html'))
+
+        ctx = ssl.create_default_context()
+        if secure:
+            with smtplib.SMTP_SSL(host, port, context=ctx) as s:
+                s.login(smtp_user, password)
+                s.sendmail(from_, [user.email], msg.as_string())
+        else:
+            with smtplib.SMTP(host, port) as s:
+                s.ehlo(); s.starttls(context=ctx); s.login(smtp_user, password)
+                s.sendmail(from_, [user.email], msg.as_string())
+        return True
+    except Exception as e:
+        print(f'Erro ao enviar e-mail de reset: {e}')
+        return False
+
 def importar_sqlite_receitas(sqlite_path, user_id, modo='parcial'):
     """
     Importa dados de RECEITAS do SQLite desktop para PostgreSQL
@@ -620,6 +681,7 @@ def importar_dados_antigos():
 
 @config_bp.route('/categorias-despesa', methods=['GET', 'POST'])
 @login_required
+@_bloquear_membro_familia
 def categorias_despesa():
     """Gerenciar categorias de despesa"""
     if request.method == 'POST':
@@ -690,6 +752,7 @@ def categorias_despesa():
 
 @config_bp.route('/categorias-receita', methods=['GET', 'POST'])
 @login_required
+@_bloquear_membro_familia
 def categorias_receita():
     """Gerenciar categorias de receita"""
     if request.method == 'POST':
@@ -751,6 +814,7 @@ def categorias_receita():
 
 @config_bp.route('/meios-pagamento', methods=['GET', 'POST'])
 @login_required
+@_bloquear_membro_familia
 def meios_pagamento():
     """Gerenciar meios de pagamento"""
     if request.method == 'POST':
@@ -824,6 +888,7 @@ def meios_pagamento():
 
 @config_bp.route('/meios-recebimento', methods=['GET', 'POST'])
 @login_required
+@_bloquear_membro_familia
 def meios_recebimento():
     """Gerenciar meios de recebimento"""
     if request.method == 'POST':
@@ -885,7 +950,7 @@ def meios_recebimento():
 
 @config_bp.route('/usuarios', methods=['GET', 'POST'])
 @login_required
-@admin_required
+@gerente_required
 def usuarios():
     """Gerenciar usuários (apenas admin)"""
     if request.method == 'POST':
@@ -1041,10 +1106,34 @@ def usuarios():
             elif user and user.nivel_acesso == 'admin':
                 flash('Admin não pode ter data de validade!', 'warning')
 
+        elif action == 'alterar_modo_conta':
+            id = int(request.form.get('id'))
+            modo = request.form.get('modo_conta')
+            user = User.query.get(id)
+            if user and modo in ('pf', 'pf_pj'):
+                user.modo_conta = modo
+                db.session.commit()
+                flash('Modo de conta alterado!', 'success')
+
+        elif action == 'resetar_senha':
+            id = int(request.form.get('id'))
+            user = User.query.get(id)
+            if user and user.id != current_user.id:
+                import secrets, string
+                nova_senha = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
+                user.set_password(nova_senha)
+                db.session.commit()
+                enviado = _enviar_email_reset(user, nova_senha)
+                if enviado:
+                    flash(f'Nova senha enviada para {user.email}!', 'success')
+                else:
+                    flash(f'Senha redefinida. Nova senha: {nova_senha} (configure SMTP para enviar por e-mail)', 'warning')
+
         return redirect(url_for('config.usuarios'))
-    
+
     usuarios = User.query.order_by(User.username).all()
-    return render_template('config/usuarios.html', usuarios=usuarios)
+    return render_template('config/usuarios.html', usuarios=usuarios,
+                           eh_admin=current_user.is_admin())
 
 
 # ─── SMTP / WhatsApp config ───────────────────────────────────────────────────
@@ -1141,6 +1230,7 @@ def _enviar_whatsapp_teste(numero):
 
 @config_bp.route('/orcamento', methods=['GET', 'POST'])
 @login_required
+@_bloquear_membro_familia
 def orcamento():
     """Gerenciar orçamento geral por categoria"""
     if request.method == 'POST':
@@ -1272,6 +1362,7 @@ def api_key():
 
 @config_bp.route('/cartoes', methods=['GET', 'POST'])
 @login_required
+@_bloquear_membro_familia
 def cartoes():
     """Configurar fechamento de cartões"""
     if request.method == 'POST':

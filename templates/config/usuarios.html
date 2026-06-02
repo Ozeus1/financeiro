@@ -183,10 +183,24 @@
                       </li>
                       <li>
                         <button class="dropdown-item" data-bs-toggle="modal"
+                                data-bs-target="#resetSenhaModal{{ u.id }}">
+                          <i class="bi bi-envelope-arrow-up text-warning me-2"></i>Resetar Senha (e-mail)
+                        </button>
+                      </li>
+                      <li>
+                        <button class="dropdown-item" data-bs-toggle="modal"
                                 data-bs-target="#nivelModal{{ u.id }}">
                           <i class="bi bi-shield-check text-info me-2"></i>Nível de Acesso
                         </button>
                       </li>
+                      {% if u.nivel_acesso == 'promax' %}
+                      <li>
+                        <button class="dropdown-item" data-bs-toggle="modal"
+                                data-bs-target="#modoContaModal{{ u.id }}">
+                          <i class="bi bi-buildings text-purple me-2"></i>Modo de Conta (PF/PJ)
+                        </button>
+                      </li>
+                      {% endif %}
                       {% if u.nivel_acesso != 'admin' %}
                       <li>
                         <button class="dropdown-item" data-bs-toggle="modal"
@@ -315,6 +329,31 @@
                 </div>
               </div>
 
+              <!-- Modal: Resetar Senha (envia por e-mail) -->
+              <div class="modal fade" id="resetSenhaModal{{ u.id }}" tabindex="-1">
+                <div class="modal-dialog modal-sm">
+                  <div class="modal-content">
+                    <form method="POST" onsubmit="return confirm('Resetar a senha de {{ u.username }}? A nova senha será enviada para {{ u.email }}.')">
+                      <div class="modal-header bg-warning">
+                        <h5 class="modal-title"><i class="bi bi-envelope-arrow-up me-2"></i>Resetar Senha</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body">
+                        <input type="hidden" name="action" value="resetar_senha">
+                        <input type="hidden" name="id" value="{{ u.id }}">
+                        <p class="small text-muted">Uma senha temporária será gerada e enviada para <strong>{{ u.email }}</strong>.</p>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning btn-sm">
+                          <i class="bi bi-envelope-arrow-up me-1"></i>Enviar Nova Senha
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
               <!-- Modal: Alterar Senha -->
               <div class="modal fade" id="senhaModal{{ u.id }}" tabindex="-1">
                 <div class="modal-dialog modal-sm">
@@ -409,6 +448,37 @@
                       <div class="modal-footer">
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-warning btn-sm">
+                          <i class="bi bi-check-lg me-1"></i>Salvar
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Modal: Modo de Conta ProMax -->
+              {% if u.nivel_acesso == 'promax' %}
+              <div class="modal fade" id="modoContaModal{{ u.id }}" tabindex="-1">
+                <div class="modal-dialog modal-sm">
+                  <div class="modal-content">
+                    <form method="POST">
+                      <div class="modal-header">
+                        <h5 class="modal-title"><i class="bi bi-buildings me-2"></i>Modo de Conta ProMax</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body">
+                        <input type="hidden" name="action" value="alterar_modo_conta">
+                        <input type="hidden" name="id" value="{{ u.id }}">
+                        <p class="text-muted small">Usuário: <strong>{{ u.username }}</strong></p>
+                        <select class="form-select" name="modo_conta">
+                          <option value="pf" {% if u.modo_conta != 'pf_pj' %}selected{% endif %}>Somente PF</option>
+                          <option value="pf_pj" {% if u.modo_conta == 'pf_pj' %}selected{% endif %}>PF + PJ</option>
+                        </select>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary btn-sm">
                           <i class="bi bi-check-lg me-1"></i>Salvar
                         </button>
                       </div>

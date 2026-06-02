@@ -99,7 +99,13 @@
             ]),
         ] %}
 
-        {% for pid, pnome, pcor, picone, ppreco, precursos in todos %}
+        {% for item in todos %}
+        {% set pid      = item[0] %}
+        {% set pnome    = item[1] %}
+        {% set pcor     = item[2] %}
+        {% set picone   = item[3] %}
+        {% set ppreco   = item[4] %}
+        {% set precursos = item[5] %}
         {% set eh_atual = (nivel == pid) %}
         {% set eh_gratis = (ppreco == 0) %}
 

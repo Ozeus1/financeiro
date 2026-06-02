@@ -216,7 +216,9 @@ document.getElementById('btnProcessar').addEventListener('click', async function
 
     try {
         const resp = await fetch('{{ url_for("config.processar_fatura_cartao") }}', {
-            method: 'POST', body: form
+            method: 'POST',
+            credentials: 'same-origin',
+            body: form
         });
         const data = await resp.json();
 
@@ -361,7 +363,11 @@ document.getElementById('btnImportar').addEventListener('click', async function(
     try {
         const resp = await fetch('{{ url_for("config.importar_fatura_cartao_confirmar") }}', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             body: JSON.stringify({ items: linhasSel, cartao_id: parseInt(cartaoId) })
         });
         const data = await resp.json();

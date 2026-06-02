@@ -2414,7 +2414,7 @@ def importar_fatura_cartao_confirmar():
     """Importa os itens selecionados para o banco"""
     from datetime import datetime as _dt
 
-    data = request.get_json()
+    data = request.get_json(silent=True, force=True) or {}
     items = data.get('items', [])
     cartao_id = data.get('cartao_id')
 

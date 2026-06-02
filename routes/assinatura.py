@@ -173,7 +173,9 @@ def iniciar(plano):
     """Cria preferência de pagamento no Mercado Pago e redireciona"""
     plano = plano.strip().lower() if plano else ''
     if plano not in PLANOS:
-        flash(f'Plano inválido: "{plano}".', 'danger')
+        import logging
+        logging.warning(f'PLANO INVALIDO: "{plano}" | URL: {request.url} | Referer: {request.referrer} | User: {current_user.username}')
+        # Redireciona silenciosamente sem flash para não poluir a tela
         return redirect(url_for('assinatura.minha_assinatura'))
 
     ciclo = request.form.get('ciclo', 'mensal').strip().lower()

@@ -128,8 +128,12 @@ def iniciar(plano):
     """Cria preferência de pagamento no Mercado Pago e redireciona"""
     plano = plano.strip().lower() if plano else ''
     if plano not in PLANOS:
-        flash(f'Plano inválido: "{plano}". Use pro ou promax.', 'danger')
+        flash(f'Plano inválido: "{plano}".', 'danger')
         return redirect(url_for('assinatura.minha_assinatura'))
+
+    ciclo = request.form.get('ciclo', 'mensal').strip().lower()
+    if ciclo not in ('mensal', 'anual'):
+        ciclo = 'mensal'
 
     mp_access_token = ConfigSistema.get('mp_access_token', '')
     if not mp_access_token:
@@ -141,13 +145,22 @@ def iniciar(plano):
         sdk = mercadopago.SDK(mp_access_token)
 
         info = PLANOS[plano]
+        preco_mensal = info['preco']
+        if ciclo == 'anual':
+            # 20% de desconto no anual, cobrado de uma vez
+            valor = round(preco_mensal * 12 * 0.80, 2)
+            titulo = f'FiNan {info["nome"]} — Assinatura Anual (20% off)'
+        else:
+            valor = preco_mensal
+            titulo = f'FiNan {info["nome"]} — Assinatura Mensal'
+
         base_url = request.host_url.rstrip('/')
 
         preference_data = {
             'items': [{
-                'title': f'FiNan {info["nome"]} — Assinatura Mensal',
+                'title': titulo,
                 'quantity': 1,
-                'unit_price': info['preco'],
+                'unit_price': valor,
                 'currency_id': 'BRL',
             }],
             'payer': {
@@ -161,7 +174,7 @@ def iniciar(plano):
             },
             'auto_return': 'approved',
             'notification_url': f'{base_url}/assinatura/webhook',
-            'external_reference': f'{current_user.id}|{plano}',
+            'external_reference': f'{current_user.id}|{plano}|{ciclo}',
             'statement_descriptor': 'FINAN ASSINATURA',
         }
 
@@ -173,7 +186,7 @@ def iniciar(plano):
             user_id=current_user.id,
             plano=plano,
             status='pendente',
-            valor=info['preco'],
+            valor=valor,
             mp_preference_id=preference.get('id'),
         )
         db.session.add(ass)
@@ -249,15 +262,19 @@ def _aprovar_assinatura(payment_id, external_ref):
     """Ativa o plano do usuário após pagamento aprovado"""
     try:
         partes = external_ref.split('|')
-        if len(partes) != 2:
+        if len(partes) < 2:
             return
-        user_id, plano = int(partes[0]), partes[1]
+        user_id = int(partes[0])
+        plano   = partes[1]
+        ciclo   = partes[2] if len(partes) >= 3 else 'mensal'
         if plano not in PLANOS:
             return
 
         user = User.query.get(user_id)
         if not user:
             return
+
+        meses = 12 if ciclo == 'anual' else 1
 
         # Atualiza assinatura pendente
         ass = Assinatura.query.filter_by(
@@ -267,11 +284,11 @@ def _aprovar_assinatura(payment_id, external_ref):
             ass.status = 'aprovado'
             ass.mp_payment_id = payment_id
             ass.data_aprovacao = datetime.utcnow()
-            ass.data_expiracao = (date.today() + relativedelta(months=1))
+            ass.data_expiracao = (date.today() + relativedelta(months=meses))
 
         # Ativa plano do usuário
         user.nivel_acesso = plano
-        user.data_validade = date.today() + relativedelta(months=1)
+        user.data_validade = date.today() + relativedelta(months=meses)
 
         # Plano família: criar grupo se ainda não tem
         if plano == 'familia':

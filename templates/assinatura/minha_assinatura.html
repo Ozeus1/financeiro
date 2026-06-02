@@ -3,324 +3,379 @@
 
 {% block extra_css %}
 <style>
-.plano-atual-card { border-radius:16px; }
-.recurso-item { display:flex; gap:.5rem; align-items:flex-start; padding:.3rem 0; font-size:.88rem; }
-.plano-card-upgrade { transition: transform .15s; }
-.plano-card-upgrade:hover { transform: translateY(-3px); }
+/* ── toggle ── */
+.ciclo-toggle { display:inline-flex; background:#f1f5f9; border-radius:50px; padding:4px; gap:4px; }
+.ciclo-btn { border:none; background:transparent; padding:.35rem 1.1rem; border-radius:50px;
+             font-size:.85rem; font-weight:600; cursor:pointer; transition:all .2s; color:#64748b; }
+.ciclo-btn.active { background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.12); color:#0d1b2a; }
+.badge-economia { font-size:.65rem; background:#22c55e; color:#fff;
+                  padding:.2em .55em; border-radius:20px; vertical-align:middle; }
+
+/* ── cards ── */
+.plano-card { border-radius:16px; transition:transform .18s, box-shadow .18s; border:2px solid #e2e8f0; }
+.plano-card:hover { transform:translateY(-4px); box-shadow:0 8px 30px rgba(0,0,0,.1); }
+.plano-card.atual { border-width:3px; }
+.plano-card.destaque { position:relative; }
+.destaque-ribbon { position:absolute; top:-13px; left:50%; transform:translateX(-50%);
+    background:#6f42c1; color:#fff; font-size:.68rem; font-weight:700;
+    padding:.25em .9em; border-radius:20px; white-space:nowrap; letter-spacing:.03em; }
+
+.preco-val { font-size:2.4rem; font-weight:800; line-height:1; }
+.preco-por { font-size:.78rem; color:#94a3b8; }
+.preco-original { font-size:.8rem; color:#94a3b8; text-decoration:line-through; }
+
+.recurso-row { display:flex; gap:.5rem; align-items:flex-start; padding:.28rem 0; font-size:.85rem; }
+.recurso-row i { flex-shrink:0; margin-top:2px; font-size:.95rem; }
+
+/* ── plano atual badge ── */
+.atual-badge { display:inline-block; font-size:.68rem; font-weight:700;
+               padding:.2em .75em; border-radius:20px; letter-spacing:.04em; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row g-4">
+{% set nivel = current_user.nivel_acesso %}
 
-        <!-- ── Plano Atual ── -->
-        <div class="col-md-5">
-            <div class="card border-0 shadow plano-atual-card">
-                {% set cor_header =
-                    '#6f42c1' if current_user.nivel_acesso == 'promax' else
-                    '#4361ee' if current_user.nivel_acesso == 'pro' else
-                    '#e67e22' if current_user.nivel_acesso == 'familia' else
-                    '#20c997' if current_user.nivel_acesso == 'basic' else
-                    '#6c757d' %}
-                <div class="card-header text-white fw-bold" style="background:{{ cor_header }};border-radius:16px 16px 0 0;">
-                    <i class="bi bi-person-check me-2"></i> Seu Plano Atual
-                </div>
-                <div class="card-body p-4">
-                    <div class="text-center mb-3">
-                        {% if current_user.nivel_acesso == 'promax' %}
-                        <i class="bi bi-stars fs-1" style="color:#6f42c1;"></i>
-                        <h2 class="mt-2 mb-0" style="color:#6f42c1;">ProMax</h2>
-                        {% elif current_user.nivel_acesso == 'pro' %}
-                        <i class="bi bi-star-fill fs-1" style="color:#4361ee;"></i>
-                        <h2 class="mt-2 mb-0" style="color:#4361ee;">Pro</h2>
-                        {% elif current_user.nivel_acesso == 'familia' %}
-                        <i class="bi bi-house-heart-fill fs-1" style="color:#e67e22;"></i>
-                        <h2 class="mt-2 mb-0" style="color:#e67e22;">Família</h2>
-                        {% elif current_user.nivel_acesso == 'basic' %}
-                        <i class="bi bi-rocket-takeoff-fill fs-1" style="color:#20c997;"></i>
-                        <h2 class="mt-2 mb-0" style="color:#20c997;">Basic</h2>
-                        {% elif current_user.nivel_acesso == 'gerente' %}
-                        <i class="bi bi-person-gear fs-1 text-warning"></i>
-                        <h2 class="mt-2 mb-0 text-warning">Gerente</h2>
-                        {% elif current_user.nivel_acesso == 'admin' %}
-                        <i class="bi bi-shield-fill-check fs-1 text-danger"></i>
-                        <h2 class="mt-2 mb-0 text-danger">Admin</h2>
-                        {% else %}
-                        <i class="bi bi-gift fs-1 text-secondary"></i>
-                        <h2 class="mt-2 mb-0 text-secondary">Free</h2>
+<div class="container py-4" style="max-width:1100px;">
+
+    <!-- ── Cabeçalho ── -->
+    <div class="text-center mb-4">
+        <h2 class="fw-bold mb-1">Minha Assinatura</h2>
+        <p class="text-muted mb-3">Gerencie seu plano e faça upgrade quando quiser.</p>
+
+        <!-- Toggle mensal / anual -->
+        <div class="ciclo-toggle" id="cicloToggle">
+            <button class="ciclo-btn active" data-ciclo="mensal" onclick="setCiclo('mensal')">Mensal</button>
+            <button class="ciclo-btn" data-ciclo="anual" onclick="setCiclo('anual')">
+                Anual <span class="badge-economia ms-1">−20%</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Grade de planos ── -->
+    <div class="row g-3 mb-4 justify-content-center">
+
+        {# ── definição de todos os planos para o loop ── #}
+        {% set todos = [
+            ('free',    'Free',    '#6c757d', 'bi-gift',               0,     [
+                ('dash-circle text-warning',       '300 registros/mês'),
+                ('dash-circle text-warning',       '10 categorias de despesa'),
+                ('dash-circle text-warning',       '2 cartões'),
+                ('check-circle-fill text-success', 'Todos os relatórios'),
+                ('x-circle text-danger',           'Sem Robô de IA'),
+                ('x-circle text-danger',           'Sem separação PF/PJ'),
+            ]),
+            ('basic',   'Basic',   '#20c997', 'bi-rocket-takeoff-fill', 6.90,  [
+                ('check-circle-fill text-success', 'Registros ilimitados'),
+                ('check-circle-fill text-success', 'Categorias ilimitadas'),
+                ('check-circle-fill text-success', 'Cartões ilimitados'),
+                ('check-circle-fill text-success', 'Todos os relatórios'),
+                ('x-circle text-danger',           'Sem Robô de IA'),
+                ('x-circle text-danger',           'Sem separação PF/PJ'),
+            ]),
+            ('pro',     'Pro',     '#4361ee', 'bi-star-fill',           19.90, [
+                ('check-circle-fill text-success', 'Registros ilimitados'),
+                ('check-circle-fill text-success', 'Categorias ilimitadas'),
+                ('check-circle-fill text-success', 'Cartões ilimitados'),
+                ('check-circle-fill text-success', 'Todos os relatórios'),
+                ('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
+                ('x-circle text-danger',           'Sem separação PF/PJ'),
+            ]),
+            ('promax',  'ProMax',  '#6f42c1', 'bi-stars',              27.90, [
+                ('check-circle-fill text-success', 'Tudo do plano Pro'),
+                ('check-circle-fill text-success', 'Separação PF/PJ'),
+                ('check-circle-fill text-success', 'Relatórios PF vs PJ'),
+                ('check-circle-fill text-success', 'Dashboard separado por entidade'),
+                ('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
+                ('check-circle-fill text-success', 'Filtros PF/PJ em todas as telas'),
+            ]),
+            ('familia', 'Família', '#e67e22', 'bi-house-heart-fill',   34.90, [
+                ('check-circle-fill text-success', 'Até 5 usuários compartilhados'),
+                ('check-circle-fill text-success', 'Banco de dados compartilhado'),
+                ('check-circle-fill text-success', 'Registros ilimitados'),
+                ('check-circle-fill text-success', 'Relatório por membro'),
+                ('check-circle-fill text-success', 'Robô de IA via WhatsApp'),
+                ('x-circle text-danger',           'Sem separação PF/PJ'),
+            ]),
+        ] %}
+
+        {% for pid, pnome, pcor, picone, ppreco, precursos in todos %}
+        {% set eh_atual = (nivel == pid) %}
+        {% set eh_gratis = (ppreco == 0) %}
+
+        <div class="col-6 col-md-4 col-lg-2-4" style="flex:0 0 auto;width:19%;">
+            <div class="card plano-card h-100 {% if eh_atual %}atual{% endif %}
+                        {% if pid == 'pro' %}destaque{% endif %}"
+                 style="border-color:{{ pcor }}{% if eh_atual %};background:{{ pcor }}08{% endif %};">
+
+                {% if pid == 'pro' %}
+                <span class="destaque-ribbon">MAIS POPULAR</span>
+                {% endif %}
+
+                <div class="card-body p-3 d-flex flex-column">
+
+                    <!-- ícone + nome -->
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi {{ picone }}" style="color:{{ pcor }};font-size:1.3rem;"></i>
+                        <span class="fw-bold" style="font-size:.95rem;">{{ pnome }}</span>
+                        {% if eh_atual %}
+                        <span class="atual-badge ms-auto text-white" style="background:{{ pcor }};">Atual</span>
                         {% endif %}
                     </div>
 
-                    {% if current_user.data_validade %}
-                    <div class="alert {% if current_user.esta_valido() %}alert-info{% else %}alert-danger{% endif %} text-center py-2">
+                    <!-- validade (só no plano atual) -->
+                    {% if eh_atual and current_user.data_validade %}
+                    <div class="alert alert-sm py-1 px-2 mb-2 small
+                        {% if current_user.esta_valido() %}alert-info{% else %}alert-danger{% endif %}"
+                         style="font-size:.75rem;">
                         {% if current_user.esta_valido() %}
-                        <i class="bi bi-calendar-check me-1"></i> Válido até {{ current_user.data_validade.strftime('%d/%m/%Y') }}
-                        ({{ current_user.dias_restantes() }} dias)
+                        <i class="bi bi-calendar-check me-1"></i>Válido até {{ current_user.data_validade.strftime('%d/%m/%Y') }}
+                        ({{ current_user.dias_restantes() }}d)
                         {% else %}
-                        <i class="bi bi-exclamation-triangle me-1"></i> Assinatura expirada em {{ current_user.data_validade.strftime('%d/%m/%Y') }}
+                        <i class="bi bi-exclamation-triangle me-1"></i>Expirado em {{ current_user.data_validade.strftime('%d/%m/%Y') }}
                         {% endif %}
                     </div>
                     {% endif %}
 
-                    <hr>
-                    <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">O que está incluso</h6>
-                    <ul class="list-unstyled">
-                        {% set nivel = current_user.nivel_acesso %}
-                        {% if nivel == 'free' %}
-                        <li class="recurso-item"><i class="bi bi-dash-circle text-warning mt-1"></i> 300 registros por mês</li>
-                        <li class="recurso-item"><i class="bi bi-dash-circle text-warning mt-1"></i> 10 categorias de despesa</li>
-                        <li class="recurso-item"><i class="bi bi-dash-circle text-warning mt-1"></i> 2 cartões</li>
-                        <li class="recurso-item"><i class="bi bi-x-circle text-danger mt-1"></i> Sem robô de IA</li>
-                        {% elif nivel == 'basic' %}
-                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Registros ilimitados</li>
-                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Categorias ilimitadas</li>
-                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Cartões ilimitados</li>
-                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Todos os relatórios</li>
-                        <li class="recurso-item"><i class="bi bi-x-circle text-danger mt-1"></i> Sem robô de IA</li>
-                        <li class="recurso-item"><i class="bi bi-x-circle text-danger mt-1"></i> Sem separação PF/PJ</li>
+                    <!-- preço mensal -->
+                    <div class="mb-1 preco-mensal">
+                        {% if eh_gratis %}
+                        <span class="preco-val" style="color:{{ pcor }};">Grátis</span>
                         {% else %}
-                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Registros ilimitados</li>
-                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Categorias ilimitadas</li>
-                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Cartões ilimitados</li>
-                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Robô de IA incluso</li>
-                        {% if nivel == 'promax' %}
-                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Separação PF/PJ</li>
+                        <span class="preco-val" style="color:{{ pcor }};">
+                            R$ {{ "%.2f"|format(ppreco)|replace('.', ',') }}
+                        </span>
+                        <span class="preco-por">/mês</span>
                         {% endif %}
-                        {% if nivel == 'familia' %}
-                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Até 5 usuários compartilhados</li>
-                        {% endif %}
-                        {% endif %}
+                    </div>
+
+                    <!-- preço anual (oculto por JS inicialmente) -->
+                    {% if not eh_gratis %}
+                    <div class="mb-1 preco-anual d-none">
+                        {% set preco_anual_mes = (ppreco * 0.80)|round(2) %}
+                        {% set preco_anual_total = (ppreco * 12 * 0.80)|round(2) %}
+                        <span class="preco-original">R$ {{ "%.2f"|format(ppreco)|replace('.', ',') }}/mês</span><br>
+                        <span class="preco-val" style="color:{{ pcor }};">
+                            R$ {{ "%.2f"|format(preco_anual_mes)|replace('.', ',') }}
+                        </span>
+                        <span class="preco-por">/mês</span>
+                        <br><small class="text-muted" style="font-size:.72rem;">
+                            R$ {{ "%.2f"|format(preco_anual_total)|replace('.', ',') }}/ano — economia de
+                            R$ {{ "%.2f"|format(ppreco * 12 * 0.20)|replace('.', ',') }}
+                        </small>
+                    </div>
+                    {% endif %}
+
+                    <hr class="my-2">
+
+                    <!-- recursos -->
+                    <ul class="list-unstyled mb-3 flex-grow-1">
+                        {% for ricone, rtexto in precursos %}
+                        <li class="recurso-row">
+                            <i class="bi bi-{{ ricone }}"></i>
+                            <span>{{ rtexto }}</span>
+                        </li>
+                        {% endfor %}
                     </ul>
+
+                    <!-- botão -->
+                    {% if eh_atual %}
+                        <button class="btn btn-sm w-100 fw-bold" style="background:{{ pcor }};color:#fff;opacity:.75;" disabled>
+                            <i class="bi bi-check-lg me-1"></i> Plano Atual
+                        </button>
+                    {% elif eh_gratis %}
+                        {# Free não tem botão de assinatura #}
+                    {% else %}
+                        <form method="POST" action="{{ url_for('assinatura.iniciar', plano=pid) }}" class="form-assinar">
+                            <input type="hidden" name="ciclo" value="mensal" class="input-ciclo">
+                            <button type="submit" class="btn btn-sm w-100 fw-bold"
+                                    style="background:{{ pcor }};color:#fff;">
+                                <i class="bi bi-credit-card me-1"></i>
+                                <span class="txt-assinar">Assinar</span>
+                            </button>
+                        </form>
+                    {% endif %}
+
                 </div>
             </div>
         </div>
+        {% endfor %}
 
-        <!-- ── Upgrade ── -->
-        <div class="col-md-7">
-            {% set nivel = current_user.nivel_acesso %}
-            {% if nivel in ('free', 'basic', 'pro') %}
-            <div class="card border-0 shadow">
-                <div class="card-header fw-bold bg-white border-bottom">
-                    <i class="bi bi-arrow-up-circle me-2 text-success"></i> Fazer Upgrade
-                </div>
-                <div class="card-body p-4">
-                    <div class="row g-3">
+    </div><!-- /row planos -->
 
-                        {% if nivel == 'free' %}
-                        <!-- Basic -->
-                        <div class="col-6 col-md-3">
-                            <div class="card border-2 h-100 plano-card-upgrade" style="border-color:{{ plano_basic['cor'] }} !important;">
-                                <div class="card-body text-center p-3">
-                                    <i class="bi {{ plano_basic['icone'] }} fs-3" style="color:{{ plano_basic['cor'] }};"></i>
-                                    <h6 class="mt-2 mb-0 fw-bold">{{ plano_basic['nome'] }}</h6>
-                                    <div class="my-2 fw-bold" style="font-size:1.3rem;color:{{ plano_basic['cor'] }};">
-                                        R$ 6,90<small class="text-muted" style="font-size:.65rem;">/mês</small>
-                                    </div>
-                                    <p class="text-muted small mb-3" style="font-size:.78rem;">Sem limites de registros, categorias e cartões</p>
-                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='basic') }}">
-                                        <button type="submit" class="btn btn-sm w-100 fw-bold" style="background:{{ plano_basic['cor'] }};color:#fff;">
-                                            Assinar
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Pro -->
-                        <div class="col-6 col-md-3">
-                            <div class="card border-2 h-100 plano-card-upgrade" style="border-color:{{ plano_pro['cor'] }} !important;">
-                                <div class="card-body text-center p-3">
-                                    <i class="bi {{ plano_pro['icone'] }} fs-3" style="color:{{ plano_pro['cor'] }};"></i>
-                                    <h6 class="mt-2 mb-0 fw-bold">{{ plano_pro['nome'] }}</h6>
-                                    <div class="my-2 fw-bold" style="font-size:1.3rem;color:{{ plano_pro['cor'] }};">
-                                        R$ 19,90<small class="text-muted" style="font-size:.65rem;">/mês</small>
-                                    </div>
-                                    <p class="text-muted small mb-3" style="font-size:.78rem;">{{ plano_pro['descricao'] }}</p>
-                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='pro') }}">
-                                        <button type="submit" class="btn btn-sm w-100 fw-bold" style="background:{{ plano_pro['cor'] }};color:#fff;">
-                                            Assinar
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- ProMax -->
-                        <div class="col-6 col-md-3">
-                            <div class="card border-2 h-100 plano-card-upgrade" style="border-color:{{ plano_promax['cor'] }} !important;">
-                                <div class="card-body text-center p-3">
-                                    <i class="bi {{ plano_promax['icone'] }} fs-3" style="color:{{ plano_promax['cor'] }};"></i>
-                                    <h6 class="mt-2 mb-0 fw-bold">{{ plano_promax['nome'] }}</h6>
-                                    <div class="my-2 fw-bold" style="font-size:1.3rem;color:{{ plano_promax['cor'] }};">
-                                        R$ 27,90<small class="text-muted" style="font-size:.65rem;">/mês</small>
-                                    </div>
-                                    <p class="text-muted small mb-3" style="font-size:.78rem;">{{ plano_promax['descricao'] }}</p>
-                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='promax') }}">
-                                        <button type="submit" class="btn btn-sm w-100 fw-bold" style="background:{{ plano_promax['cor'] }};color:#fff;">
-                                            Assinar
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Família -->
-                        <div class="col-6 col-md-3">
-                            <div class="card border-2 h-100 plano-card-upgrade" style="border-color:{{ plano_familia['cor'] }} !important;">
-                                <div class="card-body text-center p-3">
-                                    <i class="bi {{ plano_familia['icone'] }} fs-3" style="color:{{ plano_familia['cor'] }};"></i>
-                                    <h6 class="mt-2 mb-0 fw-bold">{{ plano_familia['nome'] }}</h6>
-                                    <div class="my-2 fw-bold" style="font-size:1.3rem;color:{{ plano_familia['cor'] }};">
-                                        R$ 34,90<small class="text-muted" style="font-size:.65rem;">/mês</small>
-                                    </div>
-                                    <p class="text-muted small mb-3" style="font-size:.78rem;">{{ plano_familia['descricao'] }}</p>
-                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='familia') }}">
-                                        <button type="submit" class="btn btn-sm w-100 fw-bold" style="background:{{ plano_familia['cor'] }};color:#fff;">
-                                            Assinar
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-                        {% elif nivel == 'basic' %}
-                        <!-- Pro -->
-                        <div class="col-md-4">
-                            <div class="card border-2 h-100 plano-card-upgrade" style="border-color:{{ plano_pro['cor'] }} !important;">
-                                <div class="card-body text-center p-3">
-                                    <i class="bi {{ plano_pro['icone'] }} fs-2" style="color:{{ plano_pro['cor'] }};"></i>
-                                    <h5 class="mt-2 mb-0">{{ plano_pro['nome'] }}</h5>
-                                    <div class="my-2 fw-bold" style="font-size:1.5rem;color:{{ plano_pro['cor'] }};">R$ 19,90<small class="text-muted" style="font-size:.65rem;">/mês</small></div>
-                                    <p class="text-muted small mb-3">{{ plano_pro['descricao'] }}</p>
-                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='pro') }}">
-                                        <button type="submit" class="btn w-100 fw-bold" style="background:{{ plano_pro['cor'] }};color:#fff;">
-                                            <i class="bi bi-credit-card me-1"></i> Assinar Pro
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- ProMax -->
-                        <div class="col-md-4">
-                            <div class="card border-2 h-100 plano-card-upgrade" style="border-color:{{ plano_promax['cor'] }} !important;">
-                                <div class="card-body text-center p-3">
-                                    <i class="bi {{ plano_promax['icone'] }} fs-2" style="color:{{ plano_promax['cor'] }};"></i>
-                                    <h5 class="mt-2 mb-0">{{ plano_promax['nome'] }}</h5>
-                                    <div class="my-2 fw-bold" style="font-size:1.5rem;color:{{ plano_promax['cor'] }};">R$ 27,90<small class="text-muted" style="font-size:.65rem;">/mês</small></div>
-                                    <p class="text-muted small mb-3">{{ plano_promax['descricao'] }}</p>
-                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='promax') }}">
-                                        <button type="submit" class="btn w-100 fw-bold" style="background:{{ plano_promax['cor'] }};color:#fff;">
-                                            <i class="bi bi-credit-card me-1"></i> Assinar ProMax
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Família -->
-                        <div class="col-md-4">
-                            <div class="card border-2 h-100 plano-card-upgrade" style="border-color:{{ plano_familia['cor'] }} !important;">
-                                <div class="card-body text-center p-3">
-                                    <i class="bi {{ plano_familia['icone'] }} fs-2" style="color:{{ plano_familia['cor'] }};"></i>
-                                    <h5 class="mt-2 mb-0">{{ plano_familia['nome'] }}</h5>
-                                    <div class="my-2 fw-bold" style="font-size:1.5rem;color:{{ plano_familia['cor'] }};">R$ 34,90<small class="text-muted" style="font-size:.65rem;">/mês</small></div>
-                                    <p class="text-muted small mb-3">{{ plano_familia['descricao'] }}</p>
-                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='familia') }}">
-                                        <button type="submit" class="btn w-100 fw-bold" style="background:{{ plano_familia['cor'] }};color:#fff;">
-                                            <i class="bi bi-credit-card me-1"></i> Assinar Família
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-                        {% elif nivel == 'pro' %}
-                        <div class="col-12">
-                            <div class="card border-2" style="border-color:{{ plano_promax['cor'] }} !important;">
-                                <div class="card-body p-4">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <i class="bi {{ plano_promax['icone'] }} fs-1" style="color:{{ plano_promax['cor'] }};"></i>
-                                        <div>
-                                            <h4 class="mb-0">ProMax</h4>
-                                            <p class="text-muted mb-0 small">{{ plano_promax['descricao'] }}</p>
-                                        </div>
-                                        <div class="ms-auto text-end">
-                                            <div style="font-size:1.8rem;font-weight:800;color:{{ plano_promax['cor'] }};">R$ 27,90<small style="font-size:.65rem;color:#64748b;">/mês</small></div>
-                                        </div>
-                                    </div>
-                                    <hr>
-                                    <p class="mb-3">Adicione ao seu plano Pro a separação de contas <strong>Pessoa Física</strong> e <strong>Pessoa Jurídica</strong> com relatórios exclusivos.</p>
-                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='promax') }}">
-                                        <button type="submit" class="btn fw-bold px-4" style="background:{{ plano_promax['cor'] }};color:#fff;">
-                                            <i class="bi bi-credit-card me-1"></i> Fazer Upgrade para ProMax
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="alert alert-light border mt-3 mb-0 small">
-                        <i class="bi bi-shield-check text-success me-1"></i>
-                        Pagamento seguro via <strong>Mercado Pago</strong>. Cartão, PIX, boleto e débito aceitos.
-                        Plano ativado imediatamente após aprovação.
-                    </div>
-                </div>
-            </div>
-            {% else %}
-            <div class="card border-0 shadow">
-                <div class="card-body p-4 text-center">
-                    <i class="bi bi-check-circle-fill text-success fs-1"></i>
-                    <h4 class="mt-3">Você tem o melhor plano!</h4>
-                    <p class="text-muted">Aproveite todos os recursos do FiNan sem limitações.</p>
-                    <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">Ir para o Dashboard</a>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- ── Histórico ── -->
-        {% if historico %}
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-bold border-bottom">
-                    <i class="bi bi-clock-history me-2"></i> Histórico de Assinaturas
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Data</th><th>Plano</th><th>Valor</th><th>Status</th><th>Válido até</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for a in historico %}
-                            <tr>
-                                <td>{{ a.data_criacao.strftime('%d/%m/%Y') }}</td>
-                                <td>
-                                    <span class="badge" style="background:
-                                        {% if a.plano == 'promax' %}#6f42c1
-                                        {% elif a.plano == 'pro' %}#4361ee
-                                        {% elif a.plano == 'familia' %}#e67e22
-                                        {% elif a.plano == 'basic' %}#20c997
-                                        {% else %}#6c757d{% endif %};">
-                                        {{ a.plano.upper() }}
-                                    </span>
-                                </td>
-                                <td>R$ {{ "%.2f"|format(a.valor)|replace('.', ',') }}</td>
-                                <td>
-                                    {% if a.status == 'aprovado' %}<span class="badge bg-success">Aprovado</span>
-                                    {% elif a.status == 'pendente' %}<span class="badge bg-warning text-dark">Pendente</span>
-                                    {% else %}<span class="badge bg-secondary">{{ a.status.title() }}</span>{% endif %}
-                                </td>
-                                <td>{{ a.data_expiracao.strftime('%d/%m/%Y') if a.data_expiracao else '—' }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
+    <!-- ── Aviso pagamento seguro ── -->
+    <div class="alert alert-light border text-center small mb-4">
+        <i class="bi bi-shield-check text-success me-1"></i>
+        Pagamento seguro via <strong>Mercado Pago</strong> — Cartão, PIX, boleto e débito aceitos.
+        Plano ativado imediatamente após aprovação.
     </div>
+
+    <!-- ── Tabela comparativa ── -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-bold border-bottom">
+            <i class="bi bi-table me-2"></i> Comparativo de Planos
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0" style="font-size:.83rem;">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="min-width:180px;">Recurso</th>
+                        <th class="text-center">Free</th>
+                        <th class="text-center" style="color:#20c997;">Basic</th>
+                        <th class="text-center" style="color:#7ba7f7;">Pro</th>
+                        <th class="text-center" style="color:#b39ddb;">ProMax</th>
+                        <th class="text-center" style="color:#f0a868;">Família</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% macro check(ok) %}
+                        {% if ok %}<i class="bi bi-check-circle-fill text-success"></i>
+                        {% else %}<i class="bi bi-x-circle text-danger"></i>{% endif %}
+                    {% endmacro %}
+                    <tr>
+                        <td>Registros mensais</td>
+                        <td class="text-center"><small class="text-warning fw-bold">300</small></td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Categorias de despesa</td>
+                        <td class="text-center"><small class="text-warning fw-bold">10</small></td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Cartões</td>
+                        <td class="text-center"><small class="text-warning fw-bold">2</small></td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Todos os relatórios</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Robô de IA (WhatsApp)</td>
+                        <td class="text-center">{{ check(false) }}</td>
+                        <td class="text-center">{{ check(false) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Separação PF/PJ</td>
+                        <td class="text-center">{{ check(false) }}</td>
+                        <td class="text-center">{{ check(false) }}</td>
+                        <td class="text-center">{{ check(false) }}</td>
+                        <td class="text-center">{{ check(true) }}</td>
+                        <td class="text-center">{{ check(false) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Usuários compartilhados</td>
+                        <td class="text-center">{{ check(false) }}</td>
+                        <td class="text-center">{{ check(false) }}</td>
+                        <td class="text-center">{{ check(false) }}</td>
+                        <td class="text-center">{{ check(false) }}</td>
+                        <td class="text-center"><small class="fw-bold" style="color:#e67e22;">Até 5</small></td>
+                    </tr>
+                    <tr class="table-light fw-bold">
+                        <td>Preço mensal</td>
+                        <td class="text-center">Grátis</td>
+                        <td class="text-center">R$ 6,90</td>
+                        <td class="text-center">R$ 19,90</td>
+                        <td class="text-center">R$ 27,90</td>
+                        <td class="text-center">R$ 34,90</td>
+                    </tr>
+                    <tr class="table-light">
+                        <td>Preço anual <span class="badge-economia">−20%</span></td>
+                        <td class="text-center">—</td>
+                        <td class="text-center">R$ 66,24/ano</td>
+                        <td class="text-center">R$ 191,04/ano</td>
+                        <td class="text-center">R$ 267,84/ano</td>
+                        <td class="text-center">R$ 334,80/ano</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── Histórico ── -->
+    {% if historico %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-bold border-bottom">
+            <i class="bi bi-clock-history me-2"></i> Histórico de Assinaturas
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" style="font-size:.85rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data</th><th>Plano</th><th>Valor</th><th>Status</th><th>Válido até</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in historico %}
+                    <tr>
+                        <td>{{ a.data_criacao.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            <span class="badge" style="background:
+                                {%- if a.plano == 'promax' %}#6f42c1
+                                {%- elif a.plano == 'pro' %}#4361ee
+                                {%- elif a.plano == 'familia' %}#e67e22
+                                {%- elif a.plano == 'basic' %}#20c997
+                                {%- else %}#6c757d{%- endif %};">
+                                {{ a.plano.upper() }}
+                            </span>
+                        </td>
+                        <td>R$ {{ "%.2f"|format(a.valor)|replace('.', ',') }}</td>
+                        <td>
+                            {% if a.status == 'aprovado' %}<span class="badge bg-success">Aprovado</span>
+                            {% elif a.status == 'pendente' %}<span class="badge bg-warning text-dark">Pendente</span>
+                            {% else %}<span class="badge bg-secondary">{{ a.status.title() }}</span>{% endif %}
+                        </td>
+                        <td>{{ a.data_expiracao.strftime('%d/%m/%Y') if a.data_expiracao else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function setCiclo(ciclo) {
+    // toggle botões
+    document.querySelectorAll('.ciclo-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.ciclo === ciclo);
+    });
+    // mostrar/ocultar preços
+    document.querySelectorAll('.preco-mensal').forEach(el => {
+        el.classList.toggle('d-none', ciclo === 'anual');
+    });
+    document.querySelectorAll('.preco-anual').forEach(el => {
+        el.classList.toggle('d-none', ciclo === 'mensal');
+    });
+    // atualizar hidden input dos formulários
+    document.querySelectorAll('.input-ciclo').forEach(inp => {
+        inp.value = ciclo;
+    });
+    // atualizar texto dos botões
+    document.querySelectorAll('.txt-assinar').forEach(el => {
+        el.textContent = ciclo === 'anual' ? 'Assinar (anual)' : 'Assinar';
+    });
+}
+</script>
 {% endblock %}

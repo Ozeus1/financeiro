@@ -98,9 +98,11 @@ def create_app(config_name='default'):
     from routes.fluxo_caixa import fluxo_caixa_bp
     from routes.upload_database import bp as upload_database_bp
     from routes.api_v1 import api_bp
+    from routes.assinatura import assinatura_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
+    app.register_blueprint(assinatura_bp)
     app.register_blueprint(despesas_bp, url_prefix='/despesas')
     app.register_blueprint(receitas_bp, url_prefix='/receitas')
     app.register_blueprint(config_bp, url_prefix='/configuracao')

@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}Minha Assinatura — FiNan{% endblock %}
+
+{% block extra_css %}
+<style>
+.plano-atual-card { border-radius:16px; }
+.plano-badge-grande { font-size:1.1rem; font-weight:700; padding:.4em 1em; border-radius:20px; }
+.recurso-item { display:flex; gap:.5rem; align-items:flex-start; padding:.3rem 0; font-size:.88rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row g-4">
+
+        <!-- Plano Atual -->
+        <div class="col-md-5">
+            <div class="card border-0 shadow plano-atual-card">
+                <div class="card-header text-white fw-bold" style="
+                    background: {% if current_user.nivel_acesso == 'promax' %}#6f42c1
+                    {% elif current_user.nivel_acesso == 'pro' %}#4361ee
+                    {% else %}#6c757d{% endif %};
+                    border-radius:16px 16px 0 0;">
+                    <i class="bi bi-person-check me-2"></i> Seu Plano Atual
+                </div>
+                <div class="card-body p-4">
+                    <div class="text-center mb-3">
+                        {% if current_user.nivel_acesso == 'promax' %}
+                        <i class="bi bi-stars fs-1" style="color:#6f42c1;"></i>
+                        <h2 class="mt-2 mb-0" style="color:#6f42c1;">ProMax</h2>
+                        {% elif current_user.nivel_acesso == 'pro' %}
+                        <i class="bi bi-star-fill fs-1" style="color:#4361ee;"></i>
+                        <h2 class="mt-2 mb-0" style="color:#4361ee;">Pro</h2>
+                        {% elif current_user.nivel_acesso == 'gerente' %}
+                        <i class="bi bi-person-gear fs-1 text-warning"></i>
+                        <h2 class="mt-2 mb-0 text-warning">Gerente</h2>
+                        {% elif current_user.nivel_acesso == 'admin' %}
+                        <i class="bi bi-shield-fill-check fs-1 text-danger"></i>
+                        <h2 class="mt-2 mb-0 text-danger">Admin</h2>
+                        {% else %}
+                        <i class="bi bi-gift fs-1 text-secondary"></i>
+                        <h2 class="mt-2 mb-0 text-secondary">Free</h2>
+                        {% endif %}
+                    </div>
+
+                    {% if current_user.data_validade %}
+                    <div class="alert {% if current_user.esta_valido() %}alert-info{% else %}alert-danger{% endif %} text-center py-2">
+                        {% if current_user.esta_valido() %}
+                        <i class="bi bi-calendar-check me-1"></i> Válido até {{ current_user.data_validade.strftime('%d/%m/%Y') }}
+                        ({{ current_user.dias_restantes() }} dias)
+                        {% else %}
+                        <i class="bi bi-exclamation-triangle me-1"></i> Assinatura expirada em {{ current_user.data_validade.strftime('%d/%m/%Y') }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <hr>
+                    <h6 class="text-muted text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Seus limites</h6>
+                    <ul class="list-unstyled">
+                        {% set nivel = current_user.nivel_acesso %}
+                        {% if nivel == 'free' %}
+                        <li class="recurso-item"><i class="bi bi-dash-circle text-warning mt-1"></i> 300 registros por mês</li>
+                        <li class="recurso-item"><i class="bi bi-dash-circle text-warning mt-1"></i> 10 categorias de despesa</li>
+                        <li class="recurso-item"><i class="bi bi-dash-circle text-warning mt-1"></i> 2 cartões</li>
+                        <li class="recurso-item"><i class="bi bi-x-circle text-danger mt-1"></i> Sem robô de IA</li>
+                        {% else %}
+                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Registros ilimitados</li>
+                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Categorias ilimitadas</li>
+                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Cartões ilimitados</li>
+                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Robô de IA incluso</li>
+                        {% if nivel == 'promax' %}
+                        <li class="recurso-item"><i class="bi bi-check-circle-fill text-success mt-1"></i> Separação PF/PJ</li>
+                        {% endif %}
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upgrade -->
+        <div class="col-md-7">
+            {% if current_user.nivel_acesso in ('free', 'pro') %}
+            <div class="card border-0 shadow">
+                <div class="card-header fw-bold bg-white border-bottom">
+                    <i class="bi bi-arrow-up-circle me-2 text-success"></i> Fazer Upgrade
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        {% if current_user.nivel_acesso == 'free' %}
+                        <!-- Pro -->
+                        <div class="col-md-4">
+                            <div class="card border-2 h-100" style="border-color:{{ plano_pro['cor'] }} !important;">
+                                <div class="card-body text-center p-3">
+                                    <i class="bi {{ plano_pro['icone'] }} fs-2" style="color:{{ plano_pro['cor'] }};"></i>
+                                    <h5 class="mt-2 mb-0">{{ plano_pro['nome'] }}</h5>
+                                    <div class="my-2" style="font-size:1.6rem;font-weight:800;color:{{ plano_pro['cor'] }};">
+                                        R$ {{ "%.2f"|format(plano_pro['preco'])|replace('.', ',') }}<small style="font-size:.7rem;color:#64748b;">/mês</small>
+                                    </div>
+                                    <p class="text-muted small mb-3">{{ plano_pro['descricao'] }}</p>
+                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='pro') }}">
+                                        <button type="submit" class="btn w-100 fw-bold" style="background:{{ plano_pro['cor'] }};color:#fff;">
+                                            <i class="bi bi-credit-card me-1"></i> Assinar Pro
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- ProMax -->
+                        <div class="col-md-4">
+                            <div class="card border-2 h-100" style="border-color:{{ plano_promax['cor'] }} !important;">
+                                <div class="card-body text-center p-3">
+                                    <i class="bi {{ plano_promax['icone'] }} fs-2" style="color:{{ plano_promax['cor'] }};"></i>
+                                    <h5 class="mt-2 mb-0">{{ plano_promax['nome'] }}</h5>
+                                    <div class="my-2" style="font-size:1.4rem;font-weight:800;color:{{ plano_promax['cor'] }};">
+                                        R$ {{ "%.2f"|format(plano_promax['preco'])|replace('.', ',') }}<small style="font-size:.7rem;color:#64748b;">/mês</small>
+                                    </div>
+                                    <p class="text-muted small mb-3">{{ plano_promax['descricao'] }}</p>
+                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='promax') }}">
+                                        <button type="submit" class="btn w-100 fw-bold" style="background:{{ plano_promax['cor'] }};color:#fff;">
+                                            <i class="bi bi-credit-card me-1"></i> Assinar ProMax
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Família -->
+                        <div class="col-md-4">
+                            <div class="card border-2 h-100" style="border-color:{{ plano_familia['cor'] }} !important;">
+                                <div class="card-body text-center p-3">
+                                    <i class="bi {{ plano_familia['icone'] }} fs-2" style="color:{{ plano_familia['cor'] }};"></i>
+                                    <h5 class="mt-2 mb-0">{{ plano_familia['nome'] }}</h5>
+                                    <div class="my-2" style="font-size:1.4rem;font-weight:800;color:{{ plano_familia['cor'] }};">
+                                        R$ {{ "%.2f"|format(plano_familia['preco'])|replace('.', ',') }}<small style="font-size:.7rem;color:#64748b;">/mês</small>
+                                    </div>
+                                    <p class="text-muted small mb-3">{{ plano_familia['descricao'] }}</p>
+                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='familia') }}">
+                                        <button type="submit" class="btn w-100 fw-bold" style="background:{{ plano_familia['cor'] }};color:#fff;">
+                                            <i class="bi bi-credit-card me-1"></i> Assinar Família
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% elif current_user.nivel_acesso == 'pro' %}
+                        <!-- Mostrar só ProMax -->
+                        <div class="col-12">
+                            <div class="card border-2" style="border-color:{{ planos.promax.cor }} !important;">
+                                <div class="card-body p-4">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <i class="bi {{ planos.promax.icone }} fs-1" style="color:{{ planos.promax.cor }};"></i>
+                                        <div>
+                                            <h4 class="mb-0">ProMax</h4>
+                                            <p class="text-muted mb-0 small">{{ planos.promax.descricao }}</p>
+                                        </div>
+                                        <div class="ms-auto text-end">
+                                            <div style="font-size:1.8rem;font-weight:800;color:{{ planos.promax.cor }};">R$ 27,90<small style="font-size:.65rem;color:#64748b;">/mês</small></div>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <p class="mb-3">Adicione ao seu plano Pro a separação de contas <strong>Pessoa Física</strong> e <strong>Pessoa Jurídica</strong> com relatórios exclusivos.</p>
+                                    <form method="POST" action="{{ url_for('assinatura.iniciar', plano='promax') }}">
+                                        <button type="submit" class="btn fw-bold px-4" style="background:{{ planos.promax.cor }};color:#fff;">
+                                            <i class="bi bi-credit-card me-1"></i> Fazer Upgrade para ProMax
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="alert alert-light border mt-3 mb-0 small">
+                        <i class="bi bi-shield-check text-success me-1"></i>
+                        Pagamento seguro via <strong>Mercado Pago</strong>. Cartão, PIX, boleto e débito aceitos.
+                        Plano ativado imediatamente após aprovação.
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card border-0 shadow">
+                <div class="card-body p-4 text-center">
+                    <i class="bi bi-check-circle-fill text-success fs-1"></i>
+                    <h4 class="mt-3">Você tem o melhor plano!</h4>
+                    <p class="text-muted">Aproveite todos os recursos do FiNan sem limitações.</p>
+                    <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">Ir para o Dashboard</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Histórico -->
+        {% if historico %}
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-bold border-bottom">
+                    <i class="bi bi-clock-history me-2"></i> Histórico de Assinaturas
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data</th>
+                                <th>Plano</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Válido até</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in historico %}
+                            <tr>
+                                <td>{{ a.data_criacao.strftime('%d/%m/%Y') }}</td>
+                                <td><span class="badge" style="background:{% if a.plano == 'promax' %}#6f42c1{% else %}#4361ee{% endif %};">{{ a.plano.upper() }}</span></td>
+                                <td>R$ {{ "%.2f"|format(a.valor)|replace('.', ',') }}</td>
+                                <td>
+                                    {% if a.status == 'aprovado' %}<span class="badge bg-success">Aprovado</span>
+                                    {% elif a.status == 'pendente' %}<span class="badge bg-warning text-dark">Pendente</span>
+                                    {% else %}<span class="badge bg-secondary">{{ a.status.title() }}</span>{% endif %}
+                                </td>
+                                <td>{{ a.data_expiracao.strftime('%d/%m/%Y') if a.data_expiracao else '—' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

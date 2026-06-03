@@ -2295,14 +2295,22 @@ def _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento):
     try:
         raw = arquivo.read()
         import io as _io
-        # Extrair todas as linhas de texto preservando layout de colunas
+        # Extrair palavras com coordenadas para separar as duas colunas do PDF
         todas_linhas = []
         with pdfplumber.open(_io.BytesIO(raw)) as pdf:
             for page in pdf.pages:
-                # layout=True preserva espaçamento e separa colunas lado a lado
-                txt = page.extract_text(layout=True, x_tolerance=3, y_tolerance=3)
-                if txt:
-                    todas_linhas.extend(txt.split('\n'))
+                largura = page.width
+                meio = largura / 2
+
+                # Extrair coluna esquerda e direita separadamente
+                col_esq = page.within_bbox((0, 0, meio, page.height))
+                col_dir = page.within_bbox((meio, 0, largura, page.height))
+
+                for col in (col_esq, col_dir):
+                    txt = col.extract_text(layout=False) or ''
+                    for linha in txt.split('\n'):
+                        if linha.strip():
+                            todas_linhas.append(linha)
     except Exception as e:
         return jsonify({'success': False, 'error': f'Erro ao ler PDF: {e}'})
 
@@ -2310,17 +2318,19 @@ def _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento):
         'deb autom de fatura', 'pagamento fatura', 'pagto fatura',
         'anuidade diferenciada', 'saldo anterior', 'pagto. por deb',
         'estorno tarifa', 'pagamento fatura qr', 'deb autom',
+        'cotacao dolar', 'cotação dolar', 'valor total',
+        'saldo desta fatura', 'total despesas', 'total de pagamentos',
+        'total de creditos', 'compras parceladas',
     }
 
-    # Padrão: data + descrição + [parcela] + valor
-    # Prefixos de ícone (números soltos, @, 2, 3) são descartados
+    # Padrão: [ícone] data descrição [parcela] valor [valorUS$]
     PAT_TRANS = _re.compile(
-        r'^(?:[\d@]\s+)?'               # ícone/número prefixo opcional
+        r'^(?:[\d@]\s{1,3})?'           # prefixo ícone opcional (3, 2, @)
         r'(\d{1,2}/\d{2})\s+'          # data dd/mm
-        r'(.+?)\s+'                     # descrição (non-greedy)
+        r'(.+?)\s+'                     # descrição
         r'(?:(\d{2}/\d{2})\s+)?'       # parcela xx/xx opcional
-        r'(-?[\d\.]+,\d{2})'            # valor R$ (pode ser negativo)
-        r'(?:\s+-?[\d\.]*,?\d*)?'      # valor US$ opcional
+        r'(-?[\d\.]+,\d{2})'            # valor R$
+        r'(?:\s+[\d\.]+,\d{2})?'       # valor US$ opcional
         r'\s*$'
     )
 
@@ -2338,11 +2348,12 @@ def _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento):
         if any(x in l_lower for x in ('pagamento e demais cr', 'pagamento e demais créd')):
             em_pagamentos, em_parcelamentos, em_despesas = True, False, False
             continue
-        if 'parcelamentos' in l_lower and len(linha_strip) < 35:
+        if l_lower.rstrip() == 'parcelamentos' or (
+                'parcelamentos' in l_lower and len(linha_strip) < 20):
             em_parcelamentos, em_despesas, em_pagamentos = True, False, False
             continue
-        if l_lower.strip() in ('despesas', 'despesas ') or (
-                'despesas' in l_lower and len(linha_strip) < 20):
+        if l_lower.rstrip() == 'despesas' or (
+                l_lower.startswith('despesas') and len(linha_strip) < 15):
             em_despesas, em_parcelamentos, em_pagamentos = True, False, False
             continue
         if l_lower.startswith('valor total'):

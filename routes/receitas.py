@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, jsonify
 from flask_login import login_required, current_user
 from models import db, Receita, CategoriaReceita, MeioRecebimento
 from datetime import datetime, date
@@ -173,6 +173,30 @@ def excluir(id):
     
     flash('Receita excluída com sucesso!', 'success')
     return redirect(url_for('receitas.lista'))
+
+@receitas_bp.route('/excluir-lote', methods=['POST'])
+@login_required
+def excluir_lote():
+    """Excluir múltiplas receitas selecionadas"""
+    from models import Receita
+    ids = request.form.getlist('ids[]')
+    if not ids:
+        return jsonify({'success': False, 'error': 'Nenhuma receita selecionada.'}), 400
+    try:
+        ids = [int(i) for i in ids]
+    except ValueError:
+        return jsonify({'success': False, 'error': 'IDs inválidos.'}), 400
+
+    receitas = Receita.query.filter(
+        Receita.id.in_(ids), Receita.user_id == current_user.id
+    ).all()
+    removidos = len(receitas)
+    for r in receitas:
+        db.session.delete(r)
+    db.session.commit()
+    return jsonify({'success': True, 'removidos': removidos,
+                    'message': f'{removidos} receita(s) excluída(s) com sucesso!'})
+
 
 @receitas_bp.route('/exportar')
 @login_required

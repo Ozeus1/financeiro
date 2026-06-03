@@ -286,6 +286,29 @@ def excluir(id):
     flash('Despesa excluída com sucesso!', 'success')
     return redirect(next_url if next_url else url_for('despesas.lista'))
 
+@despesas_bp.route('/excluir-lote', methods=['POST'])
+@login_required
+def excluir_lote():
+    """Excluir múltiplas despesas selecionadas"""
+    ids = request.form.getlist('ids[]')
+    if not ids:
+        return jsonify({'success': False, 'error': 'Nenhuma despesa selecionada.'}), 400
+    try:
+        ids = [int(i) for i in ids]
+    except ValueError:
+        return jsonify({'success': False, 'error': 'IDs inválidos.'}), 400
+
+    despesas = Despesa.query.filter(
+        Despesa.id.in_(ids), Despesa.user_id == current_user.id
+    ).all()
+    removidos = len(despesas)
+    for d in despesas:
+        db.session.delete(d)
+    db.session.commit()
+    return jsonify({'success': True, 'removidos': removidos,
+                    'message': f'{removidos} despesa(s) excluída(s) com sucesso!'})
+
+
 @despesas_bp.route('/exportar')
 @login_required
 def exportar():

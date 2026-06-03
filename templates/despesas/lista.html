@@ -24,6 +24,10 @@
 .btn-edit:hover{opacity:.82;color:#fff}
 .btn-del{background:var(--pg-red);border:none;color:#fff;border-radius:7px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:.8rem;transition:opacity .15s}
 .btn-del:hover{opacity:.82;color:#fff}
+.btn-del-lote{background:#ef4444;border:none;color:#fff;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;font-weight:600;display:none;align-items:center;gap:.4rem;transition:.15s}
+.btn-del-lote:hover{opacity:.85}
+.btn-del-lote.show{display:flex}
+.check-row{width:16px;height:16px;cursor:pointer;accent-color:#ef4444}
 /* hint do operador */
 .op-hint{font-size:.62rem;color:var(--pg-muted);margin-top:.15rem}
 </style>
@@ -36,7 +40,10 @@
         <div style="font-size:.8rem;opacity:.7;margin-bottom:.2rem"><i class="bi bi-wallet2 me-1"></i>Finanças</div>
         <h1 class="pg-header-title">Gerenciar Despesas</h1>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 align-items-center">
+        <button id="btnExcluirLote" class="btn-del-lote" onclick="excluirLote()">
+            <i class="bi bi-trash"></i> Excluir Selecionados (<span id="contSel">0</span>)
+        </button>
         <a href="{{ url_for('despesas.criar') }}" class="btn btn-light btn-sm fw-semibold">
             <i class="bi bi-plus-lg me-1"></i>Nova Despesa
         </a>
@@ -127,6 +134,7 @@
         <table class="pg-table table">
             <thead>
                 <tr>
+                    <th style="width:36px;"><input type="checkbox" class="check-row" id="checkTodos" title="Selecionar todos"></th>
                     <th>Data</th>
                     <th>Descrição</th>
                     <th>Categoria</th>
@@ -139,6 +147,7 @@
             <tbody>
                 {% for d in despesas.items %}
                 <tr>
+                    <td><input type="checkbox" class="check-row check-item" data-id="{{ d.id }}"></td>
                     <td style="white-space:nowrap;color:var(--pg-muted);font-size:.8rem">{{ d.data_pagamento.strftime('%d/%m/%Y') }}</td>
                     <td style="max-width:220px">{{ d.descricao }}</td>
                     <td><span class="pg-badge-cat">{{ d.categoria.nome }}</span></td>
@@ -147,11 +156,8 @@
                     <td class="text-center" style="font-size:.82rem;color:var(--pg-muted)">{{ d.num_parcelas }}x</td>
                     <td class="text-center">
                         <div class="pg-actions justify-content-center">
-                            {# Editar — passa todos os filtros atuais + página como next #}
                             <a href="{{ url_for('despesas.editar', id=d.id, **request.args) }}"
                                class="btn-edit" title="Editar"><i class="bi bi-pencil"></i></a>
-
-                            {# Excluir — passa next com URL completa para retornar ao mesmo ponto #}
                             <form method="POST" action="{{ url_for('despesas.excluir', id=d.id) }}"
                                   style="display:inline"
                                   onsubmit="return confirm('Excluir esta despesa?')">
@@ -163,7 +169,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">
+                    <td colspan="8" class="text-center text-muted py-4">
                         <i class="bi bi-inbox fs-3 d-block mb-2"></i>Nenhuma despesa encontrada.
                     </td>
                 </tr>
@@ -207,5 +213,66 @@ function toggleDatas(){
     document.getElementById('divDataFim').style.display=v==='personalizado'?'':'none';
 }
 document.addEventListener('DOMContentLoaded',toggleDatas);
+
+// ── Seleção em massa ──
+const checkTodos = document.getElementById('checkTodos');
+const btnLote    = document.getElementById('btnExcluirLote');
+const contSel    = document.getElementById('contSel');
+
+function atualizarBotaoLote() {
+    const selecionados = document.querySelectorAll('.check-item:checked').length;
+    contSel.textContent = selecionados;
+    btnLote.classList.toggle('show', selecionados > 0);
+    checkTodos.indeterminate = selecionados > 0 && selecionados < document.querySelectorAll('.check-item').length;
+    checkTodos.checked = selecionados > 0 && selecionados === document.querySelectorAll('.check-item').length;
+}
+
+checkTodos.addEventListener('change', function() {
+    document.querySelectorAll('.check-item').forEach(c => c.checked = this.checked);
+    atualizarBotaoLote();
+});
+
+document.querySelectorAll('.check-item').forEach(c =>
+    c.addEventListener('change', atualizarBotaoLote)
+);
+
+async function excluirLote() {
+    const ids = [...document.querySelectorAll('.check-item:checked')].map(c => c.dataset.id);
+    if (!ids.length) return;
+    if (!confirm(`Excluir ${ids.length} despesa(s) selecionada(s)? Esta ação não pode ser desfeita.`)) return;
+
+    const form = new FormData();
+    ids.forEach(id => form.append('ids[]', id));
+
+    try {
+        const resp = await fetch('{{ url_for("despesas.excluir_lote") }}', {
+            method: 'POST', credentials: 'same-origin', body: form
+        });
+        const data = await resp.json();
+        if (data.success) {
+            // Remover linhas da tabela sem recarregar
+            document.querySelectorAll('.check-item:checked').forEach(c =>
+                c.closest('tr').remove()
+            );
+            checkTodos.checked = false;
+            atualizarBotaoLote();
+            // Mostrar toast de sucesso
+            mostrarToast(data.message, 'success');
+        } else {
+            mostrarToast(data.error || 'Erro ao excluir.', 'danger');
+        }
+    } catch(e) {
+        mostrarToast('Erro de conexão.', 'danger');
+    }
+}
+
+function mostrarToast(msg, tipo) {
+    const t = document.createElement('div');
+    t.className = `alert alert-${tipo} alert-dismissible position-fixed shadow`;
+    t.style.cssText = 'top:1rem;right:1rem;z-index:9999;min-width:280px;';
+    t.innerHTML = msg + '<button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+}
 </script>
 {% endblock %}

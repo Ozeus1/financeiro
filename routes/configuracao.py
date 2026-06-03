@@ -2300,12 +2300,18 @@ def processar_fatura_cartao():
 
             descricao, parcela = _extrair_parcela(historico_raw)
 
-            # Valor R$
+            # Valor R$ — busca coluna que contenha "r$" (não "us$")
             valor_raw = ''
             for k, v in cols.items():
-                if 'valor' in k and 'r' in k and v:
+                if 'valor' in k and 'r$' in k and v:
                     valor_raw = v
                     break
+            # fallback: última coluna com "valor"
+            if not valor_raw:
+                for k, v in reversed(list(cols.items())):
+                    if 'valor' in k and v:
+                        valor_raw = v
+                        break
             if not valor_raw:
                 continue
             try:

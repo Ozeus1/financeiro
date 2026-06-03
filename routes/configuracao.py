@@ -2235,13 +2235,106 @@ def processar_fatura_cartao():
     amostra = texto[:2000]
     sep = ';' if amostra.count(';') > amostra.count(',') else ','
 
-    reader = csv.DictReader(io.StringIO(texto), delimiter=sep)
+    # ── Detectar e converter formato "extrato bancário" ──────────────────
+    # Cabeçalho esperado: Data;Histórico;;Valor (US$);Valor(R$)
+    import unicodedata, re as _re
 
-    # Mapear colunas (case-insensitive, sem acentos)
     def _norm(s):
-        import unicodedata
         s = unicodedata.normalize('NFKD', s or '').encode('ascii', 'ignore').decode().lower().strip()
         return s
+
+    primeira_linha = texto.strip().split('\n')[0]
+    colunas_norm = [_norm(c) for c in primeira_linha.split(sep)]
+
+    FORMATO_EXTRATO = (
+        'data' in colunas_norm and
+        'historico' in colunas_norm and
+        any('valor' in c and 'r$' in c.replace('(', '').replace(')', '') for c in colunas_norm)
+    )
+
+    if FORMATO_EXTRATO:
+        # Converter para o formato padrão do importador
+        # Regra de parcela: extrair "X/Y" do final do histórico
+        def _extrair_parcela(historico):
+            """Extrai parcela do histórico. Ex: 'PETZ DIGITAL 1/2' → ('PETZ DIGITAL', '1/2')"""
+            m = _re.search(r'\s+(\d+/\d+)\s*$', historico.strip())
+            if m:
+                descricao = historico[:m.start()].strip()
+                parcela = m.group(1)
+                return descricao, parcela
+            return historico.strip(), 'única'
+
+        # Descobrir ano atual para completar a data (formato dd/mm sem ano)
+        from datetime import datetime as _dt_conv, date as _date_conv
+        ano_atual = _dt_conv.now().year
+
+        linhas_conv = []
+        reader_ext = csv.DictReader(io.StringIO(texto), delimiter=sep)
+        for row in reader_ext:
+            cols = {_norm(k): v.strip() for k, v in row.items() if k}
+
+            # Data: "24/05" → completar com ano
+            data_raw = cols.get('data', '').strip()
+            if not data_raw or not _re.match(r'\d{1,2}/\d{1,2}', data_raw):
+                continue  # linhas de total/resumo
+
+            partes_data = data_raw.split('/')
+            if len(partes_data) == 2:
+                try:
+                    dia, mes = int(partes_data[0]), int(partes_data[1])
+                    # Se mês já passou no ano atual, pode ser ano passado
+                    data_str = f'{dia:02d}/{mes:02d}/{ano_atual}'
+                    # Validar
+                    _dt_conv.strptime(data_str, '%d/%m/%Y')
+                except Exception:
+                    continue
+            elif len(partes_data) == 3:
+                data_str = data_raw
+            else:
+                continue
+
+            # Histórico e parcela
+            historico_raw = cols.get('historico', '').strip()
+            if not historico_raw or historico_raw.upper() in ('SALDO ANTERIOR', 'PAGTO. POR DEB EM C/C'):
+                continue
+
+            descricao, parcela = _extrair_parcela(historico_raw)
+
+            # Valor R$
+            valor_raw = ''
+            for k, v in cols.items():
+                if 'valor' in k and 'r' in k and v:
+                    valor_raw = v
+                    break
+            if not valor_raw:
+                continue
+            try:
+                valor_f = float(valor_raw.replace('.', '').replace(',', '.'))
+            except Exception:
+                continue
+            if valor_f <= 0:
+                continue  # ignora estornos/pagamentos
+
+            linhas_conv.append({
+                'Data de Compra': data_str,
+                'Descrição': descricao,
+                'Parcela': parcela,
+                'Valor (em R$)': str(valor_f),
+                'Categoria': '',
+            })
+
+        # Reescrever texto como CSV padrão
+        saida = io.StringIO()
+        writer_conv = csv.DictWriter(saida,
+            fieldnames=['Data de Compra', 'Descrição', 'Parcela', 'Valor (em R$)', 'Categoria'],
+            delimiter=';')
+        writer_conv.writeheader()
+        writer_conv.writerows(linhas_conv)
+        texto = saida.getvalue()
+        sep = ';'
+    # ── Fim conversão extrato bancário ───────────────────────────────────
+
+    reader = csv.DictReader(io.StringIO(texto), delimiter=sep)
 
     from datetime import datetime as _dt, date as _date
     from dateutil.relativedelta import relativedelta as _rd

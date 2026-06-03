@@ -2449,28 +2449,11 @@ def processar_fatura_cartao():
         num_parcelas  = lb['num_parcelas']
         cat_raw       = lb['categoria']
 
-        # Cada linha do CSV representa UMA parcela desta fatura.
-        # Registramos o valor da parcela com o total de parcelas informado.
-        # O sistema de despesas usa num_parcelas para exibição — valor é o da parcela.
-        valor_total = round(valor_parcela, 2)
-
-        # Calcular data de pagamento desta parcela
-        data_pagamento = data_compra
-        if fechamento:
-            dia_fech = fechamento.dia_fechamento
-            dia_venc = fechamento.dia_vencimento
-            # Mês base de vencimento da 1ª parcela
-            if data_compra.day <= dia_fech:
-                base = data_compra.replace(day=1)
-            else:
-                base = (data_compra.replace(day=1) + _rd(months=1))
-            mes_pag = base + _rd(months=parcela_atual - 1)
-            try:
-                data_pagamento = mes_pag.replace(day=dia_venc)
-            except Exception:
-                import calendar
-                ultimo_dia = calendar.monthrange(mes_pag.year, mes_pag.month)[1]
-                data_pagamento = mes_pag.replace(day=min(dia_venc, ultimo_dia))
+        # Cada linha do CSV mostra o valor de UMA parcela.
+        # Valor total da compra = valor_parcela × num_parcelas.
+        # Data = data da compra original (não a data de vencimento da parcela atual).
+        valor_total = round(valor_parcela * num_parcelas, 2)
+        data_pagamento = data_compra  # data original da compra
 
         # Verificar duplicata: mesma descrição + cartão + valor_parcela + data_pagamento
         duplicata = Despesa.query.filter_by(
@@ -2482,8 +2465,8 @@ def processar_fatura_cartao():
 
         linhas.append({
             'descricao': descricao,
-            'valor': round(valor_parcela, 2),        # valor a registrar = valor da parcela
-            'valor_parcela': round(valor_parcela, 2),
+            'valor': valor_total,                    # valor total = parcela × num_parcelas
+            'valor_parcela': round(valor_parcela, 2),# valor de cada parcela (informativo)
             'data_compra': data_compra.strftime('%d/%m/%Y'),
             'data_pagamento': data_pagamento.strftime('%d/%m/%Y'),
             'parcela_atual': parcela_atual,

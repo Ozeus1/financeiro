@@ -2363,8 +2363,11 @@ def processar_fatura_cartao():
     def _parse_parcela(s):
         """
         Retorna (parcela_atual, num_parcelas).
-        Formatos: "07/dez" → (7, None), "1/10" → (1, 10), "única"/"unica" → (1, 1)
-        Quando o total é mês abreviado (dez), num_parcelas = None (calculado depois).
+        Formatos:
+          "07/dez" → (7, 12)  — parcela 7 de 12 (dez = dezembro = mês 12 = 12 parcelas)
+          "02/ago" → (2, 8)   — parcela 2 de 8  (ago = agosto  = mês 8  = 8 parcelas)
+          "1/10"   → (1, 10)  — parcela 1 de 10 (número explícito)
+          "única"  → (1, 1)
         """
         s = s.strip().lower()
         if not s or s in ('unica', 'única', '-', ''):
@@ -2378,8 +2381,11 @@ def processar_fatura_cartao():
             total_str = partes[1].strip()
             if total_str.isdigit():
                 return atual, int(total_str)
-            # mês abreviado — total desconhecido agora, resolvido em 2ª passagem
-            return atual, None
+            # mês abreviado PT: jan=1 … dez=12 → esse número é o total de parcelas
+            mes_num = MESES_PT.get(total_str[:3])
+            if mes_num:
+                return atual, mes_num
+            return atual, atual  # fallback: total = atual
         try:
             return int(s), 1
         except ValueError:
@@ -2429,22 +2435,9 @@ def processar_fatura_cartao():
             'valor_parcela': valor_parcela,
             'data_compra': data_compra,
             'parcela_atual': parcela_atual,
-            'num_parcelas': num_parcelas,  # None se mês abreviado
+            'num_parcelas': num_parcelas,
             'categoria': cat_raw,
         })
-
-    # 2ª passagem: resolver num_parcelas=None agrupando por descrição+valor_parcela
-    # O maior parcela_atual de cada grupo é o total de parcelas
-    grupo_max = {}
-    for lb in linhas_brutas:
-        if lb['num_parcelas'] is None:
-            chave = (lb['descricao'], round(lb['valor_parcela'], 2))
-            grupo_max[chave] = max(grupo_max.get(chave, 0), lb['parcela_atual'])
-
-    for lb in linhas_brutas:
-        if lb['num_parcelas'] is None:
-            chave = (lb['descricao'], round(lb['valor_parcela'], 2))
-            lb['num_parcelas'] = grupo_max.get(chave, lb['parcela_atual'])
 
     # 3ª passagem: calcular valor total e datas de pagamento
     linhas = []

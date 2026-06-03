@@ -1,0 +1,655 @@
+{% extends "base.html" %}
+{% block title %}Ajuda — FiNan{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Layout ── */
+.ajuda-sidebar { position: sticky; top: 70px; max-height: calc(100vh - 90px); overflow-y: auto; }
+.ajuda-sidebar .nav-link { font-size: .83rem; color: #64748b; padding: .25rem .75rem; border-radius: 6px; }
+.ajuda-sidebar .nav-link:hover, .ajuda-sidebar .nav-link.active { background: #f1f5f9; color: #0d1b2a; }
+.ajuda-sidebar .nav-link.section-title { font-weight: 700; font-size: .78rem; text-transform: uppercase;
+    letter-spacing: .06em; color: #94a3b8; margin-top: .75rem; padding-left: .5rem; pointer-events: none; }
+
+/* ── Seções ── */
+.ajuda-section { scroll-margin-top: 80px; }
+.ajuda-card { border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; overflow: hidden; }
+.ajuda-card-header { background: #f8fafc; padding: .75rem 1.25rem; border-bottom: 1px solid #e2e8f0;
+    font-weight: 700; font-size: .95rem; display: flex; align-items: center; gap: .5rem; }
+.ajuda-card-body { padding: 1.25rem; }
+
+/* ── Tabela de planos ── */
+.plano-badge { display: inline-block; font-size: .72rem; font-weight: 700; padding: .2em .7em;
+    border-radius: 20px; color: #fff; }
+.plano-free    { background: #6c757d; }
+.plano-basic   { background: #20c997; }
+.plano-pro     { background: #4361ee; }
+.plano-promax  { background: #6f42c1; }
+.plano-familia { background: #e67e22; }
+
+/* ── Dicas ── */
+.dica { background: #f0f9ff; border-left: 3px solid #0ea5e9; border-radius: 0 8px 8px 0;
+    padding: .6rem 1rem; margin: .75rem 0; font-size: .87rem; }
+.atencao { background: #fff7ed; border-left: 3px solid #f59e0b; border-radius: 0 8px 8px 0;
+    padding: .6rem 1rem; margin: .75rem 0; font-size: .87rem; }
+.passo { display: flex; gap: .75rem; align-items: flex-start; margin: .5rem 0; font-size: .88rem; }
+.passo-num { min-width: 24px; height: 24px; border-radius: 50%; background: #4361ee; color: #fff;
+    font-size: .75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .75rem; margin: .75rem 0; }
+.feature-item { background: #f8fafc; border-radius: 8px; padding: .6rem .9rem; font-size: .85rem;
+    display: flex; align-items: center; gap: .5rem; border: 1px solid #e2e8f0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" style="max-width:1200px;">
+
+  <div class="row g-4">
+
+    <!-- ── Sidebar ── -->
+    <div class="col-lg-3 d-none d-lg-block">
+      <div class="ajuda-sidebar">
+        <div class="fw-bold mb-2" style="font-size:.9rem;"><i class="bi bi-book me-2 text-primary"></i>Conteúdo</div>
+        <nav class="nav flex-column">
+          <span class="nav-link section-title">Visão Geral</span>
+          <a class="nav-link" href="#overview">O que é o FiNan?</a>
+          <a class="nav-link" href="#planos">Planos de Assinatura</a>
+
+          <span class="nav-link section-title">Despesas</span>
+          <a class="nav-link" href="#despesas-lista">Listar Despesas</a>
+          <a class="nav-link" href="#despesas-criar">Cadastrar Despesa</a>
+          <a class="nav-link" href="#despesas-parcelas">Compras Parceladas</a>
+
+          <span class="nav-link section-title">Receitas</span>
+          <a class="nav-link" href="#receitas">Listar e Cadastrar</a>
+
+          <span class="nav-link section-title">Relatórios</span>
+          <a class="nav-link" href="#rel-balanco">Balanço Mensal</a>
+          <a class="nav-link" href="#rel-despesas-mensal">Despesas Mensais</a>
+          <a class="nav-link" href="#rel-receitas-mensal">Receitas Mensais</a>
+          <a class="nav-link" href="#rel-top10-contas">Top 10 Contas</a>
+          <a class="nav-link" href="#rel-top10-maiores">Top 10 Maiores</a>
+          <a class="nav-link" href="#rel-orcado">Orçado vs Gasto</a>
+          <a class="nav-link" href="#rel-previsao">Previsão de Cartões</a>
+          <a class="nav-link" href="#rel-evolucao-cat">Evolução por Categoria</a>
+          <a class="nav-link" href="#rel-meio-pagamento">Por Meio de Pagamento</a>
+          <a class="nav-link" href="#rel-entre-datas">Despesas Entre Datas</a>
+          <a class="nav-link" href="#rel-mensal-periodo">Mensal por Período</a>
+          <a class="nav-link" href="#rel-evolucao-temporal">Evolução Temporal</a>
+          <a class="nav-link" href="#rel-comparativo">Comparativo Anual</a>
+
+          <span class="nav-link section-title">Fluxo de Caixa</span>
+          <a class="nav-link" href="#fluxo">Fluxo de Caixa</a>
+
+          <span class="nav-link section-title">Configurações</span>
+          <a class="nav-link" href="#config-categorias">Categorias</a>
+          <a class="nav-link" href="#config-meios">Meios de Pagamento</a>
+          <a class="nav-link" href="#config-cartoes">Configurar Cartões</a>
+          <a class="nav-link" href="#config-orcamento">Orçamentos</a>
+          <a class="nav-link" href="#config-importar-fatura">Importar Fatura Cartão</a>
+          <a class="nav-link" href="#config-importar-antigos">Importar Dados Antigos</a>
+
+          <span class="nav-link section-title">Administração</span>
+          <a class="nav-link" href="#admin-usuarios">Gerenciar Usuários</a>
+          <a class="nav-link" href="#admin-smtp">SMTP / WhatsApp</a>
+          <a class="nav-link" href="#admin-api">API REST</a>
+
+          <span class="nav-link section-title">Assinatura</span>
+          <a class="nav-link" href="#assinatura">Minha Assinatura</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ── Conteúdo ── -->
+    <div class="col-lg-9">
+
+      <!-- Cabeçalho -->
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <div>
+          <h3 class="fw-bold mb-0"><i class="bi bi-book text-primary me-2"></i>Central de Ajuda</h3>
+          <small class="text-muted">Guia completo de todas as funcionalidades do FiNan</small>
+        </div>
+      </div>
+
+      <!-- ══ VISÃO GERAL ══ -->
+      <h5 class="fw-bold text-uppercase text-muted mb-3" style="font-size:.75rem;letter-spacing:.08em;">Visão Geral</h5>
+
+      <div class="ajuda-card ajuda-section" id="overview">
+        <div class="ajuda-card-header"><i class="bi bi-house-fill text-primary"></i> O que é o FiNan?</div>
+        <div class="ajuda-card-body">
+          <p>O <strong>FiNan</strong> é um sistema de gerenciamento financeiro pessoal e familiar. Ele permite controlar suas <strong>despesas</strong>, <strong>receitas</strong>, <strong>orçamentos</strong> e <strong>fluxo de caixa</strong>, além de oferecer uma variedade de <strong>relatórios</strong> para acompanhar sua saúde financeira.</p>
+          <div class="feature-grid">
+            <div class="feature-item"><i class="bi bi-wallet2 text-danger"></i> Controle de despesas</div>
+            <div class="feature-item"><i class="bi bi-cash-coin text-success"></i> Controle de receitas</div>
+            <div class="feature-item"><i class="bi bi-bar-chart-fill text-primary"></i> Relatórios detalhados</div>
+            <div class="feature-item"><i class="bi bi-credit-card text-warning"></i> Previsão de cartões</div>
+            <div class="feature-item"><i class="bi bi-cash-stack text-info"></i> Fluxo de caixa</div>
+            <div class="feature-item"><i class="bi bi-calculator text-secondary"></i> Controle de orçamento</div>
+            <div class="feature-item"><i class="bi bi-file-earmark-arrow-up text-success"></i> Importar faturas CSV</div>
+            <div class="feature-item"><i class="bi bi-people text-warning"></i> Plano família compartilhado</div>
+          </div>
+          <div class="dica"><i class="bi bi-lightbulb me-1"></i><strong>Dica:</strong> Acesse o <strong>Dashboard</strong> para ver um resumo do mês atual com totais de despesas, receitas e saldo.</div>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="planos">
+        <div class="ajuda-card-header"><i class="bi bi-credit-card-fill text-primary"></i> Planos de Assinatura</div>
+        <div class="ajuda-card-body">
+          <p>O FiNan oferece 5 planos. Cada plano desbloqueia mais funcionalidades:</p>
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle" style="font-size:.83rem;">
+              <thead class="table-dark">
+                <tr>
+                  <th>Recurso</th>
+                  <th class="text-center"><span class="plano-badge plano-free">Free</span></th>
+                  <th class="text-center"><span class="plano-badge plano-basic">Basic</span></th>
+                  <th class="text-center"><span class="plano-badge plano-pro">Pro</span></th>
+                  <th class="text-center"><span class="plano-badge plano-promax">ProMax</span></th>
+                  <th class="text-center"><span class="plano-badge plano-familia">Família</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Preço mensal</td><td class="text-center fw-bold">Grátis</td><td class="text-center fw-bold">R$ 9,90</td><td class="text-center fw-bold">R$ 19,90</td><td class="text-center fw-bold">R$ 27,90</td><td class="text-center fw-bold">R$ 34,90</td></tr>
+                <tr><td>Registros/mês</td><td class="text-center text-warning fw-bold">300</td><td class="text-center text-success">Ilimitado</td><td class="text-center text-success">Ilimitado</td><td class="text-center text-success">Ilimitado</td><td class="text-center text-success">Ilimitado</td></tr>
+                <tr><td>Categorias de despesa</td><td class="text-center text-warning fw-bold">10</td><td class="text-center text-success">Ilimitado</td><td class="text-center text-success">Ilimitado</td><td class="text-center text-success">Ilimitado</td><td class="text-center text-success">Ilimitado</td></tr>
+                <tr><td>Cartões de crédito</td><td class="text-center text-warning fw-bold">2</td><td class="text-center text-success">Ilimitado</td><td class="text-center text-success">Ilimitado</td><td class="text-center text-success">Ilimitado</td><td class="text-center text-success">Ilimitado</td></tr>
+                <tr><td>Todos os relatórios</td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td></tr>
+                <tr><td>Importar fatura cartão</td><td class="text-center"><i class="bi bi-x-circle text-danger"></i></td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td></tr>
+                <tr><td>Robô de IA (WhatsApp)</td><td class="text-center"><i class="bi bi-x-circle text-danger"></i></td><td class="text-center"><i class="bi bi-x-circle text-danger"></i></td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td></tr>
+                <tr><td>Separação PF/PJ</td><td class="text-center"><i class="bi bi-x-circle text-danger"></i></td><td class="text-center"><i class="bi bi-x-circle text-danger"></i></td><td class="text-center"><i class="bi bi-x-circle text-danger"></i></td><td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td><td class="text-center"><i class="bi bi-x-circle text-danger"></i></td></tr>
+                <tr><td>Usuários compartilhados</td><td class="text-center"><i class="bi bi-x-circle text-danger"></i></td><td class="text-center"><i class="bi bi-x-circle text-danger"></i></td><td class="text-center"><i class="bi bi-x-circle text-danger"></i></td><td class="text-center"><i class="bi bi-x-circle text-danger"></i></td><td class="text-center text-warning fw-bold">Até 5</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="dica"><i class="bi bi-arrow-up-circle me-1"></i>Para fazer upgrade, acesse <strong>Minha Assinatura</strong> no menu do usuário (canto superior direito). O pagamento é feito pelo Mercado Pago com desconto de 20% no plano anual.</div>
+        </div>
+      </div>
+
+      <!-- ══ DESPESAS ══ -->
+      <h5 class="fw-bold text-uppercase text-muted mb-3 mt-4" style="font-size:.75rem;letter-spacing:.08em;">Despesas</h5>
+
+      <div class="ajuda-card ajuda-section" id="despesas-lista">
+        <div class="ajuda-card-header"><i class="bi bi-list-ul text-danger"></i> Listar Despesas</div>
+        <div class="ajuda-card-body">
+          <p>A tela de listagem exibe todas as suas despesas com filtros avançados. Por padrão, mostra o <strong>mês atual</strong>.</p>
+          <p><strong>Filtros disponíveis:</strong></p>
+          <ul>
+            <li><strong>Busca por descrição:</strong> Texto parcial do nome da despesa</li>
+            <li><strong>Categoria:</strong> Filtra por categoria específica</li>
+            <li><strong>Meio de pagamento:</strong> Filtra por cartão, PIX, dinheiro, etc.</li>
+            <li><strong>Valor:</strong> Suporta operadores <code>&gt;</code>, <code>&lt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>=</code> (ex: <code>&gt;100</code> lista despesas acima de R$ 100)</li>
+            <li><strong>Parcelas:</strong> Filtra por número de parcelas (mesmos operadores)</li>
+            <li><strong>Período:</strong> Mês atual, todos os registros, ou intervalo personalizado</li>
+          </ul>
+          <div class="dica"><i class="bi bi-download me-1"></i>Use o botão <strong>Exportar Excel</strong> para baixar todas as despesas do filtro atual em formato .xlsx.</div>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="despesas-criar">
+        <div class="ajuda-card-header"><i class="bi bi-plus-circle text-danger"></i> Cadastrar Despesa</div>
+        <div class="ajuda-card-body">
+          <p>Para registrar uma nova despesa, clique em <strong>Despesas → Nova Despesa</strong>.</p>
+          <p><strong>Campos obrigatórios:</strong></p>
+          <ul>
+            <li><strong>Descrição:</strong> Nome ou descrição da despesa</li>
+            <li><strong>Valor (R$):</strong> Valor total da despesa</li>
+            <li><strong>Categoria:</strong> Classifica a despesa (ex: Alimentação, Transporte)</li>
+            <li><strong>Meio de pagamento:</strong> Como foi pago (cartão, PIX, dinheiro, etc.)</li>
+            <li><strong>Data de pagamento:</strong> Data em que o pagamento foi realizado</li>
+            <li><strong>Nº de parcelas:</strong> Número de parcelas (padrão: 1 = à vista)</li>
+          </ul>
+          <div class="atencao"><i class="bi bi-exclamation-triangle me-1"></i><strong>Plano Free:</strong> Limite de 300 registros por mês (somando despesas e receitas). Ao atingir o limite, um aviso é exibido.</div>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="despesas-parcelas">
+        <div class="ajuda-card-header"><i class="bi bi-credit-card text-danger"></i> Compras Parceladas</div>
+        <div class="ajuda-card-body">
+          <p>Ao registrar uma despesa parcelada, informe o número de parcelas no campo <strong>Nº de Parcelas</strong>. O sistema registra o valor informado como valor de cada parcela — ou seja, se a compra foi de R$ 300 em 3x de R$ 100, informe:</p>
+          <ul>
+            <li>Valor: <strong>R$ 100,00</strong> (valor da parcela)</li>
+            <li>Nº de Parcelas: <strong>3</strong></li>
+            <li>Data: data do pagamento <strong>da parcela atual</strong></li>
+          </ul>
+          <p>Na <strong>Previsão de Cartões</strong>, as parcelas futuras são calculadas automaticamente com base nas datas de fechamento e vencimento do cartão.</p>
+          <div class="dica"><i class="bi bi-file-earmark-arrow-up me-1"></i>Use a função <strong>Importar Fatura Cartão</strong> para importar todas as parcelas de uma fatura automaticamente de um arquivo CSV.</div>
+        </div>
+      </div>
+
+      <!-- ══ RECEITAS ══ -->
+      <h5 class="fw-bold text-uppercase text-muted mb-3 mt-4" style="font-size:.75rem;letter-spacing:.08em;">Receitas</h5>
+
+      <div class="ajuda-card ajuda-section" id="receitas">
+        <div class="ajuda-card-header"><i class="bi bi-cash-coin text-success"></i> Listar e Cadastrar Receitas</div>
+        <div class="ajuda-card-body">
+          <p>O módulo de receitas funciona de forma idêntica ao de despesas. Acesse em <strong>Receitas → Listar</strong> ou <strong>Nova Receita</strong>.</p>
+          <p><strong>Campos para nova receita:</strong></p>
+          <ul>
+            <li><strong>Descrição:</strong> Nome ou descrição da receita (ex: Salário, Freelance)</li>
+            <li><strong>Valor (R$):</strong> Valor recebido</li>
+            <li><strong>Categoria:</strong> Tipo de receita (ex: Salário, Renda Extra)</li>
+            <li><strong>Meio de recebimento:</strong> Como foi recebido (conta bancária, PIX, etc.)</li>
+            <li><strong>Data de recebimento:</strong> Data em que o valor foi recebido</li>
+            <li><strong>Nº de parcelas:</strong> Para recebimentos parcelados</li>
+          </ul>
+          <div class="dica"><i class="bi bi-download me-1"></i>As receitas também podem ser exportadas em Excel pelo botão <strong>Exportar</strong> na listagem.</div>
+        </div>
+      </div>
+
+      <!-- ══ RELATÓRIOS ══ -->
+      <h5 class="fw-bold text-uppercase text-muted mb-3 mt-4" style="font-size:.75rem;letter-spacing:.08em;">Relatórios</h5>
+
+      <div class="ajuda-card ajuda-section" id="rel-balanco">
+        <div class="ajuda-card-header"><i class="bi bi-bar-chart-line text-primary"></i> Balanço Mensal</div>
+        <div class="ajuda-card-body">
+          <p>Exibe um gráfico de barras comparando <strong>receitas vs despesas</strong> dos últimos 12 meses.</p>
+          <ul>
+            <li>Visualize meses com saldo positivo (receitas &gt; despesas) ou negativo</li>
+            <li>Identifique tendências de gastos ao longo do ano</li>
+            <li>Os valores de despesas excluem a categoria "Pagamentos" para evitar duplicidade</li>
+          </ul>
+          <div class="dica"><i class="bi bi-eye me-1"></i>Clique nas barras do gráfico para ver o detalhamento de despesas e receitas daquele mês.</div>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="rel-despesas-mensal">
+        <div class="ajuda-card-header"><i class="bi bi-wallet2 text-primary"></i> Despesas Mensais</div>
+        <div class="ajuda-card-body">
+          <p>Mostra um ranking das despesas do mês selecionado <strong>agrupadas por categoria</strong>.</p>
+          <ul>
+            <li>Selecione o mês e ano desejado</li>
+            <li>Cada categoria exibe: total gasto, quantidade de lançamentos e percentual do total</li>
+            <li>Ordenadas da maior para a menor despesa</li>
+            <li>Total geral do mês no rodapé</li>
+          </ul>
+          <div class="dica"><i class="bi bi-list-ul me-1"></i>Clique em qualquer categoria para ver todas as despesas detalhadas daquele mês e categoria.</div>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="rel-receitas-mensal">
+        <div class="ajuda-card-header"><i class="bi bi-cash-coin text-primary"></i> Receitas Mensais</div>
+        <div class="ajuda-card-body">
+          <p>Equivalente às Despesas Mensais, mas para receitas. Exibe o total recebido por categoria no mês selecionado.</p>
+          <ul>
+            <li>Selecione mês e ano</li>
+            <li>Total por categoria de receita</li>
+            <li>Quantidade de lançamentos por categoria</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="rel-top10-contas">
+        <div class="ajuda-card-header"><i class="bi bi-star text-primary"></i> Top 10 Contas</div>
+        <div class="ajuda-card-body">
+          <p>Exibe as <strong>10 categorias com maior gasto</strong> no mês selecionado, com gráfico de pizza e percentuais.</p>
+          <ul>
+            <li>Identifique rapidamente onde está concentrado o maior gasto</li>
+            <li>Percentual de cada categoria sobre o total mensal</li>
+            <li>Exclui a categoria "Pagamentos" para não distorcer os dados</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="rel-top10-maiores">
+        <div class="ajuda-card-header"><i class="bi bi-trophy text-primary"></i> Top 10 Maiores Despesas</div>
+        <div class="ajuda-card-body">
+          <p>Lista os <strong>10 maiores lançamentos individuais</strong> (por valor) no período selecionado.</p>
+          <p><strong>Períodos disponíveis:</strong></p>
+          <ul>
+            <li>Mês atual</li>
+            <li>Últimos 3 meses</li>
+            <li>Últimos 6 meses</li>
+            <li>Último ano</li>
+            <li>Personalizado (intervalo de datas)</li>
+          </ul>
+          <p><strong>Estatísticas exibidas:</strong> Total das 10 maiores, total do período, número de transações, média por transação.</p>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="rel-orcado">
+        <div class="ajuda-card-header"><i class="bi bi-clipboard-data text-primary"></i> Orçado vs Gasto</div>
+        <div class="ajuda-card-body">
+          <p>Compara o <strong>orçamento definido por categoria</strong> com o que realmente foi gasto no mês.</p>
+          <ul>
+            <li>Categorias com orçamento definido aparecem com: valor orçado, valor gasto, diferença e percentual</li>
+            <li>Verde: dentro do orçamento | Vermelho: orçamento estourado</li>
+            <li>Somente categorias com orçamento cadastrado aparecem neste relatório</li>
+          </ul>
+          <div class="dica"><i class="bi bi-calculator me-1"></i>Para definir orçamentos, acesse <strong>Configurações → Orçamentos</strong>.</div>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="rel-previsao">
+        <div class="ajuda-card-header"><i class="bi bi-credit-card-2-front text-primary"></i> Previsão de Cartões</div>
+        <div class="ajuda-card-body">
+          <p>Um dos recursos mais poderosos do FiNan. Mostra <strong>quanto você vai pagar em cada cartão nos próximos meses</strong>, levando em conta todas as parcelas em aberto.</p>
+          <p><strong>Como funciona:</strong></p>
+          <div class="passo"><div class="passo-num">1</div><div>Cada cartão possui um <strong>dia de fechamento</strong> e <strong>dia de vencimento</strong> cadastrado em Configurações → Configurar Cartões</div></div>
+          <div class="passo"><div class="passo-num">2</div><div>O sistema analisa todas as despesas registradas naquele cartão, incluindo parceladas</div></div>
+          <div class="passo"><div class="passo-num">3</div><div>Calcula em qual fatura cada parcela vai cair, com base na data da compra e no fechamento do cartão</div></div>
+          <div class="passo"><div class="passo-num">4</div><div>Exibe um calendário com os valores previstos para os próximos 6 meses e os 6 meses anteriores</div></div>
+          <p class="mt-2"><strong>Informações exibidas:</strong></p>
+          <ul>
+            <li>Valor total de cada fatura (passadas e futuras)</li>
+            <li>Data de vencimento de cada fatura</li>
+            <li>Clique na fatura para ver o <strong>detalhamento completo</strong> com cada transação, categoria e número da parcela</li>
+            <li>Total ainda a pagar (soma de todas as faturas futuras)</li>
+          </ul>
+          <div class="atencao"><i class="bi bi-exclamation-triangle me-1"></i>Para que a previsão funcione corretamente, configure o dia de fechamento e vencimento de cada cartão em <strong>Configurações → Configurar Cartões</strong>.</div>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="rel-evolucao-cat">
+        <div class="ajuda-card-header"><i class="bi bi-graph-up text-primary"></i> Evolução por Categoria</div>
+        <div class="ajuda-card-body">
+          <p>Mostra a <strong>evolução histórica dos gastos</strong> de uma categoria específica mês a mês.</p>
+          <ul>
+            <li>Selecione uma categoria ou visualize todas juntas</li>
+            <li>Defina o período de análise (mês inicial e mês final)</li>
+            <li>Gráfico de barras com os totais mensais</li>
+            <li>Ideal para identificar sazonalidade e tendências de gasto</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="rel-meio-pagamento">
+        <div class="ajuda-card-header"><i class="bi bi-credit-card-2-front text-primary"></i> Por Meio de Pagamento</div>
+        <div class="ajuda-card-body">
+          <p>Analisa os gastos <strong>separados por meio de pagamento</strong> (cartão, PIX, dinheiro, etc.) ao longo de um período.</p>
+          <ul>
+            <li>Selecione o meio de pagamento e o período</li>
+            <li>Gráfico de barras mês a mês</li>
+            <li>Útil para ver quanto está sendo gasto em cada cartão ou forma de pagamento</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="rel-entre-datas">
+        <div class="ajuda-card-header"><i class="bi bi-calendar-range text-primary"></i> Despesas Entre Datas</div>
+        <div class="ajuda-card-body">
+          <p>Relatório flexível que exibe <strong>todas as despesas em um intervalo de datas</strong> definido pelo usuário.</p>
+          <ul>
+            <li>Informe a data inicial e final</li>
+            <li>Resultado agrupado por categoria com total de cada uma</li>
+            <li>Gráfico de pizza da distribuição por categoria</li>
+            <li>Total geral do período</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="rel-mensal-periodo">
+        <div class="ajuda-card-header"><i class="bi bi-calendar3 text-primary"></i> Mensal por Período</div>
+        <div class="ajuda-card-body">
+          <p>Exibe os <strong>totais mensais de despesas</strong> em um período customizado, em formato de linha do tempo.</p>
+          <ul>
+            <li>Defina início e fim do período</li>
+            <li>Gráfico de linha com tendência de gastos</li>
+            <li>Tabela com valor mensal</li>
+            <li>Ideal para visualizar evolução dos gastos ao longo de vários meses</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="rel-evolucao-temporal">
+        <div class="ajuda-card-header"><i class="bi bi-graph-up-arrow text-primary"></i> Evolução Temporal</div>
+        <div class="ajuda-card-body">
+          <p>Mostra o <strong>padrão diário de gastos</strong> em um período, identificando os dias de maior consumo.</p>
+          <ul>
+            <li>Gráfico de linha com gastos dia a dia</li>
+            <li>Estatísticas: total do período, dias com gastos, média diária, maior gasto em um dia</li>
+            <li>Útil para identificar padrões de consumo (ex: mais gastos no início do mês)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="rel-comparativo">
+        <div class="ajuda-card-header"><i class="bi bi-calendar-range text-primary"></i> Comparativo Anual</div>
+        <div class="ajuda-card-body">
+          <p>Compara os <strong>mesmos meses em anos diferentes</strong>, permitindo ver se os gastos aumentaram ou diminuíram ano a ano.</p>
+          <ul>
+            <li>Gráfico de barras agrupadas por mês</li>
+            <li>Um grupo de barras para cada mês, com uma barra por ano</li>
+            <li>Todos os anos com dados registrados são exibidos automaticamente</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ══ FLUXO DE CAIXA ══ -->
+      <h5 class="fw-bold text-uppercase text-muted mb-3 mt-4" style="font-size:.75rem;letter-spacing:.08em;">Fluxo de Caixa</h5>
+
+      <div class="ajuda-card ajuda-section" id="fluxo">
+        <div class="ajuda-card-header"><i class="bi bi-cash-stack text-info"></i> Fluxo de Caixa</div>
+        <div class="ajuda-card-body">
+          <p>O módulo de <strong>Fluxo de Caixa</strong> oferece uma visão consolidada das entradas e saídas de dinheiro mês a mês, com gráfico comparativo.</p>
+          <p><strong>O que conta como saída (despesa de caixa):</strong></p>
+          <ul>
+            <li>Despesas pagas com: Boleto, Dinheiro, PIX, Transferência ou Débito em Conta</li>
+            <li>Despesas da categoria "Pagamentos" (ex: pagamento de fatura de cartão)</li>
+            <li>Eventos avulsos de caixa cadastrados manualmente</li>
+          </ul>
+          <div class="atencao"><i class="bi bi-exclamation-triangle me-1"></i><strong>Atenção:</strong> Despesas pagas no cartão de crédito <strong>não</strong> entram nas saídas do fluxo de caixa diretamente — somente quando o pagamento da fatura é registrado como despesa.</div>
+          <p class="mt-3"><strong>Funcionalidades:</strong></p>
+          <ul>
+            <li><strong>Recalcular Tudo:</strong> Regenera todos os balanços mensais automaticamente a partir das transações cadastradas</li>
+            <li><strong>Eventos Avulsos:</strong> Registre movimentações de caixa que não são despesas nem receitas (ex: transferência entre contas, retirada de caixa)</li>
+            <li><strong>Detalhamento por mês:</strong> Clique em qualquer mês para ver todas as entradas e saídas detalhadas</li>
+            <li><strong>Exportar Excel:</strong> Baixe o detalhamento mensal em planilha com 3 abas (Entradas, Saídas, Eventos)</li>
+            <li><strong>Gráfico:</strong> Visualize a evolução do fluxo com gráfico de barras comparativo</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ══ CONFIGURAÇÕES ══ -->
+      <h5 class="fw-bold text-uppercase text-muted mb-3 mt-4" style="font-size:.75rem;letter-spacing:.08em;">Configurações</h5>
+
+      <div class="ajuda-card ajuda-section" id="config-categorias">
+        <div class="ajuda-card-header"><i class="bi bi-tags text-secondary"></i> Categorias de Despesa e Receita</div>
+        <div class="ajuda-card-body">
+          <p>As categorias organizam seus lançamentos e aparecem em todos os relatórios. Você pode criar categorias personalizadas.</p>
+          <p><strong>Ações disponíveis:</strong></p>
+          <ul>
+            <li><strong>Criar:</strong> Nova categoria com nome personalizado</li>
+            <li><strong>Editar:</strong> Renomear categoria existente</li>
+            <li><strong>Ativar/Desativar:</strong> Ocultar categoria sem excluí-la (os lançamentos são mantidos)</li>
+            <li><strong>Excluir:</strong> Remove a categoria — se houver despesas vinculadas, você deve escolher uma categoria de destino para transferi-las</li>
+          </ul>
+          <div class="atencao"><i class="bi bi-exclamation-triangle me-1"></i><strong>Plano Free:</strong> Limite de 10 categorias de despesa. Planos pagos têm categorias ilimitadas.</div>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="config-meios">
+        <div class="ajuda-card-header"><i class="bi bi-credit-card-2-front text-secondary"></i> Meios de Pagamento e Recebimento</div>
+        <div class="ajuda-card-body">
+          <p>Configure os meios de pagamento (para despesas) e meios de recebimento (para receitas) que você utiliza.</p>
+          <p><strong>Tipos de meio de pagamento:</strong></p>
+          <div class="feature-grid">
+            <div class="feature-item"><i class="bi bi-credit-card text-primary"></i> Cartão de crédito</div>
+            <div class="feature-item"><i class="bi bi-phone text-success"></i> PIX</div>
+            <div class="feature-item"><i class="bi bi-cash text-warning"></i> Dinheiro</div>
+            <div class="feature-item"><i class="bi bi-bank text-info"></i> Transferência</div>
+            <div class="feature-item"><i class="bi bi-receipt text-danger"></i> Boleto</div>
+            <div class="feature-item"><i class="bi bi-arrow-left-right text-secondary"></i> Débito em conta</div>
+          </div>
+          <div class="atencao"><i class="bi bi-exclamation-triangle me-1"></i><strong>Importante:</strong> Somente despesas pagas com <strong>cartão de crédito</strong> aparecem na Previsão de Cartões. Configure o tipo corretamente!</div>
+          <div class="dica"><i class="bi bi-info-circle me-1"></i><strong>Plano Free:</strong> Limite de 2 cartões de crédito. Outros meios (PIX, dinheiro, etc.) são ilimitados em todos os planos.</div>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="config-cartoes">
+        <div class="ajuda-card-header"><i class="bi bi-credit-card text-secondary"></i> Configurar Cartões de Crédito</div>
+        <div class="ajuda-card-body">
+          <p>Configure o <strong>dia de fechamento</strong> e o <strong>dia de vencimento</strong> de cada cartão. Esta configuração é fundamental para o funcionamento correto da Previsão de Cartões e da Importação de Fatura.</p>
+          <p><strong>Exemplo:</strong> Cartão que fecha todo dia 5 e vence todo dia 10:</p>
+          <ul>
+            <li>Uma compra feita no dia 3 vai para a fatura que vence no dia 10 do mês seguinte</li>
+            <li>Uma compra feita no dia 6 vai para a fatura do mês posterior (vence dia 10 em dois meses)</li>
+          </ul>
+          <div class="passo"><div class="passo-num">1</div><div>Acesse <strong>Configurações → Configurar Cartões</strong></div></div>
+          <div class="passo"><div class="passo-num">2</div><div>Selecione o cartão (meio de pagamento do tipo "cartão")</div></div>
+          <div class="passo"><div class="passo-num">3</div><div>Informe o dia de fechamento e o dia de vencimento</div></div>
+          <div class="passo"><div class="passo-num">4</div><div>Salve — a Previsão de Cartões será atualizada automaticamente</div></div>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="config-orcamento">
+        <div class="ajuda-card-header"><i class="bi bi-calculator text-secondary"></i> Orçamentos</div>
+        <div class="ajuda-card-body">
+          <p>Defina um <strong>valor máximo de gasto mensal</strong> por categoria. Os orçamentos são comparados com os gastos reais no relatório <strong>Orçado vs Gasto</strong>.</p>
+          <div class="passo"><div class="passo-num">1</div><div>Acesse <strong>Configurações → Orçamentos</strong></div></div>
+          <div class="passo"><div class="passo-num">2</div><div>Selecione a categoria de despesa</div></div>
+          <div class="passo"><div class="passo-num">3</div><div>Informe o valor orçado para o mês</div></div>
+          <div class="passo"><div class="passo-num">4</div><div>Acompanhe no relatório <strong>Orçado vs Gasto</strong> se está dentro ou acima do orçamento</div></div>
+          <div class="dica"><i class="bi bi-lightbulb me-1"></i>Categorias sem orçamento definido não aparecem no relatório Orçado vs Gasto. Defina orçamentos para as categorias que deseja controlar.</div>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="config-importar-fatura">
+        <div class="ajuda-card-header"><i class="bi bi-credit-card-2-front text-secondary"></i> Importar Fatura de Cartão (CSV)</div>
+        <div class="ajuda-card-body">
+          <p>Importe todas as despesas da fatura do seu cartão de crédito a partir de um <strong>arquivo CSV</strong>, sem precisar cadastrar uma a uma. Disponível nos planos Basic, Pro, ProMax e Família.</p>
+          <p><strong>Como usar:</strong></p>
+          <div class="passo"><div class="passo-num">1</div><div>Baixe o arquivo CSV da sua fatura no aplicativo ou site do banco/cartão</div></div>
+          <div class="passo"><div class="passo-num">2</div><div>Acesse <strong>Configurações → Importar Fatura Cartão</strong></div></div>
+          <div class="passo"><div class="passo-num">3</div><div>Selecione o cartão e faça o upload do arquivo CSV</div></div>
+          <div class="passo"><div class="passo-num">4</div><div>Clique em <strong>Processar Fatura</strong> — o sistema analisa o arquivo e exibe uma tabela de revisão</div></div>
+          <div class="passo"><div class="passo-num">5</div><div>Revise os dados: edite descrições, categorias, valores e datas se necessário</div></div>
+          <div class="passo"><div class="passo-num">6</div><div>Marque os itens que deseja importar (itens com possível duplicata são marcados em amarelo)</div></div>
+          <div class="passo"><div class="passo-num">7</div><div>Clique em <strong>Importar Selecionados</strong></div></div>
+          <p class="mt-2"><strong>Recursos inteligentes:</strong></p>
+          <ul>
+            <li><strong>Detecção de duplicatas:</strong> Verifica se o lançamento já existe no banco antes de importar</li>
+            <li><strong>Parcelas automáticas:</strong> Identifica e registra o número correto de parcelas</li>
+            <li><strong>Dois formatos suportados:</strong> Formato padrão (Data de Compra, Descrição, Parcela, Valor) e formato de extrato bancário (Data, Histórico, Valor US$, Valor R$)</li>
+            <li><strong>Categorias automáticas:</strong> Se a categoria não existir, é criada automaticamente</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="config-importar-antigos">
+        <div class="ajuda-card-header"><i class="bi bi-download text-secondary"></i> Importar Dados Antigos</div>
+        <div class="ajuda-card-body">
+          <p>Migre dados de versões anteriores do sistema (banco SQLite local) para o sistema web.</p>
+          <ul>
+            <li>Suporta arquivos <code>.db</code>, <code>.sqlite</code> e <code>.sqlite3</code></li>
+            <li>Importa despesas, receitas e fluxo de caixa</li>
+            <li>Modo <strong>Parcial</strong>: adiciona os dados (mesclagem)</li>
+            <li>Modo <strong>Total</strong>: substitui todos os dados existentes</li>
+            <li>Categorias e meios de pagamento são criados automaticamente se não existirem</li>
+          </ul>
+          <div class="atencao"><i class="bi bi-exclamation-triangle me-1"></i>Esta função é restrita ao <strong>Administrador</strong>.</div>
+        </div>
+      </div>
+
+      <!-- ══ ADMINISTRAÇÃO ══ -->
+      <h5 class="fw-bold text-uppercase text-muted mb-3 mt-4" style="font-size:.75rem;letter-spacing:.08em;">Administração</h5>
+
+      <div class="ajuda-card ajuda-section" id="admin-usuarios">
+        <div class="ajuda-card-header"><i class="bi bi-people text-dark"></i> Gerenciar Usuários</div>
+        <div class="ajuda-card-body">
+          <p>Disponível para <strong>Admin</strong> e <strong>Gerente</strong>. Permite criar e gerenciar todos os usuários do sistema.</p>
+          <p><strong>Ações por usuário:</strong></p>
+          <ul>
+            <li><strong>Editar perfil:</strong> Nome, e-mail, WhatsApp, CPF, foto</li>
+            <li><strong>Alterar senha:</strong> Definir nova senha manualmente</li>
+            <li><strong>Resetar senha:</strong> Gera senha aleatória e envia por e-mail</li>
+            <li><strong>Nível de acesso:</strong> Alterar o plano (Free, Basic, Pro, ProMax, Família, Gerente, Admin)</li>
+            <li><strong>Definir validade:</strong> Data de expiração do acesso</li>
+            <li><strong>Ativar/Desativar:</strong> Bloquear ou liberar acesso sem excluir o usuário</li>
+            <li><strong>Exportar dados Excel:</strong> Baixar todos os dados do usuário antes de excluí-lo</li>
+            <li><strong>Excluir usuário:</strong> Remove o usuário e todos os seus dados permanentemente</li>
+          </ul>
+          <div class="atencao"><i class="bi bi-exclamation-triangle me-1"></i>A exclusão de usuário é <strong>irreversível</strong>. Sempre exporte os dados antes de excluir.</div>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="admin-smtp">
+        <div class="ajuda-card-header"><i class="bi bi-envelope-at text-dark"></i> SMTP / WhatsApp</div>
+        <div class="ajuda-card-body">
+          <p>Configure o servidor de e-mail e webhook do WhatsApp para envio de notificações. Exclusivo para <strong>Admin</strong>.</p>
+          <p><strong>Configurações de e-mail (SMTP):</strong></p>
+          <ul>
+            <li>Servidor, porta, segurança (SSL/TLS)</li>
+            <li>Usuário e senha do e-mail remetente</li>
+            <li>E-mail de origem (from)</li>
+            <li>Botão para <strong>testar envio</strong> de e-mail</li>
+          </ul>
+          <p><strong>WhatsApp:</strong></p>
+          <ul>
+            <li>URL do webhook para integração com API de WhatsApp</li>
+            <li>Botão para testar envio de mensagem</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="ajuda-card ajuda-section" id="admin-api">
+        <div class="ajuda-card-header"><i class="bi bi-code-square text-dark"></i> API REST</div>
+        <div class="ajuda-card-body">
+          <p>O FiNan oferece uma API REST para acesso programático aos dados, usada pelo <strong>Robô de IA via WhatsApp</strong> e integrações externas.</p>
+          <p><strong>Gerenciamento de chaves:</strong></p>
+          <ul>
+            <li>Gerar nova chave de API (formato <code>fn_...</code>)</li>
+            <li>A chave é exibida uma única vez — guarde em local seguro</li>
+            <li>Revogar chave existente</li>
+            <li>Ver data de criação e último uso</li>
+          </ul>
+          <p><strong>Endpoints disponíveis:</strong></p>
+          <ul>
+            <li><code>GET /api/v1/despesas</code> — Lista despesas com filtros</li>
+            <li><code>GET /api/v1/receitas</code> — Lista receitas com filtros</li>
+            <li><code>GET /api/v1/resumo/despesas</code> — Resumo de despesas por categoria</li>
+            <li><code>GET /api/v1/resumo/receitas</code> — Resumo de receitas por categoria</li>
+            <li><code>GET /api/v1/orcamento</code> — Orçado vs gasto por categoria</li>
+          </ul>
+          <div class="dica"><i class="bi bi-shield-lock me-1"></i>Toda requisição à API deve incluir o header <code>Authorization: Bearer fn_suachave</code>.</div>
+        </div>
+      </div>
+
+      <!-- ══ ASSINATURA ══ -->
+      <h5 class="fw-bold text-uppercase text-muted mb-3 mt-4" style="font-size:.75rem;letter-spacing:.08em;">Assinatura</h5>
+
+      <div class="ajuda-card ajuda-section" id="assinatura">
+        <div class="ajuda-card-header"><i class="bi bi-credit-card-fill text-primary"></i> Minha Assinatura</div>
+        <div class="ajuda-card-body">
+          <p>Acesse em <strong>Menu do usuário → Minha Assinatura</strong> para ver seu plano atual e fazer upgrade.</p>
+          <p><strong>Funcionalidades:</strong></p>
+          <ul>
+            <li>Ver plano atual com recursos inclusos e data de validade</li>
+            <li>Comparar todos os planos disponíveis lado a lado</li>
+            <li>Toggle <strong>Mensal / Anual</strong> — plano anual tem <strong>20% de desconto</strong></li>
+            <li>Tabela comparativa completa de recursos por plano</li>
+            <li>Histórico de assinaturas e pagamentos</li>
+            <li>Checkout seguro via <strong>Mercado Pago</strong> (cartão, PIX, boleto, débito)</li>
+          </ul>
+          <div class="dica"><i class="bi bi-calendar-check me-1"></i>No plano anual você paga 12 meses de uma vez com 20% de desconto. Exemplo: Basic anual = R$ 95,04/ano (equivalente a R$ 7,92/mês).</div>
+        </div>
+      </div>
+
+      <!-- Rodapé da ajuda -->
+      <div class="alert alert-light border text-center mt-4">
+        <i class="bi bi-headset me-2 text-primary"></i>
+        Ainda tem dúvidas? Entre em contato pelo e-mail de suporte ou WhatsApp do administrador.
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Highlight do link ativo na sidebar ao scrollar
+const sections = document.querySelectorAll('.ajuda-section');
+const navLinks = document.querySelectorAll('.ajuda-sidebar .nav-link[href^="#"]');
+
+const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            navLinks.forEach(l => l.classList.remove('active'));
+            const link = document.querySelector(`.ajuda-sidebar a[href="#${entry.target.id}"]`);
+            if (link) link.classList.add('active');
+        }
+    });
+}, { rootMargin: '-20% 0px -70% 0px' });
+
+sections.forEach(s => observer.observe(s));
+</script>
+{% endblock %}

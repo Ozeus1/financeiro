@@ -128,6 +128,15 @@
                 {% endif %}
             </ul>
 
+            <!-- Ajuda -->
+            <ul class="navbar-nav me-2">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('main.ajuda') }}" title="Ajuda">
+                        <i class="bi bi-question-circle me-1"></i>Ajuda
+                    </a>
+                </li>
+            </ul>
+
             <!-- User menu -->
             <ul class="navbar-nav">
                 <li class="nav-item dropdown">
@@ -242,6 +251,7 @@
         {% if current_user.is_familia() %}
         <a class="nav-link" href="{{ url_for('familia.painel') }}"><i class="bi bi-house-heart"></i>Painel Família</a>
         {% endif %}
+        <a class="nav-link" href="{{ url_for('main.ajuda') }}"><i class="bi bi-question-circle"></i>Ajuda</a>
         <a class="nav-link text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i>Sair</a>
     </div>
 </div>

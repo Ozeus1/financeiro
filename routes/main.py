@@ -116,3 +116,10 @@ def dashboard():
                          mes_atual=nome_mes,
                          mes_num=mes_atual,
                          ano_atual=ano_atual)
+
+
+@main_bp.route('/ajuda')
+@login_required
+def ajuda():
+    """Página de ajuda com todas as funcionalidades do sistema"""
+    return render_template('ajuda.html')

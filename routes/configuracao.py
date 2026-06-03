@@ -2357,8 +2357,10 @@ def processar_fatura_cartao():
         num_parcelas  = lb['num_parcelas']
         cat_raw       = lb['categoria']
 
-        # Valor total = valor da parcela × total de parcelas
-        valor_total = round(valor_parcela * num_parcelas, 2)
+        # Cada linha do CSV representa UMA parcela desta fatura.
+        # Registramos o valor da parcela com o total de parcelas informado.
+        # O sistema de despesas usa num_parcelas para exibição — valor é o da parcela.
+        valor_total = round(valor_parcela, 2)
 
         # Calcular data de pagamento desta parcela
         data_pagamento = data_compra
@@ -2388,7 +2390,7 @@ def processar_fatura_cartao():
 
         linhas.append({
             'descricao': descricao,
-            'valor': valor_total,
+            'valor': round(valor_parcela, 2),        # valor a registrar = valor da parcela
             'valor_parcela': round(valor_parcela, 2),
             'data_compra': data_compra.strftime('%d/%m/%Y'),
             'data_pagamento': data_pagamento.strftime('%d/%m/%Y'),

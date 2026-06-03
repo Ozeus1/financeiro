@@ -2196,6 +2196,32 @@ def importar_fatura_cartao():
                            categorias=categorias)
 
 
+@config_bp.route('/debug-pdf', methods=['POST'])
+@login_required
+def debug_pdf():
+    """Rota temporária para inspecionar texto extraído do PDF"""
+    arquivo = request.files.get('arquivo')
+    if not arquivo:
+        return jsonify({'error': 'sem arquivo'})
+    try:
+        import pdfplumber, io as _io
+        raw = arquivo.read()
+        resultado = []
+        with pdfplumber.open(_io.BytesIO(raw)) as pdf:
+            for i, page in enumerate(pdf.pages):
+                txt = page.extract_text(layout=True) or ''
+                linhas = txt.split('\n')
+                resultado.append({
+                    'pagina': i + 1,
+                    'total_linhas': len(linhas),
+                    'linhas': [{'idx': j, 'txt': l} for j, l in enumerate(linhas)]
+                })
+        return jsonify({'success': True, 'paginas': resultado})
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()})
+
+
 def _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento):
     """
     Extrai transações de um PDF de fatura do Santander.

@@ -2269,80 +2269,66 @@ def _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento):
     try:
         raw = arquivo.read()
         import io as _io
+        # Extrair todas as linhas de texto preservando layout de colunas
+        todas_linhas = []
         with pdfplumber.open(_io.BytesIO(raw)) as pdf:
-            texto_completo = '\n'.join(
-                page.extract_text() or '' for page in pdf.pages
-            )
+            for page in pdf.pages:
+                # layout=True preserva espaçamento e separa colunas lado a lado
+                txt = page.extract_text(layout=True, x_tolerance=3, y_tolerance=3)
+                if txt:
+                    todas_linhas.extend(txt.split('\n'))
     except Exception as e:
         return jsonify({'success': False, 'error': f'Erro ao ler PDF: {e}'})
 
-    # Dividir por linhas e processar
-    linhas_pdf = texto_completo.split('\n')
+    IGNORAR_DESC = {
+        'deb autom de fatura', 'pagamento fatura', 'pagto fatura',
+        'anuidade diferenciada', 'saldo anterior', 'pagto. por deb',
+        'estorno tarifa', 'pagamento fatura qr', 'deb autom',
+    }
 
-    em_parcelamentos = False
-    em_despesas = False
-    em_pagamentos = False  # seção a ignorar
-
-    # Padrão de linha de transação:
-    # "08/05 BARROSAO PESCADOS 34,83"
-    # "21/04 R MILET COMERCIO DE CA 02/02 39,99"
-    # "30/10 ESFERA 07/12 180,17"
-    # Pode ter ícone prefixado (número, @, 2, 3) que devemos ignorar
+    # Padrão: data + descrição + [parcela] + valor
+    # Prefixos de ícone (números soltos, @, 2, 3) são descartados
     PAT_TRANS = _re.compile(
-        r'^(?:\d+\s+|@\s+)?'           # prefixo ícone opcional
+        r'^(?:[\d@]\s+)?'               # ícone/número prefixo opcional
         r'(\d{1,2}/\d{2})\s+'          # data dd/mm
-        r'(.+?)\s+'                     # descrição
-        r'(?:(\d{1,2}/\d{2})\s+)?'     # parcela opcional (dd/mm)
-        r'(-?[\d\.]+,\d{2})'            # valor R$
-        r'(?:\s+-?[\d\.]+,\d{2})?'     # valor US$ opcional
+        r'(.+?)\s+'                     # descrição (non-greedy)
+        r'(?:(\d{2}/\d{2})\s+)?'       # parcela xx/xx opcional
+        r'(-?[\d\.]+,\d{2})'            # valor R$ (pode ser negativo)
+        r'(?:\s+-?[\d\.]*,?\d*)?'      # valor US$ opcional
         r'\s*$'
     )
 
-    IGNORAR_DESC = {'deb autom de fatura', 'pagamento fatura', 'pagto fatura',
-                    'anuidade diferenciada', 'saldo anterior', 'pagto. por deb',
-                    'estorno tarifa'}
+    em_parcelamentos = False
+    em_despesas = False
+    em_pagamentos = False
 
-    for linha in linhas_pdf:
+    for linha in todas_linhas:
         linha_strip = linha.strip()
+        if not linha_strip:
+            continue
         l_lower = linha_strip.lower()
 
-        # Detectar seções
-        if 'pagamento e demais créditos' in l_lower or 'pagamento e demais creditos' in l_lower:
-            em_pagamentos = True
-            em_parcelamentos = False
-            em_despesas = False
+        # ── Detectar seções ──
+        if any(x in l_lower for x in ('pagamento e demais cr', 'pagamento e demais créd')):
+            em_pagamentos, em_parcelamentos, em_despesas = True, False, False
             continue
-        if 'parcelamentos' in l_lower and len(linha_strip) < 30:
-            em_parcelamentos = True
-            em_despesas = False
-            em_pagamentos = False
+        if 'parcelamentos' in l_lower and len(linha_strip) < 35:
+            em_parcelamentos, em_despesas, em_pagamentos = True, False, False
             continue
-        if 'despesas' in l_lower and len(linha_strip) < 20:
-            em_despesas = True
-            em_parcelamentos = False
-            em_pagamentos = False
+        if l_lower.strip() in ('despesas', 'despesas ') or (
+                'despesas' in l_lower and len(linha_strip) < 20):
+            em_despesas, em_parcelamentos, em_pagamentos = True, False, False
             continue
-        # Linha de total → resetar seção
-        if linha_strip.lower().startswith('valor total'):
-            em_parcelamentos = False
-            em_despesas = False
-            em_pagamentos = False
+        if l_lower.startswith('valor total'):
+            em_parcelamentos = em_despesas = em_pagamentos = False
             continue
-        # Novo portador → resetar seção
-        if _re.search(r'\d{4}\s+xxxx\s+xxxx\s+\d{4}', l_lower):
-            em_parcelamentos = False
-            em_despesas = False
-            em_pagamentos = False
+        if _re.search(r'xxxx\s+xxxx', l_lower):
+            em_parcelamentos = em_despesas = em_pagamentos = False
             continue
-        # Linha de cabeçalho da tabela
-        if l_lower in ('compra data descrição parcela r$ us$',
-                       'compra data descricao parcela r$ us$'):
-            continue
+        if 'compra' in l_lower and 'data' in l_lower and 'descri' in l_lower:
+            continue  # cabeçalho
 
-        # Só processar em seções relevantes
-        if not (em_parcelamentos or em_despesas):
-            continue
-        if em_pagamentos:
+        if not (em_parcelamentos or em_despesas) or em_pagamentos:
             continue
 
         m = PAT_TRANS.match(linha_strip)
@@ -2351,15 +2337,13 @@ def _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento):
 
         data_str  = m.group(1)
         descricao = m.group(2).strip()
-        parcela_s = m.group(3) or ''
+        parcela_s = (m.group(3) or '').strip()
         valor_s   = m.group(4)
 
-        # Ignorar linhas de pagamento/crédito pela descrição
         desc_low = descricao.lower()
         if any(ign in desc_low for ign in IGNORAR_DESC):
             continue
 
-        # Ignorar valores negativos (créditos/estornos)
         valor_parcela = _val(valor_s)
         if valor_parcela <= 0:
             continue

@@ -2684,11 +2684,23 @@ def processar_fatura_cartao():
 
     # ── Parsing PDF Santander ─────────────────────────────────────────────
     if nome_arquivo.endswith('.pdf'):
-        # Detectar banco pelo conteúdo do PDF
-        raw_peek = arquivo.read(4096)
-        arquivo.seek(0)
-        peek = raw_peek.decode('latin-1', errors='ignore').lower()
-        if 'nubank' in peek or 'nu pagamentos' in peek or 'nupay' in peek:
+        # Detectar banco: 1) pelo nome do arquivo, 2) pelo texto extraído
+        eh_nubank = 'nubank' in nome_arquivo.lower()
+
+        if not eh_nubank:
+            try:
+                import pdfplumber, io as _io2
+                raw_peek = arquivo.read()
+                arquivo.seek(0)
+                with pdfplumber.open(_io2.BytesIO(raw_peek)) as pdf_peek:
+                    txt_p1 = (pdf_peek.pages[0].extract_text() or '').lower() if pdf_peek.pages else ''
+                eh_nubank = ('nubank' in txt_p1 or 'nu pagamentos' in txt_p1
+                             or 'nupay' in txt_p1 or 'nu.com' in txt_p1
+                             or 'transações de' in txt_p1)
+            except Exception:
+                pass
+
+        if eh_nubank:
             return _processar_pdf_nubank(arquivo, cartao_id, cartao, fechamento)
         else:
             return _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento)

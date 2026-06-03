@@ -107,6 +107,145 @@ def planos():
                            plano_free=PLANO_FREE)
 
 
+@assinatura_bp.route('/assine-agora')
+def assine_agora():
+    """Página pública de assinatura com todos os planos e cadastro integrado"""
+    from flask_login import current_user
+    if current_user.is_authenticated:
+        return redirect(url_for('assinatura.minha_assinatura'))
+    return render_template('assinatura/assine_agora.html',
+                           planos=PLANOS,
+                           plano_free=PLANO_FREE)
+
+
+@assinatura_bp.route('/cadastro-e-assine/<plano>', methods=['POST'])
+def cadastro_e_assine(plano):
+    """
+    Cadastra um novo usuário e inicia o pagamento em um único fluxo.
+    Cria conta inativa, inicia checkout MP. Ao pagar, o webhook ativa a conta.
+    """
+    from flask_login import current_user
+    from models import User
+    import re as _re
+
+    plano = plano.strip().lower()
+    if plano not in PLANOS:
+        return jsonify({'success': False, 'error': 'Plano inválido.'}), 400
+
+    if current_user.is_authenticated:
+        return jsonify({'success': False, 'error': 'Você já está logado. Use Minha Assinatura para fazer upgrade.'}), 400
+
+    # ── Validar dados do formulário ──────────────────────────────────────
+    nome     = request.form.get('nome', '').strip()
+    email    = request.form.get('email', '').strip().lower()
+    username = request.form.get('username', '').strip()
+    senha    = request.form.get('password', '')
+    senha2   = request.form.get('password2', '')
+    ciclo    = request.form.get('ciclo', 'mensal').strip().lower()
+    cpf_raw  = _re.sub(r'\D', '', request.form.get('cpf', '').strip())
+
+    erros = []
+    if not nome:                      erros.append('Nome completo é obrigatório.')
+    if not email:                     erros.append('E-mail é obrigatório.')
+    if not username:                  erros.append('Nome de usuário é obrigatório.')
+    if len(senha) < 6:                erros.append('Senha deve ter pelo menos 6 caracteres.')
+    if senha != senha2:               erros.append('As senhas não conferem.')
+    if len(cpf_raw) != 11:            erros.append('CPF inválido.')
+    if ciclo not in ('mensal','anual'):ciclo = 'mensal'
+
+    if not erros:
+        if User.query.filter_by(email=email).first():
+            erros.append('E-mail já cadastrado. Use "Esqueceu a senha?" se precisar de acesso.')
+        if User.query.filter_by(username=username).first():
+            erros.append('Nome de usuário já em uso. Escolha outro.')
+        if cpf_raw and User.query.filter_by(cpf=cpf_raw).first():
+            erros.append('CPF já cadastrado.')
+
+    if erros:
+        return jsonify({'success': False, 'error': '<br>'.join(erros)}), 422
+
+    # ── Criar usuário pendente de pagamento ──────────────────────────────
+    from routes.auth import _gerar_token_confirmacao
+    token = _gerar_token_confirmacao(email)
+
+    novo = User(
+        nome=nome,
+        cpf=cpf_raw,
+        email=email,
+        username=username,
+        nivel_acesso='free',    # será atualizado após pagamento aprovado
+        ativo=False,            # inativo até pagamento
+        email_confirmado=False,
+        token_confirmacao=token,
+    )
+    novo.set_password(senha)
+    db.session.add(novo)
+    db.session.commit()
+
+    from models import criar_dados_padrao_usuario
+    criar_dados_padrao_usuario(novo)
+
+    # ── Iniciar pagamento no Mercado Pago ────────────────────────────────
+    mp_access_token = ConfigSistema.get('mp_access_token', '')
+    if not mp_access_token:
+        # Sem gateway configurado — salva e avisa admin
+        return jsonify({
+            'success': True,
+            'redirect': url_for('auth.login'),
+            'msg': 'Cadastro criado! O administrador irá liberar seu acesso após confirmação do pagamento.',
+        })
+
+    try:
+        import mercadopago
+        sdk = mercadopago.SDK(mp_access_token)
+
+        info = PLANOS[plano]
+        preco_mensal = info['preco']
+        valor = round(preco_mensal * 12 * 0.80, 2) if ciclo == 'anual' else preco_mensal
+        titulo = f'FiNan {info["nome"]} — {"Anual (20% off)" if ciclo == "anual" else "Mensal"}'
+
+        proto = request.headers.get('X-Forwarded-Proto', request.scheme)
+        host  = request.headers.get('X-Forwarded-Host', request.host)
+        base_url = f'{proto}://{host}'
+
+        preference_data = {
+            'items': [{'title': titulo, 'quantity': 1, 'unit_price': valor, 'currency_id': 'BRL'}],
+            'payer': {'name': nome, 'email': email},
+            'back_urls': {
+                'success': f'{base_url}/assinatura/sucesso',
+                'failure': f'{base_url}/assinatura/falha',
+                'pending': f'{base_url}/assinatura/pendente',
+            },
+            'auto_return': 'approved',
+            'notification_url': f'{base_url}/assinatura/webhook',
+            'external_reference': f'{novo.id}|{plano}|{ciclo}',
+            'statement_descriptor': 'FINAN ASSINATURA',
+        }
+
+        result = sdk.preference().create(preference_data)
+        preference = result['response']
+        init_point = preference.get('init_point') or preference.get('sandbox_init_point')
+
+        # Registrar assinatura pendente
+        ass = Assinatura(
+            user_id=novo.id,
+            plano=plano,
+            status='pendente',
+            valor=valor,
+            mp_preference_id=preference.get('id'),
+        )
+        db.session.add(ass)
+        db.session.commit()
+
+        if not init_point:
+            return jsonify({'success': False, 'error': 'Erro ao gerar link de pagamento. Tente novamente.'}), 500
+
+        return jsonify({'success': True, 'redirect': init_point})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Erro ao iniciar pagamento: {e}'}), 500
+
+
 @assinatura_bp.route('/minha-assinatura')
 @login_required
 def minha_assinatura():
@@ -340,9 +479,12 @@ def _aprovar_assinatura(payment_id, external_ref):
             ass.data_aprovacao = datetime.utcnow()
             ass.data_expiracao = (date.today() + relativedelta(months=meses))
 
-        # Ativa plano do usuário
+        # Ativa plano do usuário (inclusive contas criadas via cadastro+assine)
         user.nivel_acesso = plano
         user.data_validade = date.today() + relativedelta(months=meses)
+        user.ativo = True
+        user.email_confirmado = True
+        user.token_confirmacao = None
 
         # Plano família: criar grupo se ainda não tem
         if plano == 'familia':

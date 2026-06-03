@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assine Agora — FiNan</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+:root { --primary:#4361ee; --basic:#20c997; --pro:#4361ee; --promax:#6f42c1; --familia:#e67e22; --free:#6c757d; }
+
+body { background:#f8fafc; font-family:'Segoe UI',system-ui,sans-serif; }
+
+/* ── Navbar ── */
+.top-nav { background:#0d1b2a; padding:.75rem 1.5rem; display:flex; align-items:center; justify-content:space-between; }
+.top-nav .brand { color:#fff; font-weight:800; font-size:1.2rem; text-decoration:none; display:flex; align-items:center; gap:.5rem; }
+.top-nav .brand i { color:#4361ee; font-size:1.4rem; }
+.top-nav .nav-links a { color:#cbd5e1; text-decoration:none; font-size:.88rem; margin-left:1.25rem; }
+.top-nav .nav-links a:hover { color:#fff; }
+.top-nav .btn-login { background:transparent; border:1px solid #4361ee; color:#4361ee; padding:.35rem .9rem;
+    border-radius:8px; font-size:.85rem; text-decoration:none; transition:.2s; }
+.top-nav .btn-login:hover { background:#4361ee; color:#fff; }
+
+/* ── Hero ── */
+.hero { background:linear-gradient(135deg, #0d1b2a 0%, #1e3a5f 50%, #0d1b2a 100%);
+    padding:4rem 1rem 3rem; text-align:center; color:#fff; }
+.hero h1 { font-size:2.5rem; font-weight:800; margin-bottom:.75rem; }
+.hero p { font-size:1.1rem; color:#94a3b8; max-width:560px; margin:0 auto 1.5rem; }
+.hero .badge-seguro { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2);
+    color:#94a3b8; font-size:.78rem; padding:.35em .9em; border-radius:20px; display:inline-flex; align-items:center; gap:.4rem; }
+
+/* ── Toggle ── */
+.ciclo-wrap { display:flex; justify-content:center; margin-bottom:2.5rem; }
+.ciclo-toggle { display:inline-flex; background:#1e293b; border-radius:50px; padding:4px; gap:4px; }
+.ciclo-btn { border:none; background:transparent; color:#94a3b8; padding:.4rem 1.3rem;
+    border-radius:50px; font-size:.88rem; font-weight:600; cursor:pointer; transition:.2s; }
+.ciclo-btn.active { background:#fff; color:#0d1b2a; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+.badge-eco { background:#22c55e; color:#fff; font-size:.65rem; padding:.15em .55em; border-radius:20px; vertical-align:middle; }
+
+/* ── Cards de plano ── */
+.planos-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1.25rem;
+    max-width:1150px; margin:0 auto; padding:0 1rem; }
+
+.plano-card { background:#fff; border-radius:20px; border:2px solid #e2e8f0;
+    display:flex; flex-direction:column; transition:transform .2s, box-shadow .2s; overflow:visible; position:relative; }
+.plano-card:hover { transform:translateY(-6px); box-shadow:0 12px 40px rgba(0,0,0,.12); }
+.plano-card.destaque { border-width:3px; }
+.plano-card .ribbon { position:absolute; top:-14px; left:50%; transform:translateX(-50%);
+    background:#4361ee; color:#fff; font-size:.68rem; font-weight:700;
+    padding:.25em .9em; border-radius:20px; white-space:nowrap; letter-spacing:.03em; }
+
+.plano-header { padding:1.5rem 1.5rem 1rem; text-align:center; }
+.plano-icon { font-size:2rem; margin-bottom:.5rem; }
+.plano-nome { font-size:1.1rem; font-weight:700; margin-bottom:.25rem; }
+.plano-desc { font-size:.78rem; color:#64748b; min-height:2.4em; }
+
+.plano-preco { padding:.75rem 1.5rem; text-align:center; border-top:1px solid #f1f5f9; border-bottom:1px solid #f1f5f9; }
+.preco-val { font-size:2.2rem; font-weight:800; line-height:1; }
+.preco-per { font-size:.78rem; color:#94a3b8; }
+.preco-anual-info { font-size:.72rem; color:#94a3b8; margin-top:.2rem; }
+.preco-antes { font-size:.8rem; color:#94a3b8; text-decoration:line-through; }
+
+.plano-recursos { padding:1rem 1.5rem; flex:1; }
+.recurso { display:flex; align-items:flex-start; gap:.5rem; font-size:.82rem; padding:.22rem 0; }
+.recurso i { font-size:.9rem; flex-shrink:0; margin-top:1px; }
+
+.plano-footer { padding:1rem 1.5rem 1.5rem; }
+.btn-assinar { width:100%; border:none; padding:.65rem; border-radius:12px; font-weight:700;
+    font-size:.9rem; cursor:pointer; transition:.2s; color:#fff; display:flex; align-items:center; justify-content:center; gap:.5rem; }
+.btn-assinar:hover { filter:brightness(1.1); transform:scale(1.02); }
+.btn-assinar:disabled { opacity:.6; cursor:default; transform:none; }
+.btn-free { background:#6c757d; }
+.btn-basic { background:#20c997; }
+.btn-pro { background:#4361ee; }
+.btn-promax { background:#6f42c1; }
+.btn-familia { background:#e67e22; }
+
+/* ── Tabela comparativa ── */
+.comparativo-wrap { max-width:900px; margin:3rem auto 0; padding:0 1rem; }
+.comparativo th { font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; text-align:center; }
+.comparativo td, .comparativo th { vertical-align:middle; padding:.55rem .7rem; }
+.comparativo td:first-child { text-align:left; font-size:.85rem; }
+
+/* ── Modal de cadastro ── */
+.modal-content { border-radius:20px; border:none; }
+.modal-header { border-radius:20px 20px 0 0; padding:1.25rem 1.5rem; }
+.form-control, .form-select { border-radius:10px; font-size:.88rem; }
+.form-control:focus { border-color:#4361ee; box-shadow:0 0 0 3px rgba(67,97,238,.12); }
+.input-group-text { border-radius:10px 0 0 10px; }
+.pass-toggle { cursor:pointer; border-radius:0 10px 10px 0 !important; }
+.cpf-help, .user-help { font-size:.75rem; margin-top:.2rem; }
+
+/* ── Footer ── */
+footer { background:#0d1b2a; color:#64748b; text-align:center; padding:2rem 1rem; font-size:.82rem; margin-top:4rem; }
+footer a { color:#4361ee; text-decoration:none; }
+</style>
+</head>
+<body>
+
+<!-- ── Navbar ── -->
+<nav class="top-nav">
+  <a class="brand" href="/assinatura/assine-agora">
+    <i class="bi bi-currency-dollar"></i> FiNan
+  </a>
+  <div class="d-flex align-items-center">
+    <div class="nav-links d-none d-md-block">
+      <a href="/assinatura/assine-agora">Planos</a>
+      <a href="/ajuda">Ajuda</a>
+    </div>
+    <a class="btn-login ms-3" href="/login"><i class="bi bi-box-arrow-in-right me-1"></i>Entrar</a>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <h1>Controle seu dinheiro de verdade</h1>
+  <p>Despesas, receitas, cartões, relatórios e fluxo de caixa — tudo em um lugar. Comece grátis hoje.</p>
+  <span class="badge-seguro"><i class="bi bi-shield-check"></i> Pagamento seguro via Mercado Pago</span>
+</div>
+
+<!-- ── Toggle ── -->
+<div style="background:#f8fafc;padding:2rem 0 0;">
+  <div class="ciclo-wrap">
+    <div class="ciclo-toggle">
+      <button class="ciclo-btn active" data-ciclo="mensal" onclick="setCiclo('mensal')">Mensal</button>
+      <button class="ciclo-btn" data-ciclo="anual" onclick="setCiclo('anual')">
+        Anual <span class="badge-eco ms-1">−20%</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Grade de planos ── -->
+  <div class="planos-grid pb-4">
+
+    <!-- Free -->
+    <div class="plano-card">
+      <div class="plano-header">
+        <div class="plano-icon" style="color:#6c757d;"><i class="bi bi-gift-fill"></i></div>
+        <div class="plano-nome">Free</div>
+        <div class="plano-desc">Para começar a organizar suas finanças sem custo</div>
+      </div>
+      <div class="plano-preco">
+        <div class="preco-val" style="color:#6c757d;">Grátis</div>
+        <div class="preco-per">para sempre</div>
+      </div>
+      <div class="plano-recursos">
+        <div class="recurso"><i class="bi bi-dash-circle text-warning"></i> 300 registros/mês</div>
+        <div class="recurso"><i class="bi bi-dash-circle text-warning"></i> 10 categorias</div>
+        <div class="recurso"><i class="bi bi-dash-circle text-warning"></i> 2 cartões</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Todos os relatórios</div>
+        <div class="recurso"><i class="bi bi-x-circle text-danger"></i> Sem Robô de IA</div>
+        <div class="recurso"><i class="bi bi-x-circle text-danger"></i> Sem separação PF/PJ</div>
+      </div>
+      <div class="plano-footer">
+        <button class="btn-assinar btn-free" onclick="window.location='/solicitar-acesso'">
+          <i class="bi bi-person-plus"></i> Criar conta grátis
+        </button>
+      </div>
+    </div>
+
+    <!-- Basic -->
+    <div class="plano-card">
+      <div class="plano-header">
+        <div class="plano-icon" style="color:#20c997;"><i class="bi bi-rocket-takeoff-fill"></i></div>
+        <div class="plano-nome">Basic</div>
+        <div class="plano-desc">Tudo do Free, sem nenhum limite</div>
+      </div>
+      <div class="plano-preco">
+        <div class="preco-mensal">
+          <span class="preco-val" style="color:#20c997;">R$ 9,90</span>
+          <span class="preco-per">/mês</span>
+        </div>
+        <div class="preco-anual d-none">
+          <div class="preco-antes">R$ 9,90/mês</div>
+          <span class="preco-val" style="color:#20c997;">R$ 7,92</span>
+          <span class="preco-per">/mês</span>
+          <div class="preco-anual-info">R$ 95,04/ano — economia de R$ 23,76</div>
+        </div>
+      </div>
+      <div class="plano-recursos">
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Registros ilimitados</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Categorias ilimitadas</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Cartões ilimitados</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Todos os relatórios</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Importar fatura cartão</div>
+        <div class="recurso"><i class="bi bi-x-circle text-danger"></i> Sem Robô de IA</div>
+      </div>
+      <div class="plano-footer">
+        <button class="btn-assinar btn-basic" onclick="abrirCadastro('basic')">
+          <i class="bi bi-credit-card"></i> <span class="txt-btn">Assinar Basic</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Pro -->
+    <div class="plano-card destaque" style="border-color:#4361ee;">
+      <span class="ribbon">MAIS POPULAR</span>
+      <div class="plano-header">
+        <div class="plano-icon" style="color:#4361ee;"><i class="bi bi-star-fill"></i></div>
+        <div class="plano-nome">Pro</div>
+        <div class="plano-desc">Controle financeiro pessoal completo + IA</div>
+      </div>
+      <div class="plano-preco">
+        <div class="preco-mensal">
+          <span class="preco-val" style="color:#4361ee;">R$ 19,90</span>
+          <span class="preco-per">/mês</span>
+        </div>
+        <div class="preco-anual d-none">
+          <div class="preco-antes">R$ 19,90/mês</div>
+          <span class="preco-val" style="color:#4361ee;">R$ 15,92</span>
+          <span class="preco-per">/mês</span>
+          <div class="preco-anual-info">R$ 191,04/ano — economia de R$ 47,76</div>
+        </div>
+      </div>
+      <div class="plano-recursos">
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Tudo do Basic</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Robô de IA via WhatsApp</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Gerente Financeiro IA</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Exportação para Excel</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Importar fatura cartão</div>
+        <div class="recurso"><i class="bi bi-x-circle text-danger"></i> Sem separação PF/PJ</div>
+      </div>
+      <div class="plano-footer">
+        <button class="btn-assinar btn-pro" onclick="abrirCadastro('pro')">
+          <i class="bi bi-credit-card"></i> <span class="txt-btn">Assinar Pro</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ProMax -->
+    <div class="plano-card" style="border-color:#e2e8f0;">
+      <div class="plano-header">
+        <div class="plano-icon" style="color:#6f42c1;"><i class="bi bi-stars"></i></div>
+        <div class="plano-nome">ProMax</div>
+        <div class="plano-desc">Para quem gerencia PF e PJ separados</div>
+      </div>
+      <div class="plano-preco">
+        <div class="preco-mensal">
+          <span class="preco-val" style="color:#6f42c1;">R$ 27,90</span>
+          <span class="preco-per">/mês</span>
+        </div>
+        <div class="preco-anual d-none">
+          <div class="preco-antes">R$ 27,90/mês</div>
+          <span class="preco-val" style="color:#6f42c1;">R$ 22,32</span>
+          <span class="preco-per">/mês</span>
+          <div class="preco-anual-info">R$ 267,84/ano — economia de R$ 66,96</div>
+        </div>
+      </div>
+      <div class="plano-recursos">
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Tudo do Pro</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Separação PF/PJ</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Relatórios PF vs PJ</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Dashboard por entidade</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Filtros PF/PJ em tudo</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Importar fatura cartão</div>
+      </div>
+      <div class="plano-footer">
+        <button class="btn-assinar btn-promax" onclick="abrirCadastro('promax')">
+          <i class="bi bi-credit-card"></i> <span class="txt-btn">Assinar ProMax</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Família -->
+    <div class="plano-card" style="border-color:#e2e8f0;">
+      <div class="plano-header">
+        <div class="plano-icon" style="color:#e67e22;"><i class="bi bi-house-heart-fill"></i></div>
+        <div class="plano-nome">Família</div>
+        <div class="plano-desc">Até 5 usuários com banco compartilhado</div>
+      </div>
+      <div class="plano-preco">
+        <div class="preco-mensal">
+          <span class="preco-val" style="color:#e67e22;">R$ 34,90</span>
+          <span class="preco-per">/mês</span>
+        </div>
+        <div class="preco-anual d-none">
+          <div class="preco-antes">R$ 34,90/mês</div>
+          <span class="preco-val" style="color:#e67e22;">R$ 27,92</span>
+          <span class="preco-per">/mês</span>
+          <div class="preco-anual-info">R$ 334,80/ano — economia de R$ 83,70</div>
+        </div>
+      </div>
+      <div class="plano-recursos">
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Até 5 usuários</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Banco compartilhado</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Robô de IA via WhatsApp</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Relatório por membro</div>
+        <div class="recurso"><i class="bi bi-check-circle-fill text-success"></i> Importar fatura cartão</div>
+        <div class="recurso"><i class="bi bi-x-circle text-danger"></i> Sem separação PF/PJ</div>
+      </div>
+      <div class="plano-footer">
+        <button class="btn-assinar btn-familia" onclick="abrirCadastro('familia')">
+          <i class="bi bi-credit-card"></i> <span class="txt-btn">Assinar Família</span>
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /planos-grid -->
+</div>
+
+<!-- ── Comparativo ── -->
+<div class="comparativo-wrap">
+  <h5 class="fw-bold mb-3 text-center" style="font-size:.9rem;text-transform:uppercase;letter-spacing:.06em;color:#64748b;">
+    <i class="bi bi-table me-2"></i>Comparativo completo
+  </h5>
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-bordered comparativo mb-0" style="font-size:.82rem;">
+        <thead class="table-dark">
+          <tr>
+            <th>Recurso</th>
+            <th class="text-center" style="color:#94a3b8;">Free</th>
+            <th class="text-center" style="color:#20c997;">Basic</th>
+            <th class="text-center" style="color:#7ba7f7;">Pro</th>
+            <th class="text-center" style="color:#b39ddb;">ProMax</th>
+            <th class="text-center" style="color:#f0a868;">Família</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% macro ck(ok) %}{% if ok %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle text-danger"></i>{% endif %}{% endmacro %}
+          <tr><td>Registros mensais</td><td class="text-center"><small class="text-warning fw-bold">300</small></td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td></tr>
+          <tr><td>Categorias</td><td class="text-center"><small class="text-warning fw-bold">10</small></td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td></tr>
+          <tr><td>Cartões de crédito</td><td class="text-center"><small class="text-warning fw-bold">2</small></td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td></tr>
+          <tr><td>Todos os relatórios</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td></tr>
+          <tr><td>Importar fatura cartão</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td></tr>
+          <tr><td>Robô de IA (WhatsApp)</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(true) }}</td></tr>
+          <tr><td>Separação PF/PJ</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(true) }}</td><td class="text-center">{{ ck(false) }}</td></tr>
+          <tr><td>Usuários compartilhados</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(false) }}</td><td class="text-center">{{ ck(false) }}</td><td class="text-center"><small class="fw-bold" style="color:#e67e22;">Até 5</small></td></tr>
+          <tr class="table-light fw-bold"><td>Preço mensal</td><td class="text-center">Grátis</td><td class="text-center">R$ 9,90</td><td class="text-center">R$ 19,90</td><td class="text-center">R$ 27,90</td><td class="text-center">R$ 34,90</td></tr>
+          <tr class="table-light"><td>Preço anual <span class="badge-eco">−20%</span></td><td class="text-center">—</td><td class="text-center">R$ 95,04/ano</td><td class="text-center">R$ 191,04/ano</td><td class="text-center">R$ 267,84/ano</td><td class="text-center">R$ 334,80/ano</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="text-center mt-3 text-muted" style="font-size:.82rem;">
+    <i class="bi bi-shield-check text-success me-1"></i>
+    Pagamento seguro via <strong>Mercado Pago</strong> — Cartão, PIX, boleto e débito aceitos.
+    Plano ativado imediatamente após aprovação.
+  </div>
+</div>
+
+<!-- ── Footer ── -->
+<footer>
+  <p class="mb-1">© 2026 FiNan — Sistema de Gerenciamento Financeiro</p>
+  <p class="mb-0"><a href="/login">Entrar</a> · <a href="/solicitar-acesso">Criar conta Free</a> · <a href="/ajuda">Ajuda</a></p>
+</footer>
+
+<!-- ══ Modal de Cadastro ══ -->
+<div class="modal fade" id="modalCadastro" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header text-white" id="modalHeader">
+        <div>
+          <h5 class="modal-title mb-0" id="modalTitulo">Criar conta</h5>
+          <small id="modalSubtitulo" style="opacity:.8;font-size:.8rem;"></small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+
+        <!-- Seletor de ciclo dentro do modal -->
+        <div class="d-flex justify-content-center mb-3">
+          <div class="ciclo-toggle" style="background:#f1f5f9;">
+            <button class="ciclo-btn active" style="font-size:.8rem;" id="modalBtnMensal" onclick="setModalCiclo('mensal')">Mensal</button>
+            <button class="ciclo-btn" style="font-size:.8rem;" id="modalBtnAnual" onclick="setModalCiclo('anual')">
+              Anual <span class="badge-eco">−20%</span>
+            </button>
+          </div>
+        </div>
+        <div class="text-center mb-3" id="modalPrecoInfo" style="font-size:.9rem; font-weight:700;"></div>
+
+        <form id="formCadastro" novalidate>
+          <input type="hidden" id="planoCadastro" name="plano_id" value="">
+          <input type="hidden" id="cicloCadastro" name="ciclo" value="mensal">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold" style="font-size:.85rem;">Nome completo <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="nome" id="inputNome" placeholder="Seu nome completo" required>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" style="font-size:.85rem;">CPF <span class="text-danger">*</span></label>
+              <input type="text" class="form-control cpf-mask" name="cpf" id="inputCpf" placeholder="000.000.000-00" maxlength="14" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" style="font-size:.85rem;">Usuário <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="username" id="inputUsername" placeholder="ex: joaosilva" autocomplete="off" required>
+              <div id="userHelp" class="cpf-help text-muted"></div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold" style="font-size:.85rem;">E-mail <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" name="email" id="inputEmail" placeholder="seu@email.com" required>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" style="font-size:.85rem;">Senha <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input type="password" class="form-control" name="password" id="inputSenha" placeholder="Mín. 6 caracteres" required>
+                <button type="button" class="btn btn-outline-secondary pass-toggle" tabindex="-1" onclick="togglePass('inputSenha',this)"><i class="bi bi-eye"></i></button>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" style="font-size:.85rem;">Confirmar senha <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input type="password" class="form-control" name="password2" id="inputSenha2" placeholder="Repita a senha" required>
+                <button type="button" class="btn btn-outline-secondary pass-toggle" tabindex="-1" onclick="togglePass('inputSenha2',this)"><i class="bi bi-eye"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <div id="errosCadastro" class="alert alert-danger d-none py-2" style="font-size:.83rem;"></div>
+
+          <button type="submit" class="btn-assinar mt-1" id="btnSubmitCadastro" style="border-radius:12px;">
+            <i class="bi bi-lock-fill"></i> <span id="btnSubmitTexto">Prosseguir para pagamento</span>
+          </button>
+        </form>
+
+        <div class="text-center mt-3" style="font-size:.78rem; color:#64748b;">
+          Já tem conta? <a href="/login" style="color:#4361ee;">Fazer login</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── Dados dos planos ──
+const PLANOS_INFO = {
+  basic:   { cor:'#20c997', nome:'Basic',   preco:9.90,  precoAnual:7.92,  totalAnual:95.04  },
+  pro:     { cor:'#4361ee', nome:'Pro',     preco:19.90, precoAnual:15.92, totalAnual:191.04 },
+  promax:  { cor:'#6f42c1', nome:'ProMax',  preco:27.90, precoAnual:22.32, totalAnual:267.84 },
+  familia: { cor:'#e67e22', nome:'Família', preco:34.90, precoAnual:27.92, totalAnual:334.80 },
+};
+
+let cicloAtual = 'mensal';
+
+// ── Toggle mensal/anual (grade) ──
+function setCiclo(ciclo) {
+  cicloAtual = ciclo;
+  document.querySelectorAll('.ciclo-btn').forEach(b => b.classList.toggle('active', b.dataset.ciclo === ciclo));
+  document.querySelectorAll('.preco-mensal').forEach(el => el.classList.toggle('d-none', ciclo === 'anual'));
+  document.querySelectorAll('.preco-anual').forEach(el => el.classList.toggle('d-none', ciclo === 'mensal'));
+  // Atualizar texto dos botões
+  document.querySelectorAll('.txt-btn').forEach(el => {
+    const plano = el.closest('.plano-card').querySelector('.plano-nome').textContent;
+    el.textContent = ciclo === 'anual' ? `Assinar ${plano} (anual)` : `Assinar ${plano}`;
+  });
+  // Sincronizar modal se aberto
+  setModalCiclo(ciclo);
+}
+
+// ── Abrir modal de cadastro ──
+function abrirCadastro(plano) {
+  const info = PLANOS_INFO[plano];
+  if (!info) return;
+
+  document.getElementById('planoCadastro').value = plano;
+  document.getElementById('modalHeader').style.background = info.cor;
+  document.getElementById('modalTitulo').textContent = `Assinar plano ${info.nome}`;
+  document.getElementById('errosCadastro').classList.add('d-none');
+
+  setModalCiclo(cicloAtual);
+  atualizarPrecoModal(plano, cicloAtual);
+
+  // Reset form
+  document.getElementById('formCadastro').reset();
+  document.getElementById('userHelp').textContent = '';
+
+  new bootstrap.Modal(document.getElementById('modalCadastro')).show();
+}
+
+function setModalCiclo(ciclo) {
+  document.getElementById('cicloCadastro').value = ciclo;
+  document.getElementById('modalBtnMensal').classList.toggle('active', ciclo === 'mensal');
+  document.getElementById('modalBtnAnual').classList.toggle('active', ciclo === 'anual');
+  const plano = document.getElementById('planoCadastro').value;
+  if (plano) atualizarPrecoModal(plano, ciclo);
+}
+
+function atualizarPrecoModal(plano, ciclo) {
+  const info = PLANOS_INFO[plano];
+  if (!info) return;
+  const div = document.getElementById('modalPrecoInfo');
+  if (ciclo === 'anual') {
+    div.style.color = info.cor;
+    div.innerHTML = `R$ ${info.precoAnual.toFixed(2).replace('.',',')}/mês <small style="color:#64748b;font-weight:400;font-size:.78rem;">(R$ ${info.totalAnual.toFixed(2).replace('.',',')} cobrado anualmente)</small>`;
+    document.getElementById('modalSubtitulo').textContent = `R$ ${info.totalAnual.toFixed(2).replace('.',',')} /ano — 20% de desconto`;
+    document.getElementById('btnSubmitTexto').textContent = `Prosseguir para pagamento (anual)`;
+  } else {
+    div.style.color = info.cor;
+    div.innerHTML = `R$ ${info.preco.toFixed(2).replace('.',',')}/mês`;
+    document.getElementById('modalSubtitulo').textContent = `R$ ${info.preco.toFixed(2).replace('.',',')} /mês`;
+    document.getElementById('btnSubmitTexto').textContent = `Prosseguir para pagamento`;
+  }
+}
+
+// ── Toggle senha ──
+function togglePass(id, btn) {
+  const inp = document.getElementById(id);
+  const isPass = inp.type === 'password';
+  inp.type = isPass ? 'text' : 'password';
+  btn.querySelector('i').className = isPass ? 'bi bi-eye-slash' : 'bi bi-eye';
+}
+
+// ── Máscara CPF ──
+document.addEventListener('input', function(e) {
+  if (!e.target.classList.contains('cpf-mask')) return;
+  let v = e.target.value.replace(/\D/g,'').slice(0,11);
+  if (v.length > 9) v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{2}).*/,'$1.$2.$3-$4');
+  else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d+)/,'$1.$2.$3');
+  else if (v.length > 3) v = v.replace(/^(\d{3})(\d+)/,'$1.$2');
+  e.target.value = v;
+});
+
+// ── Check username ──
+let usernameTimer;
+document.getElementById('inputUsername').addEventListener('input', function() {
+  clearTimeout(usernameTimer);
+  const v = this.value.trim();
+  const help = document.getElementById('userHelp');
+  if (!v) { help.textContent = ''; return; }
+  usernameTimer = setTimeout(() => {
+    fetch(`/check-username?u=${encodeURIComponent(v)}`)
+      .then(r => r.json())
+      .then(d => {
+        help.textContent = d.disponivel ? '✓ Disponível!' : '✗ Já em uso';
+        help.style.color = d.disponivel ? '#22c55e' : '#ef4444';
+      });
+  }, 450);
+});
+
+// ── Submit do formulário ──
+document.getElementById('formCadastro').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btnSubmitCadastro');
+  const errDiv = document.getElementById('errosCadastro');
+  const plano = document.getElementById('planoCadastro').value;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processando...';
+  errDiv.classList.add('d-none');
+
+  const form = new FormData(this);
+  form.set('ciclo', document.getElementById('cicloCadastro').value);
+
+  try {
+    const resp = await fetch(`/assinatura/cadastro-e-assine/${plano}`, {
+      method: 'POST',
+      body: form
+    });
+    const data = await resp.json();
+
+    if (data.success) {
+      btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Redirecionando...';
+      window.location.href = data.redirect;
+    } else {
+      errDiv.innerHTML = data.error || 'Erro ao processar. Tente novamente.';
+      errDiv.classList.remove('d-none');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-lock-fill me-1"></i> <span id="btnSubmitTexto">Prosseguir para pagamento</span>';
+    }
+  } catch(err) {
+    errDiv.textContent = 'Erro de conexão. Tente novamente.';
+    errDiv.classList.remove('d-none');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-lock-fill me-1"></i> Prosseguir para pagamento';
+  }
+});
+</script>
+</body>
+</html>

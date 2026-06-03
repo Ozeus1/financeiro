@@ -88,11 +88,6 @@
           <a class="nav-link" href="#config-importar-fatura">Importar Fatura Cartão</a>
           <a class="nav-link" href="#config-importar-antigos">Importar Dados Antigos</a>
 
-          <span class="nav-link section-title">Administração</span>
-          <a class="nav-link" href="#admin-usuarios">Gerenciar Usuários</a>
-          <a class="nav-link" href="#admin-smtp">SMTP / WhatsApp</a>
-          <a class="nav-link" href="#admin-api">API REST</a>
-
           <span class="nav-link section-title">Assinatura</span>
           <a class="nav-link" href="#assinatura">Minha Assinatura</a>
         </nav>
@@ -536,70 +531,6 @@
             <li>Categorias e meios de pagamento são criados automaticamente se não existirem</li>
           </ul>
           <div class="atencao"><i class="bi bi-exclamation-triangle me-1"></i>Esta função é restrita ao <strong>Administrador</strong>.</div>
-        </div>
-      </div>
-
-      <!-- ══ ADMINISTRAÇÃO ══ -->
-      <h5 class="fw-bold text-uppercase text-muted mb-3 mt-4" style="font-size:.75rem;letter-spacing:.08em;">Administração</h5>
-
-      <div class="ajuda-card ajuda-section" id="admin-usuarios">
-        <div class="ajuda-card-header"><i class="bi bi-people text-dark"></i> Gerenciar Usuários</div>
-        <div class="ajuda-card-body">
-          <p>Disponível para <strong>Admin</strong> e <strong>Gerente</strong>. Permite criar e gerenciar todos os usuários do sistema.</p>
-          <p><strong>Ações por usuário:</strong></p>
-          <ul>
-            <li><strong>Editar perfil:</strong> Nome, e-mail, WhatsApp, CPF, foto</li>
-            <li><strong>Alterar senha:</strong> Definir nova senha manualmente</li>
-            <li><strong>Resetar senha:</strong> Gera senha aleatória e envia por e-mail</li>
-            <li><strong>Nível de acesso:</strong> Alterar o plano (Free, Basic, Pro, ProMax, Família, Gerente, Admin)</li>
-            <li><strong>Definir validade:</strong> Data de expiração do acesso</li>
-            <li><strong>Ativar/Desativar:</strong> Bloquear ou liberar acesso sem excluir o usuário</li>
-            <li><strong>Exportar dados Excel:</strong> Baixar todos os dados do usuário antes de excluí-lo</li>
-            <li><strong>Excluir usuário:</strong> Remove o usuário e todos os seus dados permanentemente</li>
-          </ul>
-          <div class="atencao"><i class="bi bi-exclamation-triangle me-1"></i>A exclusão de usuário é <strong>irreversível</strong>. Sempre exporte os dados antes de excluir.</div>
-        </div>
-      </div>
-
-      <div class="ajuda-card ajuda-section" id="admin-smtp">
-        <div class="ajuda-card-header"><i class="bi bi-envelope-at text-dark"></i> SMTP / WhatsApp</div>
-        <div class="ajuda-card-body">
-          <p>Configure o servidor de e-mail e webhook do WhatsApp para envio de notificações. Exclusivo para <strong>Admin</strong>.</p>
-          <p><strong>Configurações de e-mail (SMTP):</strong></p>
-          <ul>
-            <li>Servidor, porta, segurança (SSL/TLS)</li>
-            <li>Usuário e senha do e-mail remetente</li>
-            <li>E-mail de origem (from)</li>
-            <li>Botão para <strong>testar envio</strong> de e-mail</li>
-          </ul>
-          <p><strong>WhatsApp:</strong></p>
-          <ul>
-            <li>URL do webhook para integração com API de WhatsApp</li>
-            <li>Botão para testar envio de mensagem</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="ajuda-card ajuda-section" id="admin-api">
-        <div class="ajuda-card-header"><i class="bi bi-code-square text-dark"></i> API REST</div>
-        <div class="ajuda-card-body">
-          <p>O FiNan oferece uma API REST para acesso programático aos dados, usada pelo <strong>Robô de IA via WhatsApp</strong> e integrações externas.</p>
-          <p><strong>Gerenciamento de chaves:</strong></p>
-          <ul>
-            <li>Gerar nova chave de API (formato <code>fn_...</code>)</li>
-            <li>A chave é exibida uma única vez — guarde em local seguro</li>
-            <li>Revogar chave existente</li>
-            <li>Ver data de criação e último uso</li>
-          </ul>
-          <p><strong>Endpoints disponíveis:</strong></p>
-          <ul>
-            <li><code>GET /api/v1/despesas</code> — Lista despesas com filtros</li>
-            <li><code>GET /api/v1/receitas</code> — Lista receitas com filtros</li>
-            <li><code>GET /api/v1/resumo/despesas</code> — Resumo de despesas por categoria</li>
-            <li><code>GET /api/v1/resumo/receitas</code> — Resumo de receitas por categoria</li>
-            <li><code>GET /api/v1/orcamento</code> — Orçado vs gasto por categoria</li>
-          </ul>
-          <div class="dica"><i class="bi bi-shield-lock me-1"></i>Toda requisição à API deve incluir o header <code>Authorization: Bearer fn_suachave</code>.</div>
         </div>
       </div>
 

@@ -2444,8 +2444,8 @@ def importar_fatura_cartao_confirmar():
                 db.session.add(categoria)
                 db.session.flush()
 
-            # Data de pagamento
-            data_pag = _dt.strptime(item['data_pagamento'], '%d/%m/%Y').date()
+            # Usa data da compra como data de pagamento (data original da transação)
+            data_pag = _dt.strptime(item['data_compra'], '%d/%m/%Y').date()
 
             nova = Despesa(
                 descricao=item['descricao'],

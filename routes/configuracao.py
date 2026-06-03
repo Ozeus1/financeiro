@@ -2196,6 +2196,233 @@ def importar_fatura_cartao():
                            categorias=categorias)
 
 
+def _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento):
+    """
+    Extrai transações de um PDF de fatura do Santander.
+    Suporta seções: Parcelamentos e Despesas, múltiplos portadores.
+    Ignora pagamentos/créditos (valores negativos ou seção 'Pagamento e Demais Créditos').
+    """
+    import re as _re
+    from datetime import datetime as _dt, date as _date
+    from dateutil.relativedelta import relativedelta as _rd
+
+    try:
+        import pdfplumber
+    except ImportError:
+        return jsonify({'success': False,
+                        'error': 'Biblioteca pdfplumber não instalada no servidor.'})
+
+    MESES_PT = {'jan':1,'fev':2,'mar':3,'abr':4,'mai':5,'jun':6,
+                'jul':7,'ago':8,'set':9,'out':10,'nov':11,'dez':12}
+
+    def _val(s):
+        s = str(s or '').strip().replace(' ', '')
+        if not s or s == '-':
+            return 0.0
+        s = s.replace('.', '').replace(',', '.')
+        try:
+            return float(s)
+        except Exception:
+            return 0.0
+
+    def _parse_parc(s):
+        s = str(s or '').strip().lower()
+        if not s or s in ('', '-'):
+            return 1, 1
+        m = _re.match(r'^(\d+)/(\d+)$', s)
+        if m:
+            return int(m.group(1)), int(m.group(2))
+        # "07/12" já é numérico → tratado acima
+        # Tentar mês abreviado: "07/dez"
+        m2 = _re.match(r'^(\d+)/([a-z]{3})$', s)
+        if m2:
+            mes = MESES_PT.get(m2.group(2)[:3], 1)
+            return int(m2.group(1)), mes
+        return 1, 1
+
+    ano_atual = _dt.now().year
+
+    def _parse_data(s):
+        """dd/mm → date com ano inferido"""
+        s = str(s or '').strip()
+        m = _re.match(r'^(\d{1,2})/(\d{2})$', s)
+        if m:
+            dia, mes = int(m.group(1)), int(m.group(2))
+            # Se mês > mês atual, provavelmente ano passado
+            ano = ano_atual if mes <= _dt.now().month else ano_atual - 1
+            try:
+                return _date(ano, mes, dia)
+            except Exception:
+                pass
+        # dd/mm/yyyy
+        m2 = _re.match(r'^(\d{1,2})/(\d{2})/(\d{4})$', s)
+        if m2:
+            try:
+                return _dt.strptime(s, '%d/%m/%Y').date()
+            except Exception:
+                pass
+        return None
+
+    linhas_brutas = []
+    erros = []
+
+    try:
+        raw = arquivo.read()
+        import io as _io
+        with pdfplumber.open(_io.BytesIO(raw)) as pdf:
+            texto_completo = '\n'.join(
+                page.extract_text() or '' for page in pdf.pages
+            )
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Erro ao ler PDF: {e}'})
+
+    # Dividir por linhas e processar
+    linhas_pdf = texto_completo.split('\n')
+
+    em_parcelamentos = False
+    em_despesas = False
+    em_pagamentos = False  # seção a ignorar
+
+    # Padrão de linha de transação:
+    # "08/05 BARROSAO PESCADOS 34,83"
+    # "21/04 R MILET COMERCIO DE CA 02/02 39,99"
+    # "30/10 ESFERA 07/12 180,17"
+    # Pode ter ícone prefixado (número, @, 2, 3) que devemos ignorar
+    PAT_TRANS = _re.compile(
+        r'^(?:\d+\s+|@\s+)?'           # prefixo ícone opcional
+        r'(\d{1,2}/\d{2})\s+'          # data dd/mm
+        r'(.+?)\s+'                     # descrição
+        r'(?:(\d{1,2}/\d{2})\s+)?'     # parcela opcional (dd/mm)
+        r'(-?[\d\.]+,\d{2})'            # valor R$
+        r'(?:\s+-?[\d\.]+,\d{2})?'     # valor US$ opcional
+        r'\s*$'
+    )
+
+    IGNORAR_DESC = {'deb autom de fatura', 'pagamento fatura', 'pagto fatura',
+                    'anuidade diferenciada', 'saldo anterior', 'pagto. por deb',
+                    'estorno tarifa'}
+
+    for linha in linhas_pdf:
+        linha_strip = linha.strip()
+        l_lower = linha_strip.lower()
+
+        # Detectar seções
+        if 'pagamento e demais créditos' in l_lower or 'pagamento e demais creditos' in l_lower:
+            em_pagamentos = True
+            em_parcelamentos = False
+            em_despesas = False
+            continue
+        if 'parcelamentos' in l_lower and len(linha_strip) < 30:
+            em_parcelamentos = True
+            em_despesas = False
+            em_pagamentos = False
+            continue
+        if 'despesas' in l_lower and len(linha_strip) < 20:
+            em_despesas = True
+            em_parcelamentos = False
+            em_pagamentos = False
+            continue
+        # Linha de total → resetar seção
+        if linha_strip.lower().startswith('valor total'):
+            em_parcelamentos = False
+            em_despesas = False
+            em_pagamentos = False
+            continue
+        # Novo portador → resetar seção
+        if _re.search(r'\d{4}\s+xxxx\s+xxxx\s+\d{4}', l_lower):
+            em_parcelamentos = False
+            em_despesas = False
+            em_pagamentos = False
+            continue
+        # Linha de cabeçalho da tabela
+        if l_lower in ('compra data descrição parcela r$ us$',
+                       'compra data descricao parcela r$ us$'):
+            continue
+
+        # Só processar em seções relevantes
+        if not (em_parcelamentos or em_despesas):
+            continue
+        if em_pagamentos:
+            continue
+
+        m = PAT_TRANS.match(linha_strip)
+        if not m:
+            continue
+
+        data_str  = m.group(1)
+        descricao = m.group(2).strip()
+        parcela_s = m.group(3) or ''
+        valor_s   = m.group(4)
+
+        # Ignorar linhas de pagamento/crédito pela descrição
+        desc_low = descricao.lower()
+        if any(ign in desc_low for ign in IGNORAR_DESC):
+            continue
+
+        # Ignorar valores negativos (créditos/estornos)
+        valor_parcela = _val(valor_s)
+        if valor_parcela <= 0:
+            continue
+
+        data_compra = _parse_data(data_str)
+        if not data_compra:
+            erros.append(f'Data inválida: "{data_str}" em "{descricao}"')
+            continue
+
+        parcela_atual, num_parcelas = _parse_parc(parcela_s) if parcela_s else (1, 1)
+
+        linhas_brutas.append({
+            'descricao': descricao,
+            'valor_parcela': valor_parcela,
+            'data_compra': data_compra,
+            'parcela_atual': parcela_atual,
+            'num_parcelas': num_parcelas,
+            'categoria': '',
+        })
+
+    # ── Calcular valor total e verificar duplicatas ──
+    linhas = []
+    for lb in linhas_brutas:
+        descricao    = lb['descricao']
+        valor_parcela = lb['valor_parcela']
+        data_compra  = lb['data_compra']
+        parcela_atual = lb['parcela_atual']
+        num_parcelas  = lb['num_parcelas']
+        valor_total  = round(valor_parcela * num_parcelas, 2)
+
+        duplicata = Despesa.query.filter_by(
+            user_id=current_user.id,
+            descricao=descricao,
+            meio_pagamento_id=cartao_id,
+            data_pagamento=data_compra,
+        ).filter(Despesa.valor.between(valor_total - 0.01, valor_total + 0.01)).first()
+
+        linhas.append({
+            'descricao': descricao,
+            'valor': valor_total,
+            'valor_parcela': round(valor_parcela, 2),
+            'data_compra': data_compra.strftime('%d/%m/%Y'),
+            'data_pagamento': data_compra.strftime('%d/%m/%Y'),
+            'parcela_atual': parcela_atual,
+            'num_parcelas': num_parcelas,
+            'categoria': '',
+            'duplicata': bool(duplicata),
+        })
+
+    if not linhas and not erros:
+        return jsonify({'success': False,
+                        'error': 'Nenhuma transação encontrada no PDF. '
+                                 'Verifique se é uma fatura Santander.'})
+
+    return jsonify({
+        'success': True,
+        'linhas': linhas,
+        'erros': erros,
+        'cartao_nome': cartao.nome,
+        'cartao_id': cartao_id,
+    })
+
+
 @config_bp.route('/importar-fatura-cartao/processar', methods=['POST'])
 @login_required
 @nao_free_required
@@ -2217,8 +2444,17 @@ def processar_fatura_cartao():
     fechamento = FechamentoCartao.query.filter_by(meio_pagamento_id=cartao_id).first()
 
     arquivo = request.files.get('arquivo')
-    if not arquivo or not arquivo.filename.endswith('.csv'):
-        return jsonify({'success': False, 'error': 'Envie um arquivo CSV válido.'})
+    if not arquivo:
+        return jsonify({'success': False, 'error': 'Envie um arquivo CSV ou PDF.'})
+
+    nome_arquivo = arquivo.filename.lower()
+
+    # ── Parsing PDF Santander ─────────────────────────────────────────────
+    if nome_arquivo.endswith('.pdf'):
+        return _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento)
+
+    if not nome_arquivo.endswith('.csv'):
+        return jsonify({'success': False, 'error': 'Formato não suportado. Envie CSV ou PDF.'})
 
     # Detectar encoding
     raw = arquivo.read()

@@ -2222,6 +2222,218 @@ def debug_pdf():
         return jsonify({'error': str(e), 'trace': traceback.format_exc()})
 
 
+def _processar_pdf_nubank(arquivo, cartao_id, cartao, fechamento):
+    """
+    Extrai transações de um PDF de fatura do Nubank.
+    Formato: DD MMM [••••XXXX] Descrição [- Parcela X/Y] R$ valor
+    Ignora: pagamentos, IOF, saldo restante, valores negativos.
+    """
+    import re as _re
+    from datetime import datetime as _dt, date as _date
+
+    try:
+        import pdfplumber
+    except ImportError:
+        return jsonify({'success': False,
+                        'error': 'Biblioteca pdfplumber não instalada no servidor.'})
+
+    MESES_PT = {'jan':1,'fev':2,'mar':3,'abr':4,'mai':5,'jun':6,
+                'jul':7,'ago':8,'set':9,'out':10,'nov':11,'dez':12}
+
+    def _val(s):
+        s = str(s or '').strip().replace(' ', '').replace('R$','').replace('−','').replace('−','')
+        if not s or s == '-':
+            return 0.0
+        s = s.replace('.', '').replace(',', '.')
+        try:
+            return abs(float(s))
+        except Exception:
+            return 0.0
+
+    def _parse_data_nu(dia_s, mes_s):
+        """DD MMM → date"""
+        try:
+            dia = int(dia_s)
+            mes = MESES_PT.get(mes_s.lower()[:3], 0)
+            if not mes:
+                return None
+            ano = _dt.now().year
+            if mes > _dt.now().month:
+                ano -= 1
+            return _date(ano, mes, dia)
+        except Exception:
+            return None
+
+    IGNORAR_DESC = {
+        'pagamento em', 'saldo restante', 'iof de', 'iof "',
+        'pagamentos e financiamentos', 'fatura anterior',
+        'pagamento recebido', 'total a pagar',
+    }
+
+    linhas_brutas = []
+    erros = []
+
+    try:
+        raw = arquivo.read()
+        import io as _io
+        todas_linhas = []
+        with pdfplumber.open(_io.BytesIO(raw)) as pdf:
+            for page in pdf.pages:
+                txt = page.extract_text(layout=False) or ''
+                for linha in txt.split('\n'):
+                    if linha.strip():
+                        todas_linhas.append(linha)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Erro ao ler PDF Nubank: {e}'})
+
+    em_transacoes = False
+    em_pagamentos = False
+
+    # Padrão Nubank:
+    # "02 MAI •••• 9523 Dl *Temucom Temu Br Xb - Parcela 2/6 R$ 46,78"
+    # "03 MAI •••• 9523 Uber_credit R$ 335,00"
+    # "02 MAI Raia Drogasil - NuPay - Parcela 2/3 R$ 898,91"
+    # "28 MAI •••• 9523 Openai R$ 52,29"  (pode ter linha extra com conversão)
+    PAT_NU = _re.compile(
+        r'^(\d{1,2})\s+([A-Za-zÀ-ú]{3})\s+'   # DD MMM
+        r'(?:[\•\.]{4}\s*\d{4}\s+|nu\s+)?'      # cartão opcional (•••• XXXX ou NU)
+        r'(.+?)'                                  # descrição
+        r'(?:\s+-\s+Parcela\s+(\d+)/(\d+))?'    # parcela opcional
+        r'\s+R\$\s+([\d\.]+,\d{2})\s*$'         # R$ valor
+    , _re.IGNORECASE)
+
+    # Segunda forma: sem "R$" na mesma linha (Openai tem linha extra)
+    PAT_NU2 = _re.compile(
+        r'^(\d{1,2})\s+([A-Za-zÀ-ú]{3})\s+'
+        r'(?:[\•\.]{4}\s*\d{4}\s+|nu\s+)?'
+        r'(.+?)\s*$'
+    , _re.IGNORECASE)
+
+    linha_anterior = None
+
+    for idx, linha in enumerate(todas_linhas):
+        linha_strip = linha.strip()
+        l_lower = linha_strip.lower()
+
+        # Detectar início de transações
+        if _re.search(r'transações\s+de\s+\d{2}\s+\w+\s+a\s+\d{2}\s+\w+', l_lower) or \
+           _re.search(r'transacoes\s+de', l_lower):
+            em_transacoes = True
+            em_pagamentos = False
+            continue
+
+        # Detectar seção de pagamentos (ignorar)
+        if 'pagamentos e financiamentos' in l_lower:
+            em_pagamentos = True
+            continue
+
+        if not em_transacoes or em_pagamentos:
+            linha_anterior = linha_strip
+            continue
+
+        # Ignorar linhas de metadados
+        if any(ign in l_lower for ign in IGNORAR_DESC):
+            linha_anterior = linha_strip
+            continue
+
+        # Ignorar subtotais de portador (ex: "Orlei O Barbosa R$ 3.504,61")
+        if _re.match(r'^[A-Za-zÀ-ú\s]+R\$\s+[\d\.]+,\d{2}$', linha_strip):
+            linha_anterior = linha_strip
+            continue
+
+        # Ignorar linhas de conversão cambial
+        if 'usd' in l_lower or 'conversão' in l_lower or 'conversao' in l_lower:
+            linha_anterior = linha_strip
+            continue
+
+        # Ignorar valores negativos (pagamentos, IOF de volta)
+        if _re.search(r'[−\-]R\$', linha_strip) or _re.match(r'^-R\$', linha_strip):
+            linha_anterior = linha_strip
+            continue
+
+        m = PAT_NU.match(linha_strip)
+        if not m:
+            linha_anterior = linha_strip
+            continue
+
+        dia_s    = m.group(1)
+        mes_s    = m.group(2)
+        descricao = m.group(3).strip().rstrip(' -').strip()
+        parc_a   = m.group(4)
+        parc_t   = m.group(5)
+        valor_s  = m.group(6)
+
+        # Ignorar IOF
+        if 'iof' in descricao.lower():
+            linha_anterior = linha_strip
+            continue
+
+        data_compra = _parse_data_nu(dia_s, mes_s)
+        if not data_compra:
+            erros.append(f'Data inválida: "{dia_s} {mes_s}" em "{descricao}"')
+            linha_anterior = linha_strip
+            continue
+
+        valor_parcela = _val(valor_s)
+        if valor_parcela <= 0:
+            linha_anterior = linha_strip
+            continue
+
+        parcela_atual = int(parc_a) if parc_a else 1
+        num_parcelas  = int(parc_t) if parc_t else 1
+
+        linhas_brutas.append({
+            'descricao': descricao,
+            'valor_parcela': valor_parcela,
+            'data_compra': data_compra,
+            'parcela_atual': parcela_atual,
+            'num_parcelas': num_parcelas,
+            'categoria': '',
+        })
+        linha_anterior = linha_strip
+
+    # Calcular valor total e verificar duplicatas
+    linhas = []
+    for lb in linhas_brutas:
+        descricao     = lb['descricao']
+        valor_parcela = lb['valor_parcela']
+        data_compra   = lb['data_compra']
+        parcela_atual = lb['parcela_atual']
+        num_parcelas  = lb['num_parcelas']
+        valor_total   = round(valor_parcela * num_parcelas, 2)
+
+        duplicata = Despesa.query.filter_by(
+            user_id=current_user.id,
+            descricao=descricao,
+            meio_pagamento_id=cartao_id,
+            data_pagamento=data_compra,
+        ).filter(Despesa.valor.between(valor_total - 0.01, valor_total + 0.01)).first()
+
+        linhas.append({
+            'descricao': descricao,
+            'valor': valor_total,
+            'valor_parcela': round(valor_parcela, 2),
+            'data_compra': data_compra.strftime('%d/%m/%Y'),
+            'data_pagamento': data_compra.strftime('%d/%m/%Y'),
+            'parcela_atual': parcela_atual,
+            'num_parcelas': num_parcelas,
+            'categoria': '',
+            'duplicata': bool(duplicata),
+        })
+
+    if not linhas and not erros:
+        return jsonify({'success': False,
+                        'error': 'Nenhuma transação encontrada. Verifique se é uma fatura Nubank.'})
+
+    return jsonify({
+        'success': True,
+        'linhas': linhas,
+        'erros': erros,
+        'cartao_nome': cartao.nome,
+        'cartao_id': cartao_id,
+    })
+
+
 def _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento):
     """
     Extrai transações de um PDF de fatura do Santander.
@@ -2472,7 +2684,14 @@ def processar_fatura_cartao():
 
     # ── Parsing PDF Santander ─────────────────────────────────────────────
     if nome_arquivo.endswith('.pdf'):
-        return _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento)
+        # Detectar banco pelo conteúdo do PDF
+        raw_peek = arquivo.read(4096)
+        arquivo.seek(0)
+        peek = raw_peek.decode('latin-1', errors='ignore').lower()
+        if 'nubank' in peek or 'nu pagamentos' in peek or 'nupay' in peek:
+            return _processar_pdf_nubank(arquivo, cartao_id, cartao, fechamento)
+        else:
+            return _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento)
 
     if not nome_arquivo.endswith('.csv'):
         return jsonify({'success': False, 'error': 'Formato não suportado. Envie CSV ou PDF.'})

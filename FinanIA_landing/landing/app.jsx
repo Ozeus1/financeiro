@@ -10,6 +10,7 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 function FinaniaLanding() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [scrolled, setScrolled] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
   const lang = t.lang;
   const dict = window.I18N[lang];
 
@@ -58,8 +59,9 @@ function FinaniaLanding() {
       {/* NAV */}
       <header className="nav" data-scrolled={scrolled} data-screen-label="00 Nav">
         <div className="container nav-inner">
-          <a href="#" className="nav-logo">
+          <a href="#" className="nav-logo" onClick={() => setMenuOpen(false)}>
             <img src="logo-finan.svg" alt="FiNan" className="logo-img" />
+            <span>FiNan</span>
           </a>
           <nav className="nav-links">
             <a href="#features">{dict.nav.features}</a>
@@ -72,6 +74,23 @@ function FinaniaLanding() {
               <button aria-pressed={lang === "pt"} onClick={() => setTweak("lang", "pt")}>PT</button>
               <button aria-pressed={lang === "en"} onClick={() => setTweak("lang", "en")}>EN</button>
             </div>
+            <a href="https://finania.pro" target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">{dict.nav.login}</a>
+            <a href="https://finania.pro/assinatura/assine-agora" target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">{dict.nav.cta}</a>
+          </div>
+          <button
+            className={"nav-hamburger" + (menuOpen ? " is-open" : "")}
+            aria-label="Menu"
+            onClick={() => setMenuOpen(o => !o)}
+          >
+            <span /><span /><span />
+          </button>
+        </div>
+        <div className={"nav-mobile-menu" + (menuOpen ? " is-open" : "")}>
+          <a href="#features" onClick={() => setMenuOpen(false)}>{dict.nav.features}</a>
+          <a href="#dashboard" onClick={() => setMenuOpen(false)}>{dict.nav.product}</a>
+          <a href="#pricing" onClick={() => setMenuOpen(false)}>{dict.nav.pricing}</a>
+          <a href="#faq" onClick={() => setMenuOpen(false)}>{dict.nav.faq}</a>
+          <div className="nav-mobile-cta">
             <a href="https://finania.pro" target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">{dict.nav.login}</a>
             <a href="https://finania.pro/assinatura/assine-agora" target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">{dict.nav.cta}</a>
           </div>

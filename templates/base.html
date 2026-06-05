@@ -31,7 +31,7 @@
 {% if current_user.is_authenticated %}
 
 <!-- ── Desktop Navbar ── -->
-<nav class="navbar navbar-expand-lg navbar-dark">
+<nav class="navbar navbar-expand-lg navbar-dark sticky-top">
     <div class="container-fluid">
         <a class="navbar-brand finan-brand" href="{{ url_for('main.dashboard') }}">
             <img src="{{ url_for('static', filename='img/finan-icon.png') }}" class="finan-icon" alt="FiNan">

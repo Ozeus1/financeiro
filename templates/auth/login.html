@@ -3,34 +3,40 @@
 
 {% block extra_css %}
 <style>
-.login-hero { background:linear-gradient(135deg,#0d1b2a 0%,#1e3a5f 60%,#4361ee 100%);
-    border-radius:16px; padding:1.25rem 1.5rem; color:#fff; margin-bottom:1rem; text-align:center; }
-.login-hero .hero-title { font-size:1.5rem; font-weight:800; letter-spacing:-.02em; }
-.login-hero .hero-sub { font-size:.85rem; color:#94a3b8; margin:.3rem 0 .75rem; }
-.btn-landing { background:linear-gradient(90deg,#f59e0b,#ef4444);
-    border:none; color:#fff; border-radius:12px; padding:.65rem 1rem;
-    font-weight:700; font-size:.88rem; width:100%; transition:.2s; display:block; text-decoration:none; text-align:center; }
-.btn-landing:hover { filter:brightness(1.1); color:#fff; transform:translateY(-1px); }
-.btn-landing i { font-size:1rem; }
+.login-topbar {
+    background:#0d1b2a;
+    padding:.5rem 1.5rem;
+    display:flex;
+    align-items:center;
+    gap:.6rem;
+    width:100%;
+}
+.login-topbar span {
+    font-size:1.1rem;
+    font-weight:900;
+    letter-spacing:-.02em;
+    background:linear-gradient(90deg,#4361ee,#20c997);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+}
 </style>
 {% endblock %}
 
 {% block footer %}{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center" style="margin-top:2.5rem;">
-    <div class="col-md-4 col-sm-10">
 
-        <!-- Hero FiNan -->
-        <div class="login-hero mb-3">
-            <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
-                <img src="{{ url_for('static', filename='img/finan-icon.png') }}"
-                     alt="FiNan" style="width:38px;height:38px;border-radius:8px;"
-                     onerror="this.style.display='none'">
-                <span style="font-size:1.6rem;font-weight:900;letter-spacing:-.03em;background:linear-gradient(90deg,#4361ee,#20c997);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">FiNan</span>
-            </div>
-            <div class="hero-sub">Controle financeiro inteligente</div>
-        </div>
+<!-- Faixa fina topo -->
+<div class="login-topbar">
+    <img src="{{ url_for('static', filename='img/finan-icon.png') }}"
+         alt="FiNan" style="width:26px;height:26px;border-radius:6px;"
+         onerror="this.style.display='none'">
+    <span>FiNan</span>
+    <small style="color:#64748b;font-weight:400;font-size:.75rem;margin-left:.25rem;">Controle financeiro inteligente</small>
+</div>
+
+<div class="row justify-content-center" style="margin-top:2rem;">
+    <div class="col-md-4 col-sm-10">
 
         <!-- Card de login -->
         <div class="card shadow border-0" style="border-radius:16px;">
@@ -51,12 +57,12 @@
                             </button>
                         </div>
                     </div>
-                    <div class="mb-3 d-flex justify-content-between align-items-center" style="gap:1rem;">
-                        <div class="form-check mb-0" style="white-space:nowrap;">
+                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                        <div class="form-check mb-0">
                             <input type="checkbox" class="form-check-input" id="remember" name="remember">
                             <label class="form-check-label small" for="remember">Lembrar-me</label>
                         </div>
-                        <a href="{{ url_for('auth.forgot_password') }}" class="small text-muted" style="white-space:nowrap;">Esqueceu a senha?</a>
+                        <a href="{{ url_for('auth.forgot_password') }}" class="small text-muted">Esqueceu a senha?</a>
                     </div>
                     <button type="submit" class="btn btn-primary w-100 fw-bold py-2">
                         <i class="bi bi-box-arrow-in-right me-1"></i>Entrar
@@ -65,23 +71,19 @@
             </div>
         </div>
 
-        <!-- Botão chamativo landing -->
-        <div class="mt-3">
-            <a href="/landing" class="btn-landing mb-1">
-                <i class="bi bi-stars me-1"></i> Por que Assinar?
-            </a>
-            <p class="text-center text-muted mb-0" style="font-size:.8rem;margin-top:.4rem;">
-                Um plano para cada necessidade e pode sair até Grátis. Experimente!
-            </p>
-        </div>
-
-        <div class="text-center mt-2">
+        <!-- Links abaixo do card -->
+        <div class="text-center mt-3">
             <a href="{{ url_for('assinatura.assine_agora') }}" class="btn btn-primary btn-sm px-4">
                 <i class="bi bi-rocket-takeoff me-1"></i>Ver planos
             </a>
         </div>
 
-        <p class="text-center text-muted mt-3" style="font-size:.75rem;">Versão 2.1 · © 2026 FiNan</p>
+        <p class="text-center text-muted mt-3" style="font-size:.78rem;">
+            Um plano para cada necessidade, pode sair até Grátis.
+            <a href="/landing" class="text-decoration-none" style="color:#4361ee;">Experimente!</a>
+        </p>
+
+        <p class="text-center text-muted" style="font-size:.72rem;">Versão 2.1 · © 2026 FiNan</p>
     </div>
 </div>
 {% endblock %}

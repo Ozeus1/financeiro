@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Assine Agora — FiNan</title>
+<link rel="icon" type="image/png" href="https://finania.pro/static/img/finan-icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
@@ -13,8 +14,9 @@ body { background:#f8fafc; font-family:'Segoe UI',system-ui,sans-serif; }
 
 /* ── Navbar ── */
 .top-nav { background:#0d1b2a; padding:.75rem 1.5rem; display:flex; align-items:center; justify-content:space-between; }
-.top-nav .brand { color:#fff; font-weight:800; font-size:1.2rem; text-decoration:none; display:flex; align-items:center; gap:.5rem; }
-.top-nav .brand i { color:#4361ee; font-size:1.4rem; }
+.top-nav .brand { color:#fff; font-weight:800; font-size:1.2rem; text-decoration:none; display:flex; align-items:center; gap:.45rem; letter-spacing:-.02em; }
+.top-nav .brand .fi { color:#ef4444; }
+.top-nav .brand .nan { color:#4cc9f0; }
 .top-nav .nav-links a { color:#cbd5e1; text-decoration:none; font-size:.88rem; margin-left:1.25rem; }
 .top-nav .nav-links a:hover { color:#fff; }
 .top-nav .btn-login { background:transparent; border:1px solid #4361ee; color:#4361ee; padding:.35rem .9rem;
@@ -100,8 +102,8 @@ footer a { color:#4361ee; text-decoration:none; }
 <!-- ── Navbar ── -->
 <nav class="top-nav">
   <a class="brand" href="/landing">
-    <img src="https://finania.pro/static/img/finan-icon.png" alt="FiNan" style="width:28px;height:28px;border-radius:6px;" onerror="this.style.display='none'">
-    <i class="bi bi-currency-dollar" style="color:#4361ee;"></i> FiNan
+    <img src="https://finania.pro/static/img/finan-icon.png" alt="FiNan" style="width:30px;height:30px;object-fit:contain;" onerror="this.style.display='none'">
+    <span><span class="fi">Fi</span><span class="nan">Nan</span></span>
   </a>
   <div class="d-flex align-items-center">
     <div class="nav-links d-none d-md-block">

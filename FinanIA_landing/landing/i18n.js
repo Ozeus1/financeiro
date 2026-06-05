@@ -307,7 +307,7 @@ window.I18N = {
       productLinks: ["Recursos", "Planos", "WhatsApp", "Importação"],
       companyLinks: ["Sobre", "Blog", "Carreiras", "Contato"],
       legalLinks: ["Privacidade", "Termos", "LGPD", "Segurança"],
-      copy: "© 2026 FinanIA. Feito com cuidado em Curitiba.",
+      copy: "© 2026 FinanIA. Feito com cuidado em Fortaleza.",
     },
   },
 
@@ -534,7 +534,7 @@ window.I18N = {
       productLinks: ["Features", "Pricing", "WhatsApp", "Import"],
       companyLinks: ["About", "Blog", "Careers", "Contact"],
       legalLinks: ["Privacy", "Terms", "LGPD", "Security"],
-      copy: "© 2026 FinanIA. Made with care in Curitiba.",
+      copy: "© 2026 FinanIA. Made with care in Fortaleza.",
     },
   },
 };

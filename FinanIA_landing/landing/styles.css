@@ -198,20 +198,19 @@ img, svg { display: block; max-width: 100%; }
   position: sticky;
   top: 0;
   z-index: 50;
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  background: color-mix(in oklch, var(--bg) 75%, transparent);
-  border-bottom: 1px solid transparent;
+  background: #0d1b2a;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 .nav[data-scrolled="true"] {
-  border-bottom-color: var(--line);
+  border-bottom-color: rgba(255,255,255,0.12);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.25);
 }
 .nav-inner {
   display: flex;
   align-items: center;
   gap: 32px;
-  height: 64px;
+  height: 56px;
 }
 .nav-logo {
   display: flex;
@@ -220,6 +219,7 @@ img, svg { display: block; max-width: 100%; }
   font-weight: 700;
   font-size: 18px;
   letter-spacing: -0.01em;
+  color: #fff;
 }
 .nav-links {
   display: flex;
@@ -229,22 +229,22 @@ img, svg { display: block; max-width: 100%; }
 .nav-links a {
   font-size: 14.5px;
   font-weight: 500;
-  color: var(--ink-2);
+  color: rgba(255,255,255,0.72);
   padding: 8px 4px;
   border-radius: 6px;
 }
-.nav-links a:hover { color: var(--ink-1); }
+.nav-links a:hover { color: #fff; }
 .nav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
 .lang-toggle {
   display: inline-flex;
-  background: var(--surface-2);
+  background: rgba(255,255,255,0.08);
   border-radius: var(--r-pill);
   padding: 3px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--ink-3);
-  border: 1px solid var(--line);
+  color: rgba(255,255,255,0.55);
+  border: 1px solid rgba(255,255,255,0.12);
 }
 .lang-toggle button {
   appearance: none;
@@ -258,9 +258,20 @@ img, svg { display: block; max-width: 100%; }
   letter-spacing: 0.04em;
 }
 .lang-toggle button[aria-pressed="true"] {
-  background: var(--surface);
-  color: var(--ink-1);
-  box-shadow: 0 1px 3px rgba(15, 16, 36, 0.08);
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Ghost btn no nav escuro */
+.nav .btn-ghost {
+  color: rgba(255,255,255,0.75);
+  border-color: rgba(255,255,255,0.2);
+}
+.nav .btn-ghost:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.35);
 }
 
 /* ─────────────── Hero ─────────────── */

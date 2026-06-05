@@ -23,3 +23,6 @@ gunicorn>=21.2.0
 
 # Utilitários
 python-dateutil>=2.8.2
+
+# Importação de faturas de cartão (CSV e PDF)
+pdfplumber>=0.10.0

@@ -179,6 +179,18 @@ def gerente_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def nao_free_required(f):
+    """Decorator: bloqueia usuários do plano Free"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+        if current_user.is_free():
+            flash('Esta funcionalidade não está disponível no plano Free. Faça upgrade para acessar.', 'warning')
+            return redirect(url_for('main.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     """Página de login"""

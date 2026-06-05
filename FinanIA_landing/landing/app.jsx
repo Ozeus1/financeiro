@@ -61,7 +61,6 @@ function FinaniaLanding() {
         <div className="container nav-inner">
           <a href="#" className="nav-logo" onClick={() => setMenuOpen(false)}>
             <img src="logo-finan.svg" alt="FiNan" className="logo-img" />
-            <span>FiNan</span>
           </a>
           <nav className="nav-links">
             <a href="#features">{dict.nav.features}</a>

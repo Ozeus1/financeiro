@@ -404,11 +404,7 @@ def criar_dados_padrao_usuario(user):
 
     # Meios de recebimento padrão
     meios_recebimento_padrao = [
-        'Dinheiro', 'PIX', 'Crédito à vista', 'Crédito parcelado',
-        'Transferência bancária', 'Boleto recebido', 'Carteira digital',
-        'Depósito bancário',
-        # Especificados pelo usuário
-        'Cartão BB', 'Cartão Nubank'
+        'Depósito em Conta', 'Dinheiro', 'PIX', 'Transferência Bancária',
     ]
     for nome in meios_recebimento_padrao:
         if not MeioRecebimento.query.filter_by(nome=nome, user_id=user.id).first():

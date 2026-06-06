@@ -404,7 +404,6 @@ def criar_receita(usuario):
     Corpo JSON obrigatório:
       descricao, valor, data_recebimento (YYYY-MM-DD),
       categoria_codigo, meio_recebimento_codigo
-    Opcional: num_parcelas (padrão 1)
     """
     data = request.get_json(silent=True)
     if not data:
@@ -446,7 +445,7 @@ def criar_receita(usuario):
     receita = Receita(
         descricao=str(data['descricao']).strip(),
         valor=valor,
-        num_parcelas=max(1, int(data.get('num_parcelas', 1))),
+        num_parcelas=1,
         data_recebimento=dt_rec,
         user_id=usuario.id,
         categoria_id=categoria.id,
@@ -479,8 +478,6 @@ def atualizar_receita(usuario, receita_id):
             r.valor = v
         except (ValueError, TypeError):
             return jsonify({'erro': 'valor deve ser um número positivo'}), 422
-    if 'num_parcelas' in data:
-        r.num_parcelas = max(1, int(data['num_parcelas']))
     if 'data_recebimento' in data:
         try:
             r.data_recebimento = _parse_date(data['data_recebimento'])

@@ -55,15 +55,10 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-6">
+                <div class="col-12">
                     <label class="pg-label">Data de Recebimento <span class="text-danger">*</span></label>
                     <input type="date" class="form-control pg-input" name="data_recebimento"
                            value="{{ receita.data_recebimento if receita else hoje }}" required>
-                </div>
-                <div class="col-6">
-                    <label class="pg-label">Nº de Parcelas</label>
-                    <input type="number" class="form-control pg-input" name="num_parcelas"
-                           value="{{ receita.num_parcelas if receita else 1 }}" min="1" max="48">
                 </div>
             </div>
             {% if filtros %}{% for k,v in filtros.items() %}<input type="hidden" name="filtro_{{ k }}" value="{{ v }}">{% endfor %}{% endif %}

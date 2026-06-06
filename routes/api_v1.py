@@ -16,7 +16,7 @@ from models import (
     Despesa, Receita,
     CategoriaDespesa, CategoriaReceita,
     MeioPagamento, MeioRecebimento,
-    Orcamento,
+    Orcamento, FechamentoCartao,
 )
 
 api_bp = Blueprint('api_v1', __name__)
@@ -771,6 +771,26 @@ def resumo_cartoes(usuario):
         for m in MeioPagamento.query.filter(MeioPagamento.id.in_(meio_ids)).all()
     }
 
+    # Busca todas as despesas do período agrupadas por meio de pagamento
+    despesas_periodo = (
+        Despesa.query
+        .filter(
+            Despesa.user_id == usuario.id,
+            Despesa.data_pagamento >= dt_ini,
+            Despesa.data_pagamento <= dt_fim,
+            Despesa.meio_pagamento_id.in_(meio_ids),
+        )
+        .order_by(Despesa.data_pagamento.desc())
+        .all()
+    )
+    despesas_por_meio = {}
+    for d in despesas_periodo:
+        despesas_por_meio.setdefault(d.meio_pagamento_id, []).append({
+            'data': d.data_pagamento.isoformat(),
+            'descricao': d.descricao,
+            'valor': round(d.valor, 2),
+        })
+
     dados = []
     for r in rows:
         total = round(r.total, 2)
@@ -782,6 +802,7 @@ def resumo_cartoes(usuario):
             'total': total,
             'qtd_transacoes': r.qtd,
             'percentual_do_total': round(total / total_geral * 100, 1) if total_geral else 0,
+            'despesas': despesas_por_meio.get(r.meio_pagamento_id, []),
         })
 
     return jsonify({
@@ -789,6 +810,83 @@ def resumo_cartoes(usuario):
         'total_geral': round(total_geral, 2),
         'meios_pagamento': dados,
     })
+
+# ── 5. Fatura de cartão de crédito ─────────────────────────────────────────────
+
+@api_bp.route('/resumo/fatura-cartao', methods=['GET'])
+@api_key_required
+def resumo_fatura_cartao(usuario):
+    """
+    Valor da fatura de um cartão para o ciclo atual ou anterior.
+    Query params: nome (nome do meio de pagamento), ciclo (atual|anterior, default: atual)
+    """
+    nome = request.args.get('nome', '').strip()
+    ciclo = request.args.get('ciclo', 'atual')
+
+    if not nome:
+        return jsonify({'erro': 'Parâmetro nome é obrigatório'}), 422
+
+    meio = MeioPagamento.query.filter(
+        MeioPagamento.user_id == usuario.id,
+        MeioPagamento.nome.ilike(f'%{nome}%'),
+    ).first()
+    if not meio:
+        return jsonify({'erro': f'Cartão "{nome}" não encontrado'}), 404
+
+    fechamento = FechamentoCartao.query.filter_by(meio_pagamento_id=meio.id).first()
+    if not fechamento:
+        return jsonify({'erro': f'Cartão "{meio.nome}" não tem configuração de fechamento cadastrada'}), 404
+
+    hoje = date.today()
+    dia_fech = fechamento.dia_fechamento
+
+    # Calcula início e fim do ciclo atual (dia_fech do mês anterior até dia_fech-1 deste mês)
+    if hoje.day >= dia_fech:
+        dt_ini = date(hoje.year, hoje.month, dia_fech)
+        proximo = (date(hoje.year, hoje.month, 1).replace(day=28) + timedelta(days=4)).replace(day=1)
+        dt_fim = date(proximo.year, proximo.month, dia_fech) - timedelta(days=1)
+    else:
+        anterior = (date(hoje.year, hoje.month, 1) - timedelta(days=1))
+        dt_ini = date(anterior.year, anterior.month, dia_fech)
+        dt_fim = date(hoje.year, hoje.month, dia_fech) - timedelta(days=1)
+
+    if ciclo == 'anterior':
+        duracao = (dt_fim - dt_ini).days + 1
+        dt_fim = dt_ini - timedelta(days=1)
+        dt_ini = dt_fim - timedelta(days=duracao - 1)
+
+    despesas = (
+        Despesa.query
+        .filter(
+            Despesa.user_id == usuario.id,
+            Despesa.meio_pagamento_id == meio.id,
+            Despesa.data_pagamento >= dt_ini,
+            Despesa.data_pagamento <= dt_fim,
+        )
+        .order_by(Despesa.data_pagamento.desc())
+        .all()
+    )
+
+    total = round(sum(d.valor for d in despesas), 2)
+
+    return jsonify({
+        'cartao': meio.nome,
+        'ciclo': ciclo,
+        'periodo': {'inicio': dt_ini.isoformat(), 'fim': dt_fim.isoformat()},
+        'dia_fechamento': dia_fech,
+        'dia_vencimento': fechamento.dia_vencimento,
+        'total_fatura': total,
+        'qtd_lancamentos': len(despesas),
+        'lancamentos': [
+            {
+                'data': d.data_pagamento.isoformat(),
+                'descricao': d.descricao,
+                'valor': round(d.valor, 2),
+            }
+            for d in despesas
+        ],
+    })
+
 
 @api_bp.route('/resumo/despesas', methods=['GET'])
 @api_key_required

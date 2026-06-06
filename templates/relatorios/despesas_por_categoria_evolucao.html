@@ -1,210 +1,102 @@
 {% extends "base.html" %}
-
 {% block title %}Evolução por Categoria{% endblock %}
 
+{% block extra_css %}
+<style>
+.rp-header{background:linear-gradient(135deg,#1e3a8a 0%,#4361ee 55%,#7c3aed 100%);padding:1.2rem 1.5rem;color:#fff;margin-bottom:1.5rem}
+.rp-title{font-size:1.2rem;font-weight:700;margin:0}
+.rp-filter{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.07);padding:1rem 1.25rem;margin-bottom:1.25rem}
+.rp-card{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.07);overflow:hidden;margin-bottom:1.25rem}
+.rp-card-header{padding:.7rem 1.1rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:1px solid #e2e8f0;background:#f8fafc}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Evolução de Despesas por Categoria</h1>
-    </div>
+<div class="rp-header">
+    <div style="font-size:.75rem;opacity:.7;margin-bottom:.2rem"><i class="bi bi-clipboard-data me-1"></i>Relatórios</div>
+    <h1 class="rp-title"><i class="bi bi-graph-up me-2"></i>Evolução de Despesas por Categoria</h1>
+</div>
 
-    <!-- Filter Card -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+<div class="container-fluid px-3">
+
+<div class="rp-filter">
+    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:.75rem"><i class="bi bi-funnel me-1"></i>Filtros</div>
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-sm-5 col-md-4">
+            <label class="form-label small fw-semibold">Categoria</label>
+            <select class="form-select form-select-sm" name="categoria_id" onchange="this.form.submit()">
+                <option value="">Selecione uma categoria...</option>
+                {% for categoria in categorias %}
+                <option value="{{ categoria.id }}" {% if categoria_selecionada==categoria.id %}selected{% endif %}>{{ categoria.nome }}</option>
+                {% endfor %}
+            </select>
         </div>
-        <div class="card-body">
-            <form method="get" class="form-inline">
-                <label class="my-1 mr-2" for="categoria_id">Categoria:</label>
-                <select class="custom-select my-1 mr-sm-2" id="categoria_id" name="categoria_id"
-                    onchange="this.form.submit()">
-                    <option value="">Selecione uma categoria...</option>
-                    {% for categoria in categorias %}
-                    <option value="{{ categoria.id }}" {% if categoria_selecionada==categoria.id %}selected{% endif %}>
-                        {{ categoria.nome }}
-                    </option>
-                    {% endfor %}
-                </select>
-
-                <label class="my-1 mr-2 ml-3" for="mes_inicio">Mês Inicial:</label>
-                <input type="month" class="form-control my-1 mr-sm-2" id="mes_inicio" name="mes_inicio"
-                    value="{{ mes_inicio if mes_inicio else '' }}" onchange="this.form.submit()">
-
-                <label class="my-1 mr-2" for="mes_fim">Mês Final:</label>
-                <input type="month" class="form-control my-1 mr-sm-2" id="mes_fim" name="mes_fim"
-                    value="{{ mes_fim if mes_fim else '' }}" onchange="this.form.submit()">
-                <noscript><button type="submit" class="btn btn-primary my-1">Filtrar</button></noscript>
-            </form>
+        <div class="col-sm-3 col-md-2">
+            <label class="form-label small fw-semibold">Mês Inicial</label>
+            <input type="month" class="form-control form-control-sm" name="mes_inicio" value="{{ mes_inicio if mes_inicio else '' }}" onchange="this.form.submit()">
         </div>
-    </div>
-
-    {% if categoria_selecionada %}
-    {% if resultados %}
-    <div class="row">
-        <!-- Chart -->
-        <div class="col-xl-12 col-lg-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Gráfico de Evolução</h6>
-                </div>
-                <div class="card-body">
-                    <div class="chart-area">
-                        <canvas id="evolutionChart"></canvas>
-                    </div>
-                </div>
-            </div>
+        <div class="col-sm-3 col-md-2">
+            <label class="form-label small fw-semibold">Mês Final</label>
+            <input type="month" class="form-control form-control-sm" name="mes_fim" value="{{ mes_fim if mes_fim else '' }}" onchange="this.form.submit()">
         </div>
-    </div>
+        <noscript>
+        <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm">Filtrar</button></div>
+        </noscript>
+    </form>
+</div>
 
-    <div class="row">
-        <!-- Table -->
-        <div class="col-xl-12 col-lg-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Detalhamento Mensal</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                            <thead>
-                                <tr>
-                                    <th>Mês/Ano</th>
-                                    <th>Valor Total</th>
-                                    <th>Quantidade</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in resultados %}
-                                <tr>
-                                    <td>
-                                        <a
-                                            href="{{ url_for('despesas.lista', periodo='personalizado', data_inicio=row.data_inicio, data_fim=row.data_fim, categoria_id=categoria_selecionada) }}">
-                                            {{ row.mes_ano.split('-')[1] }}/{{ row.mes_ano.split('-')[0] }}
-                                        </a>
-                                    </td>
-                                    <td>R$ {{ "%.2f"|format(row.total)|replace('.', ',') }}</td>
-                                    <td>{{ row.quantidade }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+{% if not categoria_selecionada %}
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Selecione uma categoria para visualizar o relatório.</div>
+{% elif not resultados %}
+<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Nenhuma despesa encontrada para esta categoria.</div>
+{% else %}
+
+<div class="rp-card">
+    <div class="rp-card-header"><i class="bi bi-graph-up me-1"></i>Evolução Mensal</div>
+    <div class="p-3" style="height:300px"><canvas id="evolutionChart"></canvas></div>
+</div>
+
+<div class="rp-card">
+    <div class="rp-card-header"><i class="bi bi-table me-1"></i>Detalhamento Mensal</div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr><th>Mês/Ano</th><th class="text-end">Valor Total</th><th class="text-end">Qtd</th></tr>
+            </thead>
+            <tbody>
+                {% for row in resultados %}
+                <tr>
+                    <td><a href="{{ url_for('despesas.lista', periodo='personalizado', data_inicio=row.data_inicio, data_fim=row.data_fim, categoria_id=categoria_selecionada) }}" class="text-decoration-none fw-semibold">{{ row.mes_ano.split('-')[1] }}/{{ row.mes_ano.split('-')[0] }}</a></td>
+                    <td class="text-end text-danger fw-bold">R$ {{ "{:,.2f}".format(row.total).replace(',','X').replace('.',',').replace('X','.') }}</td>
+                    <td class="text-end text-muted">{{ row.quantidade }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-    {% else %}
-    <div class="alert alert-info">
-        Nenhuma despesa encontrada para esta categoria.
-    </div>
-    {% endif %}
-    {% else %}
-    <div class="alert alert-warning">
-        Por favor, selecione uma categoria para visualizar o relatório.
-    </div>
-    {% endif %}
+</div>
+{% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% if resultados %}
 <script>
-    {% if resultados %}
-    // Set new default font family and font color to mimic Bootstrap's default styling
-    Chart.defaults.font.family = 'Nunito, -apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
-    Chart.defaults.color = '#858796';
-
-    var ctx = document.getElementById("evolutionChart");
-    var myLineChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: {{ chart_labels | tojson }},
-    datasets: [{
-        label: "Total Gastos",
-        tension: 0.3,
-        backgroundColor: "rgba(78, 115, 223, 0.05)",
-        borderColor: "rgba(78, 115, 223, 1)",
-        pointRadius: 3,
-        pointBackgroundColor: "rgba(78, 115, 223, 1)",
-        pointBorderColor: "rgba(78, 115, 223, 1)",
-        pointHoverRadius: 3,
-        pointHoverBackgroundColor: "rgba(78, 115, 223, 1)",
-        pointHoverBorderColor: "rgba(78, 115, 223, 1)",
-        pointHitRadius: 10,
-        pointBorderWidth: 2,
-        fill: true,
-        data: {{ chart_data | tojson }},
-    }],
-},
+new Chart(document.getElementById('evolutionChart'), {
+    type: 'line',
+    data: {
+        labels: {{ chart_labels | tojson }},
+        datasets: [{ label:'Total Gastos', data: {{ chart_data | tojson }}, tension:0.3, fill:true, backgroundColor:'rgba(67,97,238,.08)', borderColor:'rgba(67,97,238,1)', pointRadius:4, pointBackgroundColor:'#4361ee' }]
+    },
     options: {
-        maintainAspectRatio: false,
-            layout: {
-            padding: {
-                left: 10,
-                    right: 25,
-                        top: 25,
-                            bottom: 0
-            }
-        },
+        responsive:true, maintainAspectRatio:false,
+        plugins: { legend:{display:false}, tooltip:{callbacks:{label:c=>'R$ '+c.parsed.y.toLocaleString('pt-BR',{minimumFractionDigits:2})}} },
         scales: {
-            x: {
-                time: {
-                    unit: 'date'
-                },
-                grid: {
-                    display: false,
-                        drawBorder: false
-                },
-                ticks: {
-                    maxTicksLimit: 7
-                }
-            },
-            y: {
-                ticks: {
-                    maxTicksLimit: 5,
-                        padding: 10,
-                            // Include a dollar sign in the ticks
-                            callback: function(value, index, values) {
-                                return 'R$ ' + value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                            }
-                },
-                grid: {
-                    color: "rgb(234, 236, 244)",
-                        drawBorder: false,
-                            borderDash: [2],
-                                zeroLineBorderDash: [2]
-                }
-            },
-        },
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                backgroundColor: "rgb(255,255,255)",
-                    bodyColor: "#858796",
-                        titleMarginBottom: 10,
-                            titleColor: '#6e707e',
-                                titleFont: {
-                    size: 14
-                },
-                borderColor: '#dddfeb',
-                    borderWidth: 1,
-                        padding: 15,
-                            displayColors: false,
-                                intersect: false,
-                                    mode: 'index',
-                                        caretPadding: 10,
-                                            callbacks: {
-                    label: function(context) {
-                        var label = context.dataset.label || '';
-                        return label + ': R$ ' + context.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                    }
-                }
-            }
+            x:{ grid:{display:false} },
+            y:{ ticks:{callback:v=>'R$ '+(v>=1000?(v/1000).toFixed(1)+'k':v)}, grid:{color:'#f0f0f0'} }
         }
     }
 });
-    {% endif %}
 </script>
+{% endif %}
 {% endblock %}

@@ -73,7 +73,9 @@ def despesas_mensal():
     ).group_by(CategoriaDespesa.id, CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).all()
 
     total_mes = sum([d[2] for d in despesas_por_categoria])
-    nome_mes = calendar.month_name[mes]
+    _meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = _meses_pt[mes - 1]
 
     return render_template('relatorios/despesas_mensal.html',
                          despesas_por_categoria=despesas_por_categoria,
@@ -140,7 +142,9 @@ def top_contas():
         Despesa.user_id == current_user.id
     ).scalar() or 0
 
-    nome_mes = calendar.month_name[mes]
+    _meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = _meses_pt[mes - 1]
 
     return render_template('relatorios/top_contas.html',
                          top_contas=top_contas,
@@ -171,7 +175,9 @@ def detalhes_despesas():
     # Calcular total
     total = sum(d.valor for d in despesas)
 
-    nome_mes = calendar.month_name[mes]
+    _meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = _meses_pt[mes - 1]
 
     return render_template('relatorios/detalhes_despesas.html',
                          despesas=despesas,
@@ -212,7 +218,9 @@ def orcado_vs_gasto():
             'percentual': percentual
         })
 
-    nome_mes = calendar.month_name[mes]
+    _meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = _meses_pt[mes - 1]
 
     return render_template('relatorios/orcado_vs_gasto.html',
                          comparativo=comparativo,

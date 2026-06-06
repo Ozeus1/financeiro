@@ -102,7 +102,9 @@ def receitas_mensal():
     ).group_by(CategoriaReceita.nome).order_by(func.sum(Receita.valor).desc()).all()
 
     total_mes = sum([r[1] for r in receitas_por_categoria])
-    nome_mes = calendar.month_name[mes]
+    _meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = _meses_pt[mes - 1]
 
     return render_template('relatorios/receitas_mensal.html',
                          receitas_por_categoria=receitas_por_categoria,

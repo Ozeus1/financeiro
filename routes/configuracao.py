@@ -1284,7 +1284,8 @@ def cartoes():
     
     # Buscar apenas meios de pagamento do tipo cartão
     cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
-    configuracoes = FechamentoCartao.query.all()
+    cartao_ids = [c.id for c in cartoes]
+    configuracoes = FechamentoCartao.query.filter(FechamentoCartao.meio_pagamento_id.in_(cartao_ids)).all()
 
     return render_template('config/cartoes.html', cartoes=cartoes, configuracoes=configuracoes)
 
@@ -2072,7 +2073,8 @@ def importar_fatura_cartao():
     cartoes = MeioPagamento.query.filter_by(
         tipo='cartao', ativo=True, user_id=current_user.id
     ).order_by(MeioPagamento.nome).all()
-    fechamentos = {fc.meio_pagamento_id: fc for fc in FechamentoCartao.query.all()}
+    cartao_ids_imp = [c.id for c in cartoes]
+    fechamentos = {fc.meio_pagamento_id: fc for fc in FechamentoCartao.query.filter(FechamentoCartao.meio_pagamento_id.in_(cartao_ids_imp)).all()}
     categorias = CategoriaDespesa.query.filter_by(
         user_id=current_user.id, ativo=True
     ).order_by(CategoriaDespesa.nome).all()

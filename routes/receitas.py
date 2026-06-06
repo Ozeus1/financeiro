@@ -87,15 +87,14 @@ def criar():
         valor = float(request.form.get('valor').replace(',', '.'))
         categoria_id = int(request.form.get('categoria_id'))
         meio_recebimento_id = int(request.form.get('meio_recebimento_id'))
-        num_parcelas = int(request.form.get('num_parcelas', 1))
         data_recebimento = datetime.strptime(request.form.get('data_recebimento'), '%Y-%m-%d').date()
-        
+
         nova_receita = Receita(
             descricao=descricao,
             valor=valor,
             categoria_id=categoria_id,
             meio_recebimento_id=meio_recebimento_id,
-            num_parcelas=num_parcelas,
+            num_parcelas=1,
             data_recebimento=data_recebimento,
             user_id=current_user.id
         )
@@ -133,7 +132,7 @@ def editar(id):
         receita.valor = float(request.form.get('valor').replace(',', '.'))
         receita.categoria_id = int(request.form.get('categoria_id'))
         receita.meio_recebimento_id = int(request.form.get('meio_recebimento_id'))
-        receita.num_parcelas = int(request.form.get('num_parcelas', 1))
+        receita.num_parcelas = 1
         receita.data_recebimento = datetime.strptime(request.form.get('data_recebimento'), '%Y-%m-%d').date()
         
         db.session.commit()

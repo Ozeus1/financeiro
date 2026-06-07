@@ -190,6 +190,11 @@
                         </button>
                       </li>
                       <li>
+                        <a class="dropdown-item" href="{{ url_for('config.exportar_dados_usuario', id=u.id) }}">
+                          <i class="bi bi-file-earmark-excel text-success me-2"></i>Baixar Dados (Excel)
+                        </a>
+                      </li>
+                      <li>
                         <button class="dropdown-item" data-bs-toggle="modal"
                                 data-bs-target="#nivelModal{{ u.id }}">
                           <i class="bi bi-shield-check text-info me-2"></i>Nível de Acesso
@@ -222,6 +227,12 @@
                             {% if u.ativo %}Desativar{% else %}Ativar{% endif %}
                           </button>
                         </form>
+                      </li>
+                      <li>
+                        <button class="dropdown-item text-danger" data-bs-toggle="modal"
+                                data-bs-target="#excluirModal{{ u.id }}">
+                          <i class="bi bi-trash3 me-2"></i>Excluir Usuário
+                        </button>
                       </li>
                     </ul>
                   </div>
@@ -349,6 +360,46 @@
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-warning btn-sm">
                           <i class="bi bi-envelope-arrow-up me-1"></i>Enviar Nova Senha
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Modal: Excluir Usuário -->
+              <div class="modal fade" id="excluirModal{{ u.id }}" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content">
+                    <form method="POST" onsubmit="return confirm('Tem certeza que deseja excluir definitivamente {{ u.username }}? Esta ação não pode ser desfeita.')">
+                      <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title"><i class="bi bi-trash3 me-2"></i>Excluir Usuário</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body">
+                        <input type="hidden" name="action" value="excluir">
+                        <input type="hidden" name="id" value="{{ u.id }}">
+
+                        <div class="alert alert-danger">
+                          <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                          Esta ação é <strong>irreversível</strong>. Todos os dados de
+                          <strong>{{ u.nome or u.username }}</strong> (@{{ u.username }}) — despesas, receitas,
+                          categorias, meios de pagamento/recebimento, orçamentos e histórico — serão
+                          permanentemente apagados.
+                        </div>
+
+                        <p class="mb-2">
+                          Recomendamos baixar uma cópia de todos os dados deste usuário antes de excluir:
+                        </p>
+                        <a class="btn btn-outline-success btn-sm w-100"
+                           href="{{ url_for('config.exportar_dados_usuario', id=u.id) }}" target="_blank">
+                          <i class="bi bi-file-earmark-excel me-1"></i>Baixar Dados em Excel (.xlsx)
+                        </a>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger btn-sm">
+                          <i class="bi bi-trash3 me-1"></i>Excluir Definitivamente
                         </button>
                       </div>
                     </form>

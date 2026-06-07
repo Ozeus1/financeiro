@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify, send_file
 from flask_login import login_required, current_user
 from routes.auth import admin_required, gerente_required, supabase_required, openfinance_required, nao_free_required
-from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa, Receita, BalancoMensal, EventoCaixaAvulso, ConfigSistema, ApiKey
+from models import db, User, CategoriaDespesa, CategoriaReceita, MeioPagamento, MeioRecebimento, Orcamento, FechamentoCartao, Configuracao, Despesa, Receita, BalancoMensal, EventoCaixaAvulso, ConfigSistema, ApiKey, Assinatura
 from utils.supabase_client import SupabaseClient
 import json
 from datetime import datetime
@@ -948,6 +948,102 @@ def meios_recebimento():
                       .group_by(Receita.meio_recebimento_id).all())
     return render_template('config/meios_recebimento.html', meios=meios, rec_counts=rec_counts)
 
+@config_bp.route('/usuarios/<int:id>/exportar-dados')
+@login_required
+@gerente_required
+def exportar_dados_usuario(id):
+    """Exporta todos os dados de um usuário para um arquivo Excel (uma aba por tabela)."""
+    import pandas as pd
+    from io import BytesIO
+
+    usuario = User.query.get_or_404(id)
+
+    planilhas = {
+        'Despesas': [
+            {
+                'Data': d.data_pagamento.strftime('%d/%m/%Y') if d.data_pagamento else '',
+                'Descrição': d.descricao,
+                'Categoria': d.categoria.nome if d.categoria else '',
+                'Meio de Pagamento': d.meio_pagamento.nome if d.meio_pagamento else '',
+                'Valor': d.valor,
+                'Parcelas': d.num_parcelas,
+            } for d in Despesa.query.filter_by(user_id=usuario.id).all()
+        ],
+        'Receitas': [
+            {
+                'Data': r.data_recebimento.strftime('%d/%m/%Y') if r.data_recebimento else '',
+                'Descrição': r.descricao,
+                'Categoria': r.categoria.nome if r.categoria else '',
+                'Meio de Recebimento': r.meio_recebimento.nome if r.meio_recebimento else '',
+                'Valor': r.valor,
+                'Parcelas': r.num_parcelas,
+            } for r in Receita.query.filter_by(user_id=usuario.id).all()
+        ],
+        'Categorias Despesa': [
+            {'Nome': c.nome, 'Ativo': 'Sim' if c.ativo else 'Não'}
+            for c in CategoriaDespesa.query.filter_by(user_id=usuario.id).all()
+        ],
+        'Categorias Receita': [
+            {'Nome': c.nome, 'Ativo': 'Sim' if c.ativo else 'Não'}
+            for c in CategoriaReceita.query.filter_by(user_id=usuario.id).all()
+        ],
+        'Meios de Pagamento': [
+            {'Nome': m.nome, 'Tipo': m.tipo, 'Ativo': 'Sim' if m.ativo else 'Não'}
+            for m in MeioPagamento.query.filter_by(user_id=usuario.id).all()
+        ],
+        'Meios de Recebimento': [
+            {'Nome': m.nome, 'Ativo': 'Sim' if m.ativo else 'Não'}
+            for m in MeioRecebimento.query.filter_by(user_id=usuario.id).all()
+        ],
+        'Orçamentos': [
+            {
+                'Categoria': o.categoria.nome if o.categoria else '',
+                'Valor Orçado': o.valor_orcado,
+            } for o in Orcamento.query.filter_by(user_id=usuario.id).all()
+        ],
+        'Balanço Mensal': [
+            {
+                'Mês': b.mes, 'Ano': b.ano,
+                'Total Entradas': b.total_entradas,
+                'Total Saídas': b.total_saidas,
+                'Saldo': b.saldo_mes,
+            } for b in BalancoMensal.query.filter_by(user_id=usuario.id).all()
+        ],
+        'Eventos de Caixa': [
+            {
+                'Data': e.data.strftime('%d/%m/%Y') if e.data else '',
+                'Descrição': e.descricao,
+                'Valor': e.valor,
+            } for e in EventoCaixaAvulso.query.filter_by(user_id=usuario.id).all()
+        ],
+    }
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Aba de identificação do usuário
+        pd.DataFrame([{
+            'Nome': usuario.nome or '',
+            'Usuário': usuario.username,
+            'E-mail': usuario.email,
+            'Nível de Acesso': usuario.nivel_acesso,
+            'CPF': usuario.cpf or '',
+            'WhatsApp': usuario.whatsapp or '',
+            'Data de Criação': usuario.data_criacao.strftime('%d/%m/%Y') if usuario.data_criacao else '',
+        }]).to_excel(writer, index=False, sheet_name='Usuário')
+
+        for nome_aba, dados in planilhas.items():
+            df = pd.DataFrame(dados) if dados else pd.DataFrame(columns=['(sem registros)'])
+            df.to_excel(writer, index=False, sheet_name=nome_aba[:31])
+
+    output.seek(0)
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'dados_{usuario.username}_{datetime.now().strftime("%Y%m%d")}.xlsx'
+    )
+
+
 @config_bp.route('/usuarios', methods=['GET', 'POST'])
 @login_required
 @gerente_required
@@ -1128,6 +1224,36 @@ def usuarios():
                     flash(f'Nova senha enviada para {user.email}!', 'success')
                 else:
                     flash(f'Senha redefinida. Nova senha: {nova_senha} (configure SMTP para enviar por e-mail)', 'warning')
+
+        elif action == 'excluir':
+            id = int(request.form.get('id'))
+            user = User.query.get(id)
+            if user and user.id == current_user.id:
+                flash('Você não pode excluir sua própria conta!', 'danger')
+            elif user:
+                if user.is_admin() and not current_user.is_admin():
+                    flash('Apenas administradores podem excluir contas de administrador!', 'danger')
+                elif user.eh_assinante_familia and user.grupo_familia() and user.grupo_familia().total_membros() > 1:
+                    flash('Este usuário é o assinante de um grupo família com outros membros. '
+                          'Remova ou transfira os membros antes de excluir a conta.', 'warning')
+                else:
+                    nome_excluido = user.nome or user.username
+
+                    # Limpar referências de "registrado_por" (plano família) para não violar FK
+                    Despesa.query.filter_by(registrado_por=user.id).update({'registrado_por': None})
+                    Receita.query.filter_by(registrado_por=user.id).update({'registrado_por': None})
+
+                    # Apagar registros que não possuem cascade configurado em User
+                    CategoriaDespesa.query.filter_by(user_id=user.id).delete()
+                    CategoriaReceita.query.filter_by(user_id=user.id).delete()
+                    MeioPagamento.query.filter_by(user_id=user.id).delete()
+                    MeioRecebimento.query.filter_by(user_id=user.id).delete()
+                    ApiKey.query.filter_by(user_id=user.id).delete()
+                    Assinatura.query.filter_by(user_id=user.id).delete()
+
+                    db.session.delete(user)
+                    db.session.commit()
+                    flash(f'Usuário {nome_excluido} excluído com sucesso!', 'success')
 
         return redirect(url_for('config.usuarios'))
 

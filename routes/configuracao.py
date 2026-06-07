@@ -1243,6 +1243,17 @@ def usuarios():
                     Despesa.query.filter_by(registrado_por=user.id).update({'registrado_por': None})
                     Receita.query.filter_by(registrado_por=user.id).update({'registrado_por': None})
 
+                    # Apagar primeiro os lançamentos e vínculos que referenciam
+                    # categorias/meios — senão a FK impede excluir as próprias
+                    # categorias/meios na sequência
+                    Despesa.query.filter_by(user_id=user.id).delete()
+                    Receita.query.filter_by(user_id=user.id).delete()
+                    Orcamento.query.filter_by(user_id=user.id).delete()
+
+                    cartao_ids = [m.id for m in MeioPagamento.query.filter_by(user_id=user.id).all()]
+                    if cartao_ids:
+                        FechamentoCartao.query.filter(FechamentoCartao.meio_pagamento_id.in_(cartao_ids)).delete(synchronize_session=False)
+
                     # Apagar registros que não possuem cascade configurado em User
                     CategoriaDespesa.query.filter_by(user_id=user.id).delete()
                     CategoriaReceita.query.filter_by(user_id=user.id).delete()

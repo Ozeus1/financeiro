@@ -481,6 +481,24 @@ def profile():
     return render_template('auth/profile.html')
 
 
+@auth_bp.route('/importar-dados', methods=['GET', 'POST'])
+@login_required
+def importar_dados():
+    """Importa para a própria conta uma planilha .xlsx exportada pelo FiNan."""
+    if request.method == 'POST':
+        planilha = request.files.get('planilha_dados')
+        if not (planilha and planilha.filename):
+            flash('Selecione um arquivo .xlsx para importar.', 'warning')
+        elif not planilha.filename.lower().endswith('.xlsx'):
+            flash('Formato inválido: envie um arquivo .xlsx exportado pelo FiNan.', 'danger')
+        else:
+            ok, msg = _importar_planilha_dados_usuario(current_user, planilha)
+            flash(msg, 'success' if ok else 'warning')
+        return redirect(url_for('auth.importar_dados'))
+
+    return render_template('auth/importar_dados.html')
+
+
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     """Solicitar redefinição de senha por e-mail"""

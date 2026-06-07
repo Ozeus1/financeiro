@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Importar Dados — FiNan{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="card shadow" style="max-width:620px;margin:0 auto;border-radius:14px">
+    <div class="card-header bg-primary text-white" style="border-radius:14px 14px 0 0">
+      <h5 class="mb-0"><i class="bi bi-file-earmark-excel me-2"></i>Importar Dados (Excel)</h5>
+    </div>
+    <div class="card-body p-4">
+      <p class="text-muted small">
+        Envie um arquivo <strong>.xlsx</strong> exportado pelo FiNan (ex.: o backup baixado
+        ao excluir uma conta antiga) para recriar suas categorias, meios de pagamento/recebimento,
+        despesas, receitas, orçamentos, balanços mensais e eventos de caixa.
+      </p>
+      <div class="alert alert-warning py-2 small">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Categorias e meios já existentes não serão duplicados; lançamentos da planilha
+        serão adicionados aos já existentes na sua conta.
+      </div>
+
+      <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Arquivo .xlsx</label>
+          <input type="file" class="form-control" name="planilha_dados" accept=".xlsx" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100 fw-bold">
+          <i class="bi bi-upload me-1"></i>Importar Dados
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

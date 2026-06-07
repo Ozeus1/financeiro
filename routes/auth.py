@@ -26,6 +26,172 @@ def _validar_cpf(cpf):
     return True
 
 
+def _importar_planilha_dados_usuario(usuario, arquivo):
+    """
+    Importa dados de um usuário a partir da planilha Excel gerada por
+    config.exportar_dados_usuario (uma aba por tipo de dado).
+    Cria categorias/meios citados que ainda não existirem e recria os
+    lançamentos (despesas, receitas, orçamentos, balanços, eventos de caixa).
+    Retorna (sucesso: bool, mensagem: str).
+    """
+    import pandas as pd
+    from datetime import datetime as _dt
+    from models import (CategoriaDespesa, CategoriaReceita, MeioPagamento,
+                        MeioRecebimento, Despesa, Receita, Orcamento,
+                        BalancoMensal, EventoCaixaAvulso)
+
+    try:
+        planilhas = pd.read_excel(arquivo, sheet_name=None, engine='openpyxl')
+    except Exception as e:
+        return False, f'Não foi possível ler o arquivo: {e}'
+
+    def _obter_categoria_despesa(nome):
+        if not nome or (isinstance(nome, float) and pd.isna(nome)):
+            return None
+        cat = CategoriaDespesa.query.filter_by(user_id=usuario.id, nome=nome).first()
+        if not cat:
+            cat = CategoriaDespesa(nome=nome, ativo=True, user_id=usuario.id)
+            db.session.add(cat)
+            db.session.flush()
+        return cat
+
+    def _obter_categoria_receita(nome):
+        if not nome or (isinstance(nome, float) and pd.isna(nome)):
+            return None
+        cat = CategoriaReceita.query.filter_by(user_id=usuario.id, nome=nome).first()
+        if not cat:
+            cat = CategoriaReceita(nome=nome, ativo=True, user_id=usuario.id)
+            db.session.add(cat)
+            db.session.flush()
+        return cat
+
+    def _obter_meio_pagamento(nome, tipo=None):
+        if not nome or (isinstance(nome, float) and pd.isna(nome)):
+            return None
+        meio = MeioPagamento.query.filter_by(user_id=usuario.id, nome=nome).first()
+        if not meio:
+            meio = MeioPagamento(nome=nome, tipo=tipo or 'outro', ativo=True, user_id=usuario.id)
+            db.session.add(meio)
+            db.session.flush()
+        return meio
+
+    def _obter_meio_recebimento(nome):
+        if not nome or (isinstance(nome, float) and pd.isna(nome)):
+            return None
+        meio = MeioRecebimento.query.filter_by(user_id=usuario.id, nome=nome).first()
+        if not meio:
+            meio = MeioRecebimento(nome=nome, ativo=True, user_id=usuario.id)
+            db.session.add(meio)
+            db.session.flush()
+        return meio
+
+    def _data(valor):
+        if valor is None or (isinstance(valor, float) and pd.isna(valor)):
+            return None
+        if isinstance(valor, str):
+            try:
+                return _dt.strptime(valor, '%d/%m/%Y').date()
+            except ValueError:
+                return None
+        if hasattr(valor, 'date'):
+            return valor.date()
+        return None
+
+    contadores = {'despesas': 0, 'receitas': 0, 'orcamentos': 0, 'balancos': 0, 'eventos': 0}
+
+    df_desp = planilhas.get('Despesas')
+    if df_desp is not None:
+        for _, row in df_desp.iterrows():
+            categoria = _obter_categoria_despesa(row.get('Categoria'))
+            meio = _obter_meio_pagamento(row.get('Meio de Pagamento'), tipo='cartao')
+            data_pag = _data(row.get('Data'))
+            if not (categoria and meio and data_pag):
+                continue
+            db.session.add(Despesa(
+                descricao=str(row.get('Descrição') or ''),
+                valor=float(row.get('Valor') or 0),
+                num_parcelas=int(row.get('Parcelas') or 1),
+                data_pagamento=data_pag,
+                user_id=usuario.id,
+                categoria_id=categoria.id,
+                meio_pagamento_id=meio.id,
+            ))
+            contadores['despesas'] += 1
+
+    df_rec = planilhas.get('Receitas')
+    if df_rec is not None:
+        for _, row in df_rec.iterrows():
+            categoria = _obter_categoria_receita(row.get('Categoria'))
+            meio = _obter_meio_recebimento(row.get('Meio de Recebimento'))
+            data_rec = _data(row.get('Data'))
+            if not (categoria and meio and data_rec):
+                continue
+            db.session.add(Receita(
+                descricao=str(row.get('Descrição') or ''),
+                valor=float(row.get('Valor') or 0),
+                num_parcelas=int(row.get('Parcelas') or 1),
+                data_recebimento=data_rec,
+                user_id=usuario.id,
+                categoria_id=categoria.id,
+                meio_recebimento_id=meio.id,
+            ))
+            contadores['receitas'] += 1
+
+    df_orc = planilhas.get('Orçamentos')
+    if df_orc is not None:
+        for _, row in df_orc.iterrows():
+            categoria = _obter_categoria_despesa(row.get('Categoria'))
+            if not categoria:
+                continue
+            if Orcamento.query.filter_by(user_id=usuario.id, categoria_id=categoria.id).first():
+                continue
+            db.session.add(Orcamento(
+                valor_orcado=float(row.get('Valor Orçado') or 0),
+                categoria_id=categoria.id,
+                user_id=usuario.id,
+            ))
+            contadores['orcamentos'] += 1
+
+    df_bal = planilhas.get('Balanço Mensal')
+    if df_bal is not None:
+        for _, row in df_bal.iterrows():
+            mes = row.get('Mês')
+            ano = row.get('Ano')
+            if pd.isna(mes) or pd.isna(ano):
+                continue
+            mes, ano = int(mes), int(ano)
+            if BalancoMensal.query.filter_by(user_id=usuario.id, mes=mes, ano=ano).first():
+                continue
+            db.session.add(BalancoMensal(
+                mes=mes, ano=ano,
+                total_entradas=float(row.get('Total Entradas') or 0),
+                total_saidas=float(row.get('Total Saídas') or 0),
+                saldo_mes=float(row.get('Saldo') or 0),
+                user_id=usuario.id,
+            ))
+            contadores['balancos'] += 1
+
+    df_evt = planilhas.get('Eventos de Caixa')
+    if df_evt is not None:
+        for _, row in df_evt.iterrows():
+            data_evt = _data(row.get('Data'))
+            if not data_evt:
+                continue
+            db.session.add(EventoCaixaAvulso(
+                data=data_evt,
+                descricao=str(row.get('Descrição') or ''),
+                valor=float(row.get('Valor') or 0),
+                user_id=usuario.id,
+            ))
+            contadores['eventos'] += 1
+
+    db.session.commit()
+
+    resumo = ', '.join(f'{v} {k}' for k, v in contadores.items() if v > 0)
+    return True, (f'Dados importados com sucesso! ({resumo})' if resumo
+                  else 'Arquivo lido, mas nenhum registro pôde ser importado.')
+
+
 def _gerar_token_confirmacao(email):
     from itsdangerous import URLSafeTimedSerializer
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
@@ -444,6 +610,15 @@ def solicitar_acesso():
         # Criar categorias/meios padrão
         from models import criar_dados_padrao_usuario
         criar_dados_padrao_usuario(novo)
+
+        # Importar dados de planilha de backup (opcional — usuário que já teve conta)
+        planilha = request.files.get('planilha_dados')
+        if planilha and planilha.filename:
+            if planilha.filename.lower().endswith('.xlsx'):
+                ok, msg = _importar_planilha_dados_usuario(novo, planilha)
+                flash(msg, 'success' if ok else 'warning')
+            else:
+                flash('Planilha ignorada: envie um arquivo .xlsx exportado pelo FiNan.', 'warning')
 
         # Enviar e-mail de confirmação
         try:

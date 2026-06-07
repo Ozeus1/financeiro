@@ -21,7 +21,7 @@
   </div>
 
   <div class="card-body p-4">
-    <form method="POST" novalidate>
+    <form method="POST" enctype="multipart/form-data" novalidate>
 
       <div class="mb-3">
         <label class="form-label fw-semibold">Nome completo <span class="text-danger">*</span></label>
@@ -72,6 +72,18 @@
         <i class="bi bi-info-circle me-1"></i>
         Conta <strong>Free</strong>: até <strong>{{ limite_free }}</strong> registros por mês.
         Para ilimitado, solicite upgrade ao administrador.
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label fw-semibold">
+          <i class="bi bi-file-earmark-excel text-success me-1"></i>
+          Já foi usuário do FiNan? Importe seus dados (opcional)
+        </label>
+        <input type="file" class="form-control" name="planilha_dados" accept=".xlsx">
+        <div class="form-text">
+          Envie o arquivo .xlsx baixado quando sua conta anterior foi excluída —
+          suas categorias, meios e lançamentos serão recriados automaticamente.
+        </div>
       </div>
 
       <button type="submit" class="btn btn-primary w-100 fw-bold">

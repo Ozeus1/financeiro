@@ -1151,12 +1151,28 @@ def usuarios():
         elif action == 'alterar_senha':
             id = int(request.form.get('id'))
             password = request.form.get('password')
-            
+
             user = User.query.get(id)
             if user:
                 user.set_password(password)
                 db.session.commit()
                 flash('Senha alterada com sucesso!', 'success')
+
+        elif action == 'importar_dados':
+            id = int(request.form.get('id'))
+            user = User.query.get(id)
+            planilha = request.files.get('planilha_dados')
+
+            if not user:
+                flash('Usuário não encontrado.', 'danger')
+            elif not (planilha and planilha.filename):
+                flash('Selecione um arquivo .xlsx para importar.', 'warning')
+            elif not planilha.filename.lower().endswith('.xlsx'):
+                flash('Formato inválido: envie um arquivo .xlsx exportado pelo FiNan.', 'danger')
+            else:
+                from routes.auth import _importar_planilha_dados_usuario
+                ok, msg = _importar_planilha_dados_usuario(user, planilha)
+                flash(f'{user.nome or user.username}: {msg}', 'success' if ok else 'warning')
 
         elif action == 'ativar_desativar':
             id = int(request.form.get('id'))

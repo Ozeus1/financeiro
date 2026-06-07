@@ -196,6 +196,12 @@
                       </li>
                       <li>
                         <button class="dropdown-item" data-bs-toggle="modal"
+                                data-bs-target="#importarDadosModal{{ u.id }}">
+                          <i class="bi bi-upload text-success me-2"></i>Importar Dados (Excel)
+                        </button>
+                      </li>
+                      <li>
+                        <button class="dropdown-item" data-bs-toggle="modal"
                                 data-bs-target="#nivelModal{{ u.id }}">
                           <i class="bi bi-shield-check text-info me-2"></i>Nível de Acesso
                         </button>
@@ -400,6 +406,42 @@
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-danger btn-sm">
                           <i class="bi bi-trash3 me-1"></i>Excluir Definitivamente
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Modal: Importar Dados (Excel) -->
+              <div class="modal fade" id="importarDadosModal{{ u.id }}" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content">
+                    <form method="POST" enctype="multipart/form-data">
+                      <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Importar Dados (Excel)</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body">
+                        <input type="hidden" name="action" value="importar_dados">
+                        <input type="hidden" name="id" value="{{ u.id }}">
+
+                        <p class="small text-muted">
+                          Envie um arquivo <strong>.xlsx</strong> exportado pelo FiNan para recriar
+                          categorias, meios, despesas, receitas, orçamentos, balanços e eventos de
+                          caixa na conta de <strong>{{ u.nome or u.username }}</strong> (@{{ u.username }}).
+                        </p>
+                        <div class="alert alert-warning py-2 small">
+                          <i class="bi bi-exclamation-triangle me-1"></i>
+                          Categorias e meios já existentes não serão duplicados; os lançamentos
+                          da planilha serão adicionados aos já existentes na conta do usuário.
+                        </div>
+                        <input type="file" class="form-control" name="planilha_dados" accept=".xlsx" required>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success btn-sm">
+                          <i class="bi bi-upload me-1"></i>Importar Dados
                         </button>
                       </div>
                     </form>

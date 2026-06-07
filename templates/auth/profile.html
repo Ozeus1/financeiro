@@ -143,6 +143,20 @@
     </div>
 </div>
 
+<!-- Importar dados de backup -->
+<div class="pg-card">
+    <div class="pg-card-header"><i class="bi bi-file-earmark-excel-fill"></i>Importar Dados</div>
+    <div class="pg-card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <p class="text-muted small mb-0">
+            Tem um arquivo .xlsx exportado pelo FiNan? Importe para recriar suas
+            categorias, meios e lançamentos automaticamente.
+        </p>
+        <a href="{{ url_for('auth.importar_dados') }}" class="btn btn-outline-success btn-sm text-nowrap">
+            <i class="bi bi-upload me-1"></i>Importar Dados (Excel)
+        </a>
+    </div>
+</div>
+
 </div>
 </div>
 {% endblock %}

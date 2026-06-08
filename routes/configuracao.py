@@ -2655,7 +2655,10 @@ def _processar_pdf_bradesco(arquivo, cartao_id, cartao, fechamento):
     except Exception as e:
         return jsonify({'success': False, 'error': f'Erro ao ler PDF Bradesco: {e}'})
 
-    # Linha de dia isolado: "24" ou "24 MAI" (dia e mês podem vir juntos ou em linhas separadas)
+    # Linha de dia isolado: "24" ou "24 MAI" (dia e mês podem vir juntos ou separados).
+    # Layout real do Bradesco: "DD" em sua própria linha, seguido pela(s)
+    # transação(ões), e só depois a linha com o mês abreviado (ex.: "MAI")
+    # confirmando a data do grupo — por isso o mês chega DEPOIS da 1ª transação.
     PAT_DIA_MES = _re.compile(r'^(\d{1,2})\s+([A-Za-zÀ-ú]{3})\.?$')
     PAT_DIA = _re.compile(r'^(\d{1,2})$')
     PAT_MES = _re.compile(r'^([A-Za-zÀ-ú]{3})\.?$')
@@ -2667,71 +2670,97 @@ def _processar_pdf_bradesco(arquivo, cartao_id, cartao, fechamento):
         r'\s+(-?[\d\.]+,\d{2})\s*$'              # valor
     )
 
+    def _extrai_lancamento(linha):
+        """Retorna dict da transação ou None se a linha não for um lançamento."""
+        l_lower = linha.lower()
+        if any(ign in l_lower for ign in IGNORAR_DESC):
+            return None
+        m = PAT_LANC.match(linha)
+        if not m:
+            return None
+        descricao = m.group(1).strip()
+        desc_low = descricao.lower()
+        if any(ign in desc_low for ign in IGNORAR_DESC):
+            return None
+        if 'data' in desc_low and 'lan' in desc_low:
+            return None  # cabeçalho de tabela
+        valor = _val(m.group(4))
+        if valor is None or valor <= 0:
+            return None  # ignora estornos/créditos (valores negativos) e zerados
+        return {
+            'descricao': descricao,
+            'valor_parcela': valor,
+            'parcela_atual': int(m.group(2)) if m.group(2) else 1,
+            'num_parcelas': int(m.group(3)) if m.group(3) else 1,
+            'categoria': '',
+        }
+
     data_atual = None
-    pendente_dia = None
+    dia_pendente = None       # dia (string) aguardando confirmação do mês
+    buffer_pendente = []      # lançamentos lidos entre o "DD" e o "MMM"
+
+    def _flush_pendentes(data):
+        for lanc in buffer_pendente:
+            lanc['data_compra'] = data
+            linhas_brutas.append(lanc)
+        buffer_pendente.clear()
+
+    fim_lancamentos = False
 
     for linha in todas_linhas:
         l_lower = linha.lower()
 
-        if any(ign in l_lower for ign in IGNORAR_DESC):
-            pendente_dia = None
+        # A partir do total final / resumo das despesas só vêm totalizadores
+        # (note: "valor da fatura: R$ ..." aparece no cabeçalho de cada cartão
+        # e não deve ser confundido com a linha de fechamento "Total da fatura (final ...)")
+        if _re.match(r'^total da fatura\s*\(', l_lower) or 'resumo das despesas' in l_lower:
+            fim_lancamentos = True
+            buffer_pendente.clear()
+            continue
+        if fim_lancamentos:
             continue
 
-        # Linha "DD MMM" junta
+        if any(ign in l_lower for ign in IGNORAR_DESC):
+            continue
+
+        # Linha "DD MMM" junta → fecha grupo anterior e inicia novo já completo
         m_dm = PAT_DIA_MES.match(linha)
         if m_dm:
+            _flush_pendentes(data_atual) if (dia_pendente and data_atual) else buffer_pendente.clear()
             data_atual = _parse_data_brad(m_dm.group(1), m_dm.group(2))
-            pendente_dia = None
+            dia_pendente = None
             continue
 
-        # Linha apenas com o dia (mês vem na próxima linha)
+        # Linha apenas com o dia → inicia novo grupo (mês ainda não confirmado)
         m_d = PAT_DIA.match(linha)
         if m_d and len(linha) <= 2:
-            pendente_dia = m_d.group(1)
+            # O grupo anterior não recebeu confirmação de mês explícita
+            # (ex.: já tínhamos "data_atual" de um "DD MMM" anterior na mesma
+            # sequência) — nesse caso o buffer pertence ao mês de "data_atual".
+            if buffer_pendente and data_atual:
+                _flush_pendentes(data_atual)
+            buffer_pendente.clear()
+            dia_pendente = m_d.group(1)
             continue
 
-        # Linha apenas com o mês abreviado (completa o dia pendente)
+        # Linha apenas com o mês abreviado → confirma a data do grupo pendente
         m_m = PAT_MES.match(linha)
-        if m_m and pendente_dia and m_m.group(1).lower()[:3] in MESES_PT:
-            data_atual = _parse_data_brad(pendente_dia, m_m.group(1))
-            pendente_dia = None
+        if m_m and dia_pendente and m_m.group(1).lower()[:3] in MESES_PT:
+            data_atual = _parse_data_brad(dia_pendente, m_m.group(1))
+            dia_pendente = None
+            _flush_pendentes(data_atual)
             continue
 
-        pendente_dia = None
-
-        if not data_atual:
+        lanc = _extrai_lancamento(linha)
+        if not lanc:
             continue
 
-        m = PAT_LANC.match(linha)
-        if not m:
-            continue
-
-        descricao = m.group(1).strip()
-        parc_a    = m.group(2)
-        parc_t    = m.group(3)
-        valor_s   = m.group(4)
-
-        desc_low = descricao.lower()
-        if any(ign in desc_low for ign in IGNORAR_DESC):
-            continue
-        if 'data' in desc_low and 'lan' in desc_low:
-            continue  # cabeçalho de tabela
-
-        valor = _val(valor_s)
-        if valor is None or valor <= 0:
-            continue  # ignora estornos/créditos (valores negativos) e zerados
-
-        parcela_atual = int(parc_a) if parc_a else 1
-        num_parcelas  = int(parc_t) if parc_t else 1
-
-        linhas_brutas.append({
-            'descricao': descricao,
-            'valor_parcela': valor,
-            'data_compra': data_atual,
-            'parcela_atual': parcela_atual,
-            'num_parcelas': num_parcelas,
-            'categoria': '',
-        })
+        if dia_pendente:
+            # Ainda não sabemos o mês deste grupo — guarda até a linha "MMM"
+            buffer_pendente.append(lanc)
+        elif data_atual:
+            lanc['data_compra'] = data_atual
+            linhas_brutas.append(lanc)
 
     # ── Calcular valor total e verificar duplicatas ──
     linhas = []

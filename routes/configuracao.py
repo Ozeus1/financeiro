@@ -2589,6 +2589,193 @@ def _processar_pdf_nubank(arquivo, cartao_id, cartao, fechamento):
     })
 
 
+def _processar_pdf_bradesco(arquivo, cartao_id, cartao, fechamento):
+    """
+    Extrai transações de um PDF de fatura do Bradesco.
+    Formato: linhas "DD" e "MMM" (dia/mês abreviado) seguidas por uma ou mais
+    linhas "Descrição [( parcela_atual/total_parcelas )] valor".
+    Ignora: saldo anterior, pagamentos/débitos em conta e valores negativos
+    (estornos/créditos).
+    """
+    import re as _re
+    from datetime import datetime as _dt, date as _date
+
+    try:
+        import pdfplumber
+    except ImportError:
+        return jsonify({'success': False,
+                        'error': 'Biblioteca pdfplumber não instalada no servidor.'})
+
+    MESES_PT = {'jan':1,'fev':2,'mar':3,'abr':4,'mai':5,'jun':6,
+                'jul':7,'ago':8,'set':9,'out':10,'nov':11,'dez':12}
+
+    def _val(s):
+        s = str(s or '').strip().replace(' ', '')
+        if not s or s == '-':
+            return None
+        s = s.replace('.', '').replace(',', '.')
+        try:
+            return float(s)
+        except Exception:
+            return None
+
+    def _parse_data_brad(dia_s, mes_s):
+        try:
+            dia = int(dia_s)
+            mes = MESES_PT.get(mes_s.lower()[:3], 0)
+            if not mes:
+                return None
+            ano = _dt.now().year
+            if mes > _dt.now().month:
+                ano -= 1
+            return _date(ano, mes, dia)
+        except Exception:
+            return None
+
+    IGNORAR_DESC = {
+        'saldo anterior', 'pagto. por deb em c/c', 'pagto por deb em c/c',
+        'pagamento de fatura', 'pagamento da fatura', 'deb autom de fatura',
+        'gastos referentes ao cart', 'valor da fatura', 'total da fatura',
+        'resumo das despesas', 'taxas mensais',
+    }
+
+    linhas_brutas = []
+    erros = []
+
+    try:
+        raw = arquivo.read()
+        import io as _io
+        todas_linhas = []
+        with pdfplumber.open(_io.BytesIO(raw)) as pdf:
+            for page in pdf.pages:
+                txt = page.extract_text(layout=False) or ''
+                for linha in txt.split('\n'):
+                    if linha.strip():
+                        todas_linhas.append(linha.strip())
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Erro ao ler PDF Bradesco: {e}'})
+
+    # Linha de dia isolado: "24" ou "24 MAI" (dia e mês podem vir juntos ou em linhas separadas)
+    PAT_DIA_MES = _re.compile(r'^(\d{1,2})\s+([A-Za-zÀ-ú]{3})\.?$')
+    PAT_DIA = _re.compile(r'^(\d{1,2})$')
+    PAT_MES = _re.compile(r'^([A-Za-zÀ-ú]{3})\.?$')
+
+    # "Descrição [( NN/NN )] valor" — valor pode ser negativo
+    PAT_LANC = _re.compile(
+        r'^(.+?)'                                 # descrição
+        r'(?:\(\s*(\d{1,2})\s*/\s*(\d{1,2})\s*\)\s*)?'  # parcela opcional "( 01/02 )"
+        r'\s+(-?[\d\.]+,\d{2})\s*$'              # valor
+    )
+
+    data_atual = None
+    pendente_dia = None
+
+    for linha in todas_linhas:
+        l_lower = linha.lower()
+
+        if any(ign in l_lower for ign in IGNORAR_DESC):
+            pendente_dia = None
+            continue
+
+        # Linha "DD MMM" junta
+        m_dm = PAT_DIA_MES.match(linha)
+        if m_dm:
+            data_atual = _parse_data_brad(m_dm.group(1), m_dm.group(2))
+            pendente_dia = None
+            continue
+
+        # Linha apenas com o dia (mês vem na próxima linha)
+        m_d = PAT_DIA.match(linha)
+        if m_d and len(linha) <= 2:
+            pendente_dia = m_d.group(1)
+            continue
+
+        # Linha apenas com o mês abreviado (completa o dia pendente)
+        m_m = PAT_MES.match(linha)
+        if m_m and pendente_dia and m_m.group(1).lower()[:3] in MESES_PT:
+            data_atual = _parse_data_brad(pendente_dia, m_m.group(1))
+            pendente_dia = None
+            continue
+
+        pendente_dia = None
+
+        if not data_atual:
+            continue
+
+        m = PAT_LANC.match(linha)
+        if not m:
+            continue
+
+        descricao = m.group(1).strip()
+        parc_a    = m.group(2)
+        parc_t    = m.group(3)
+        valor_s   = m.group(4)
+
+        desc_low = descricao.lower()
+        if any(ign in desc_low for ign in IGNORAR_DESC):
+            continue
+        if 'data' in desc_low and 'lan' in desc_low:
+            continue  # cabeçalho de tabela
+
+        valor = _val(valor_s)
+        if valor is None or valor <= 0:
+            continue  # ignora estornos/créditos (valores negativos) e zerados
+
+        parcela_atual = int(parc_a) if parc_a else 1
+        num_parcelas  = int(parc_t) if parc_t else 1
+
+        linhas_brutas.append({
+            'descricao': descricao,
+            'valor_parcela': valor,
+            'data_compra': data_atual,
+            'parcela_atual': parcela_atual,
+            'num_parcelas': num_parcelas,
+            'categoria': '',
+        })
+
+    # ── Calcular valor total e verificar duplicatas ──
+    linhas = []
+    for lb in linhas_brutas:
+        descricao     = lb['descricao']
+        valor_parcela = lb['valor_parcela']
+        data_compra   = lb['data_compra']
+        parcela_atual = lb['parcela_atual']
+        num_parcelas  = lb['num_parcelas']
+        valor_total   = round(valor_parcela * num_parcelas, 2)
+
+        duplicata = Despesa.query.filter_by(
+            user_id=current_user.id,
+            descricao=descricao,
+            meio_pagamento_id=cartao_id,
+            data_pagamento=data_compra,
+        ).filter(Despesa.valor.between(valor_total - 0.01, valor_total + 0.01)).first()
+
+        linhas.append({
+            'descricao': descricao,
+            'valor': valor_total,
+            'valor_parcela': round(valor_parcela, 2),
+            'data_compra': data_compra.strftime('%d/%m/%Y'),
+            'data_pagamento': data_compra.strftime('%d/%m/%Y'),
+            'parcela_atual': parcela_atual,
+            'num_parcelas': num_parcelas,
+            'categoria': '',
+            'duplicata': bool(duplicata),
+        })
+
+    if not linhas and not erros:
+        return jsonify({'success': False,
+                        'error': 'Nenhuma transação encontrada no PDF. '
+                                 'Verifique se é uma fatura Bradesco.'})
+
+    return jsonify({
+        'success': True,
+        'linhas': linhas,
+        'erros': erros,
+        'cartao_nome': cartao.nome,
+        'cartao_id': cartao_id,
+    })
+
+
 def _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento):
     """
     Extrai transações de um PDF de fatura do Santander.
@@ -2837,12 +3024,12 @@ def processar_fatura_cartao():
 
     nome_arquivo = arquivo.filename.lower()
 
-    # ── Parsing PDF Santander ─────────────────────────────────────────────
+    # ── Parsing PDF (detecção do banco por nome/conteúdo) ─────────────────
     if nome_arquivo.endswith('.pdf'):
-        # Detectar banco: 1) pelo nome do arquivo, 2) pelo texto extraído
         eh_nubank = 'nubank' in nome_arquivo.lower()
+        eh_bradesco = 'bradesco' in nome_arquivo.lower()
 
-        if not eh_nubank:
+        if not (eh_nubank or eh_bradesco):
             try:
                 import pdfplumber, io as _io2
                 raw_peek = arquivo.read()
@@ -2852,11 +3039,14 @@ def processar_fatura_cartao():
                 eh_nubank = ('nubank' in txt_p1 or 'nu pagamentos' in txt_p1
                              or 'nupay' in txt_p1 or 'nu.com' in txt_p1
                              or 'transações de' in txt_p1)
+                eh_bradesco = (not eh_nubank) and 'bradesco' in txt_p1
             except Exception:
                 pass
 
         if eh_nubank:
             return _processar_pdf_nubank(arquivo, cartao_id, cartao, fechamento)
+        elif eh_bradesco:
+            return _processar_pdf_bradesco(arquivo, cartao_id, cartao, fechamento)
         else:
             return _processar_pdf_santander(arquivo, cartao_id, cartao, fechamento)
 

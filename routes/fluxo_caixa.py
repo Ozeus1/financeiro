@@ -363,6 +363,24 @@ def atualizar_evento(id):
     return redirect(url_for('fluxo_caixa.index'))
 
 
+@fluxo_caixa_bp.route('/eventos/<int:id>/excluir', methods=['POST'])
+@login_required
+def excluir_evento(id):
+    """Excluir evento de caixa avulso"""
+    try:
+        evento = EventoCaixaAvulso.query.get_or_404(id)
+        if evento.user_id != current_user.id:
+            flash('Acesso negado', 'danger')
+            return redirect(url_for('fluxo_caixa.index'))
+        db.session.delete(evento)
+        db.session.commit()
+        flash('Evento excluído com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir evento: {str(e)}', 'danger')
+    return redirect(url_for('fluxo_caixa.index'))
+
+
 @fluxo_caixa_bp.route('/api/grafico-dados')
 @login_required
 def grafico_dados():

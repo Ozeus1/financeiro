@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
-from models import db, Despesa, Receita, CategoriaDespesa, Orcamento, MeioPagamento, FechamentoCartao
+from models import db, Despesa, Receita, CategoriaDespesa, Orcamento, MeioPagamento, FechamentoCartao, PrevisaoFinanceiraItem
 from sqlalchemy import func, extract, desc
 from datetime import datetime, timedelta, date
 import calendar
+import json
 from dateutil.relativedelta import relativedelta
 
 relatorios_bp = Blueprint('relatorios', __name__)
@@ -1078,8 +1079,28 @@ def previsao_financeira():
     meses_data = [{'mes': m['mes'], 'ano': m['ano'], 'label': m['label'], 'key': m['key'],
                    'fatura_cartao': round(faturas_por_mes[m['key']], 2)} for m in meses_proj]
 
+    # Itens de receita/despesa fixa salvos previamente pelo usuário
+    itens_salvos = PrevisaoFinanceiraItem.query.filter_by(user_id=current_user.id).all()
+    receitas_salvas = []
+    despesas_salvas = []
+    for item in itens_salvos:
+        item_dict = {
+            'nome': item.nome,
+            'valor': item.valor,
+            'tipo': item.recorrencia_tipo,
+            'meses': json.loads(item.meses_json) if item.meses_json else [],
+            'inicio': item.periodo_inicio,
+            'fim': item.periodo_fim,
+            'overrides': json.loads(item.overrides_json) if item.overrides_json else {},
+        }
+        if item.tipo == 'receita':
+            receitas_salvas.append(item_dict)
+        else:
+            despesas_salvas.append(item_dict)
+
     return render_template('relatorios/previsao_financeira.html',
-                           meses_data=meses_data, horizonte=horizonte)
+                           meses_data=meses_data, horizonte=horizonte,
+                           receitas_salvas=receitas_salvas, despesas_salvas=despesas_salvas)
 
 
 @relatorios_bp.route('/api/previsao-financeira/calcular', methods=['POST'])
@@ -1174,3 +1195,36 @@ def api_previsao_financeira_calcular():
         })
 
     return jsonify({'success': True, 'meses': resultado})
+
+
+@relatorios_bp.route('/api/previsao-financeira/itens', methods=['POST'])
+@login_required
+def api_previsao_financeira_salvar_itens():
+    """Salva (substituindo) as receitas e despesas fixas do usuário."""
+    payload = request.get_json(force=True) or {}
+    receitas_input = payload.get('receitas', [])
+    despesas_input = payload.get('despesas', [])
+
+    try:
+        PrevisaoFinanceiraItem.query.filter_by(user_id=current_user.id).delete()
+
+        for tipo, itens in (('receita', receitas_input), ('despesa', despesas_input)):
+            for it in itens:
+                novo = PrevisaoFinanceiraItem(
+                    tipo=tipo,
+                    nome=(it.get('nome') or ('Receita' if tipo == 'receita' else 'Despesa'))[:120],
+                    valor=float(it.get('valor', 0) or 0),
+                    recorrencia_tipo=it.get('tipo', 'todos'),
+                    meses_json=json.dumps(it.get('meses', [])),
+                    periodo_inicio=it.get('inicio') or None,
+                    periodo_fim=it.get('fim') or None,
+                    overrides_json=json.dumps(it.get('overrides', {})),
+                    user_id=current_user.id,
+                )
+                db.session.add(novo)
+
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400

@@ -284,6 +284,9 @@ let horizonte = 'proximo_ano';
 let pfChart = null;
 // meses do servidor (carregados do Jinja)
 const MESES_DATA = {{ meses_data | tojson }};
+// itens salvos previamente pelo usuário
+const RECEITAS_SALVAS = {{ receitas_salvas | tojson }};
+const DESPESAS_SALVAS = {{ despesas_salvas | tojson }};
 
 // ── Horizonte ──────────────────────────────────────────────────────────────
 function setHorizonte(val, el) {
@@ -304,16 +307,45 @@ function updateHzLabel() {
 }
 
 // ── Adicionar itens ────────────────────────────────────────────────────────
-function addReceita() { addItem('receita', document.getElementById('lista-receitas')); }
-function addDespesa() { addItem('despesa', document.getElementById('lista-despesas')); }
+function addReceita(data) { addItem('receita', document.getElementById('lista-receitas'), data); }
+function addDespesa(data) { addItem('despesa', document.getElementById('lista-despesas'), data); }
 
-function addItem(tipo, container) {
+function addItem(tipo, container, data) {
   const tmpl = document.getElementById('tmpl-' + tipo);
   const clone = tmpl.content.cloneNode(true);
   container.appendChild(clone);
-  // popular overrides com os meses disponíveis
   const row = container.lastElementChild;
+
+  if (data) {
+    row.querySelector('[data-field="nome"]').value = data.nome || '';
+    row.querySelector('[data-field="valor"]').value = (data.valor !== undefined && data.valor !== null) ? data.valor : '';
+    const selTipo = row.querySelector('[data-field="tipo"]');
+    selTipo.value = data.tipo || 'todos';
+    if (data.tipo === 'meses_especificos' || data.tipo === 'periodo') {
+      toggleMesesExtra(selTipo);
+      if (data.tipo === 'meses_especificos' && Array.isArray(data.meses)) {
+        const set = new Set(data.meses.map(Number));
+        row.querySelectorAll('[data-mes]').forEach(chk => {
+          chk.checked = set.has(parseInt(chk.value));
+        });
+      } else if (data.tipo === 'periodo') {
+        const ini = row.querySelector('[data-field="inicio"]');
+        const fim = row.querySelector('[data-field="fim"]');
+        if (ini) ini.value = data.inicio || '';
+        if (fim) fim.value = data.fim || '';
+      }
+    }
+  }
+
+  // popular overrides com os meses disponíveis
   buildOverrides(row);
+
+  if (data && data.overrides) {
+    Object.entries(data.overrides).forEach(([key, val]) => {
+      const ov = row.querySelector(`.ov-input[data-key="${key}"]`);
+      if (ov) ov.value = val;
+    });
+  }
 }
 
 function removeItem(btn) { btn.closest('.pf-item-row').remove(); }
@@ -393,6 +425,13 @@ async function calcular() {
     const data = await resp.json();
     if (!data.success) throw new Error(data.error || 'Erro');
     renderResultado(data.meses);
+
+    // Salvar receitas/despesas para que persistam ao recarregar a página
+    fetch('/relatorios/api/previsao-financeira/itens', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ receitas, despesas })
+    }).catch(() => {});
   } catch(e) {
     alert('Erro ao calcular: ' + e.message);
   } finally {
@@ -565,8 +604,20 @@ function escHtml(s) {
 
 // ── Init ───────────────────────────────────────────────────────────────────
 updateHzLabel();
-// Adicionar uma receita e uma despesa de exemplo para facilitar o início
-addReceita();
-addDespesa();
+// Restaurar itens salvos anteriormente, ou criar uma linha vazia de exemplo
+if (RECEITAS_SALVAS.length) {
+  RECEITAS_SALVAS.forEach(r => addReceita(r));
+} else {
+  addReceita();
+}
+if (DESPESAS_SALVAS.length) {
+  DESPESAS_SALVAS.forEach(d => addDespesa(d));
+} else {
+  addDespesa();
+}
+// Se houver itens salvos, calcular automaticamente para exibir o resultado
+if (RECEITAS_SALVAS.length || DESPESAS_SALVAS.length) {
+  calcular();
+}
 </script>
 {% endblock %}

@@ -390,6 +390,27 @@ class EventoCaixaAvulso(db.Model):
         return f'<EventoCaixaAvulso {self.descricao} - R$ {self.valor}>'
 
 
+class PrevisaoFinanceiraItem(db.Model):
+    """Itens de receita/despesa fixa cadastrados no relatório de Previsão Financeira"""
+    __tablename__ = 'previsao_financeira_itens'
+
+    id = db.Column(db.Integer, primary_key=True)
+    tipo = db.Column(db.String(10), nullable=False)  # 'receita' ou 'despesa'
+    nome = db.Column(db.String(120), nullable=False)
+    valor = db.Column(db.Float, nullable=False, default=0)
+    recorrencia_tipo = db.Column(db.String(20), nullable=False, default='todos')  # todos, meses_especificos, periodo
+    meses_json = db.Column(db.Text, nullable=True)       # lista de meses (1-12) em JSON
+    periodo_inicio = db.Column(db.String(7), nullable=True)  # 'YYYY-MM'
+    periodo_fim = db.Column(db.String(7), nullable=True)     # 'YYYY-MM'
+    overrides_json = db.Column(db.Text, nullable=True)   # dict {'YYYY-MM': valor} em JSON
+
+    # Chaves estrangeiras
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    def __repr__(self):
+        return f'<PrevisaoFinanceiraItem {self.tipo} {self.nome} - R$ {self.valor}>'
+
+
 class Configuracao(db.Model):
     """Tabela para armazenar configurações do sistema (chave-valor)"""
     __tablename__ = 'configuracoes'

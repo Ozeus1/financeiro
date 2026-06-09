@@ -88,6 +88,7 @@
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('relatorios.orcado_vs_gasto') }}">Painel de Orçamento</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('relatorios.previsao_cartoes') }}">Previsão Cartões</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('relatorios.previsao_financeira') }}"><i class="bi bi-graph-up-arrow me-1"></i>Previsão Financeira</a></li>
                     </ul>
                 </li>
                 {% set membro_familia_sem_controle = current_user.is_familia() and not current_user.eh_assinante_familia %}
@@ -215,6 +216,7 @@
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.comparativo_anual') }}"><i class="bi bi-calendar-range"></i>Comparativo Anual</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.orcado_vs_gasto') }}"><i class="bi bi-clipboard-data"></i>Painel de Orçamento</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.previsao_cartoes') }}"><i class="bi bi-credit-card"></i>Previsão Cartões</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.previsao_financeira') }}"><i class="bi bi-graph-up-arrow"></i>Previsão Financeira</a>
 
         {% set membro_familia_sem_controle = current_user.is_familia() and not current_user.eh_assinante_familia %}
         {% if not membro_familia_sem_controle %}

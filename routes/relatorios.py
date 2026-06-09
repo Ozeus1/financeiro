@@ -1034,3 +1034,143 @@ def comparativo_anual():
         chart_labels=meses_pt,
         datasets=datasets
     )
+
+
+
+@relatorios_bp.route('/previsao-financeira')
+@login_required
+def previsao_financeira():
+    """Relatório de Previsão Financeira mensal."""
+    from dateutil.relativedelta import relativedelta as _rd
+
+    hoje = date.today()
+    horizonte = request.args.get('horizonte', 'proximo_ano')
+    num_meses = (12 - hoje.month + 1) if horizonte == 'resto_ano' else (12 - hoje.month + 1) + 12
+
+    meses_proj = []
+    for i in range(num_meses):
+        d = hoje.replace(day=1) + _rd(months=i)
+        meses_proj.append({'mes': d.month, 'ano': d.year,
+                           'label': d.strftime('%b/%Y'),
+                           'key': f"{d.year}-{d.month:02d}"})
+
+    # faturas de cartao por mes
+    cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True, user_id=current_user.id).all()
+    fech_map = {fc.meio_pagamento_id: fc for fc in FechamentoCartao.query.filter(
+        FechamentoCartao.meio_pagamento_id.in_([c.id for c in cartoes])).all()}
+    faturas_por_mes = {m['key']: 0.0 for m in meses_proj}
+
+    for cartao in cartoes:
+        fc = fech_map.get(cartao.id)
+        dia_f = fc.dia_fechamento if fc else 1
+        dia_v = fc.dia_vencimento if fc else 10
+        for desp in Despesa.query.filter_by(user_id=current_user.id, meio_pagamento_id=cartao.id).all():
+            if not desp.data_pagamento:
+                continue
+            n = desp.num_parcelas or 1
+            vp = round(desp.valor / n, 2)
+            for p in range(n):
+                mes_fat = calcular_primeira_fatura(desp.data_pagamento + _rd(months=p), dia_f, dia_v)
+                key = f"{mes_fat.year}-{mes_fat.month:02d}"
+                if key in faturas_por_mes:
+                    faturas_por_mes[key] += vp
+
+    meses_data = [{'mes': m['mes'], 'ano': m['ano'], 'label': m['label'], 'key': m['key'],
+                   'fatura_cartao': round(faturas_por_mes[m['key']], 2)} for m in meses_proj]
+
+    return render_template('relatorios/previsao_financeira.html',
+                           meses_data=meses_data, horizonte=horizonte)
+
+
+@relatorios_bp.route('/api/previsao-financeira/calcular', methods=['POST'])
+@login_required
+def api_previsao_financeira_calcular():
+    """Calcula previsão com receitas e despesas fixas informadas pelo usuário."""
+    from dateutil.relativedelta import relativedelta as _rd
+
+    payload = request.get_json(force=True) or {}
+    horizonte = payload.get('horizonte', 'proximo_ano')
+    receitas_input = payload.get('receitas', [])
+    despesas_input = payload.get('despesas', [])
+
+    hoje = date.today()
+    num_meses = (12 - hoje.month + 1) if horizonte == 'resto_ano' else (12 - hoje.month + 1) + 12
+
+    meses_proj = []
+    for i in range(num_meses):
+        d = hoje.replace(day=1) + _rd(months=i)
+        meses_proj.append({'mes': d.month, 'ano': d.year,
+                           'label': d.strftime('%b/%Y'),
+                           'key': f"{d.year}-{d.month:02d}"})
+
+    # faturas cartao
+    cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True, user_id=current_user.id).all()
+    fech_map = {fc.meio_pagamento_id: fc for fc in FechamentoCartao.query.filter(
+        FechamentoCartao.meio_pagamento_id.in_([c.id for c in cartoes])).all()}
+    faturas_por_mes = {m['key']: 0.0 for m in meses_proj}
+
+    for cartao in cartoes:
+        fc = fech_map.get(cartao.id)
+        dia_f = fc.dia_fechamento if fc else 1
+        dia_v = fc.dia_vencimento if fc else 10
+        for desp in Despesa.query.filter_by(user_id=current_user.id, meio_pagamento_id=cartao.id).all():
+            if not desp.data_pagamento:
+                continue
+            n = desp.num_parcelas or 1
+            vp = round(desp.valor / n, 2)
+            for p in range(n):
+                mes_fat = calcular_primeira_fatura(desp.data_pagamento + _rd(months=p), dia_f, dia_v)
+                key = f"{mes_fat.year}-{mes_fat.month:02d}"
+                if key in faturas_por_mes:
+                    faturas_por_mes[key] += vp
+
+    def _keys_ativos(item):
+        tipo = item.get('tipo', 'todos')
+        if tipo == 'meses_especificos':
+            sel = set(int(x) for x in item.get('meses', []))
+            return {m['key'] for m in meses_proj if m['mes'] in sel}
+        if tipo == 'periodo':
+            try:
+                ini = datetime.strptime(item.get('inicio', ''), '%Y-%m').date()
+                fim = datetime.strptime(item.get('fim', ''), '%Y-%m').date()
+                return {m['key'] for m in meses_proj
+                        if ini <= date(m['ano'], m['mes'], 1) <= fim}
+            except Exception:
+                pass
+        return {m['key'] for m in meses_proj}
+
+    resultado = []
+    for m in meses_proj:
+        key = m['key']
+        fatura = round(faturas_por_mes[key], 2)
+
+        rec_det = []
+        for r in receitas_input:
+            if key in _keys_ativos(r):
+                ov = r.get('overrides', {})
+                val = float(ov.get(key, r.get('valor', 0)))
+                if val > 0:
+                    rec_det.append({'nome': r.get('nome', 'Receita'), 'valor': round(val, 2)})
+
+        desp_det = []
+        for d in despesas_input:
+            if key in _keys_ativos(d):
+                ov = d.get('overrides', {})
+                val = float(ov.get(key, d.get('valor', 0)))
+                if val > 0:
+                    desp_det.append({'nome': d.get('nome', 'Despesa'), 'valor': round(val, 2)})
+
+        total_rec = sum(r['valor'] for r in rec_det)
+        total_desp = sum(d['valor'] for d in desp_det)
+        total_saidas = round(fatura + total_desp, 2)
+
+        resultado.append({
+            'key': key, 'label': m['label'], 'mes': m['mes'], 'ano': m['ano'],
+            'receitas': rec_det, 'total_receitas': round(total_rec, 2),
+            'fatura_cartao': fatura,
+            'despesas_fixas': desp_det, 'total_despesas_fixas': round(total_desp, 2),
+            'total_saidas': total_saidas,
+            'saldo': round(total_rec - total_saidas, 2),
+        })
+
+    return jsonify({'success': True, 'meses': resultado})

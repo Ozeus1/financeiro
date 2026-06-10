@@ -131,17 +131,27 @@ body { background: var(--pf-bg); }
 
       <!-- Receitas recorrentes -->
       <div class="pf-card">
-        <div class="pf-section-title"><i class="bi bi-arrow-down-circle me-1" style="color:var(--pf-green)"></i>Receitas Previstas</div>
-        <div id="lista-receitas"></div>
-        <button class="pf-add-btn" onclick="addReceita()"><i class="bi bi-plus-lg me-1"></i>Adicionar Receita</button>
+        <div class="pf-section-title d-flex justify-content-between align-items-center" style="border-bottom:none;margin-bottom:0;padding-bottom:0" onclick="toggleSecao('receitas')" role="button">
+          <span style="border-bottom:none"><i class="bi bi-arrow-down-circle me-1" style="color:var(--pf-green)"></i>Receitas Previstas</span>
+          <i class="bi bi-chevron-up" id="chev-receitas"></i>
+        </div>
+        <div id="secao-receitas" style="border-bottom:1px solid var(--pf-border); padding-bottom:8px; margin-bottom:10px; padding-top:10px">
+          <div id="lista-receitas"></div>
+          <button class="pf-add-btn" onclick="addReceita()"><i class="bi bi-plus-lg me-1"></i>Adicionar Receita</button>
+        </div>
       </div>
 
       <!-- Despesas fixas -->
       <div class="pf-card">
-        <div class="pf-section-title"><i class="bi bi-arrow-up-circle me-1" style="color:var(--pf-red)"></i>Despesas / Pagamentos Fixos</div>
-        <div class="text-muted mb-2" style="font-size:.78rem">Condomínio, plano de saúde, financiamento — valores previsíveis.</div>
-        <div id="lista-despesas"></div>
-        <button class="pf-add-btn" onclick="addDespesa()"><i class="bi bi-plus-lg me-1"></i>Adicionar Despesa Fixa</button>
+        <div class="pf-section-title d-flex justify-content-between align-items-center" style="border-bottom:none;margin-bottom:0;padding-bottom:0" onclick="toggleSecao('despesas')" role="button">
+          <span style="border-bottom:none"><i class="bi bi-arrow-up-circle me-1" style="color:var(--pf-red)"></i>Despesas / Pagamentos Fixos</span>
+          <i class="bi bi-chevron-up" id="chev-despesas"></i>
+        </div>
+        <div id="secao-despesas" style="border-bottom:1px solid var(--pf-border); padding-bottom:8px; margin-bottom:10px; padding-top:10px">
+          <div class="text-muted mb-2" style="font-size:.78rem">Condomínio, plano de saúde, financiamento — valores previsíveis.</div>
+          <div id="lista-despesas"></div>
+          <button class="pf-add-btn" onclick="addDespesa()"><i class="bi bi-plus-lg me-1"></i>Adicionar Despesa Fixa</button>
+        </div>
       </div>
 
       <!-- Faturas cartão (informativo) -->
@@ -287,6 +297,15 @@ const MESES_DATA = {{ meses_data | tojson }};
 // itens salvos previamente pelo usuário
 const RECEITAS_SALVAS = {{ receitas_salvas | tojson }};
 const DESPESAS_SALVAS = {{ despesas_salvas | tojson }};
+
+// ── Recolher/expandir seções ────────────────────────────────────────────────
+function toggleSecao(nome) {
+  const corpo = document.getElementById('secao-' + nome);
+  const chev = document.getElementById('chev-' + nome);
+  const oculto = corpo.style.display === 'none';
+  corpo.style.display = oculto ? '' : 'none';
+  chev.className = oculto ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+}
 
 // ── Horizonte ──────────────────────────────────────────────────────────────
 function setHorizonte(val, el) {

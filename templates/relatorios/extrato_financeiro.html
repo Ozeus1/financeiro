@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Extrato Financeiro — {{ nome_mes }}/{{ ano }}{% endblock %}
+
+{% block extra_css %}
+<style>
+:root{--pg-bg:#f1f5f9;--pg-surface:#fff;--pg-border:#e2e8f0;--pg-text:#0f172a;--pg-muted:#64748b;--pg-green:#10b981;--pg-red:#ef4444;--pg-blue:#4361ee;--pg-amber:#f59e0b;--pg-radius:14px;--pg-shadow-md:0 4px 16px rgba(0,0,0,.09)}
+.pg-page{background:var(--pg-bg);min-height:70vh;padding-bottom:2.5rem}
+.pg-header{background:linear-gradient(135deg,#1e3a8a 0%,#4361ee 55%,#7c3aed 100%);padding:1.4rem 1.5rem 1.2rem;color:#fff;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem}
+.pg-header-title{font-size:1.3rem;font-weight:700;margin:0;letter-spacing:-.02em}
+.pg-card{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);overflow:hidden;margin-bottom:1.25rem}
+.pg-card-header{padding:.8rem 1.25rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pg-muted);border-bottom:1px solid var(--pg-border);background:#f8fafc;display:flex;align-items:center;gap:.4rem}
+.pg-filter{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);padding:1rem 1.25rem;margin-bottom:1.25rem}
+.pg-kpi{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);padding:1rem 1.25rem;border-left:4px solid transparent;display:flex;align-items:center;gap:.9rem}
+.pg-kpi-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.pg-kpi-label{font-size:.72rem;color:var(--pg-muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.pg-kpi-value{font-size:1.18rem;font-weight:800;color:var(--pg-text)}
+.legend-list{list-style:none;padding:0;margin:0}
+.legend-list li{display:flex;align-items:center;justify-content:space-between;padding:.4rem .25rem;border-bottom:1px solid var(--pg-border);font-size:.85rem}
+.legend-list li:last-child{border-bottom:none}
+.legend-dot{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:.5rem;flex-shrink:0}
+.legend-name{display:flex;align-items:center;color:var(--pg-text)}
+.legend-value{font-weight:700}
+.legend-pct{color:var(--pg-muted);font-size:.78rem;margin-left:.4rem}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pg-page">
+<div class="pg-header">
+    <div>
+        <div style="font-size:.8rem;opacity:.7;margin-bottom:.2rem"><i class="bi bi-pie-chart me-1"></i>Relatórios</div>
+        <h1 class="pg-header-title">Extrato Financeiro — {{ nome_mes }}/{{ ano }}</h1>
+    </div>
+</div>
+
+<div class="container-fluid px-3">
+
+<!-- Filtro -->
+<div class="pg-filter">
+    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pg-muted);margin-bottom:.75rem"><i class="bi bi-funnel me-1"></i>Selecionar Período</div>
+    <form method="GET" class="row g-2 align-items-end">
+        <div class="col-sm-4 col-md-3">
+            <label class="form-label small fw-semibold">Mês</label>
+            <select class="form-select form-select-sm" name="mes">
+                {% for m in range(1,13) %}
+                <option value="{{ m }}" {% if m==mes %}selected{% endif %}>
+                    {{ ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][m-1] }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-sm-3 col-md-2">
+            <label class="form-label small fw-semibold">Ano</label>
+            <input type="number" class="form-control form-control-sm" name="ano" value="{{ ano }}" min="2000" max="2100">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Filtrar</button>
+        </div>
+    </form>
+</div>
+
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="pg-kpi" style="border-left-color:var(--pg-green)">
+            <div class="pg-kpi-icon" style="background:rgba(16,185,129,.1);color:var(--pg-green)"><i class="bi bi-arrow-down-circle"></i></div>
+            <div>
+                <div class="pg-kpi-label">Receitas do Mês</div>
+                <div class="pg-kpi-value">R$ {{ "{:,.2f}".format(total_receitas|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="pg-kpi" style="border-left-color:var(--pg-red)">
+            <div class="pg-kpi-icon" style="background:rgba(239,68,68,.1);color:var(--pg-red)"><i class="bi bi-arrow-up-circle"></i></div>
+            <div>
+                <div class="pg-kpi-label">Despesas do Mês</div>
+                <div class="pg-kpi-value">R$ {{ "{:,.2f}".format(total_despesas|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="pg-kpi" style="border-left-color:var(--pg-blue)">
+            <div class="pg-kpi-icon" style="background:rgba(67,97,238,.1);color:var(--pg-blue)"><i class="bi bi-piggy-bank"></i></div>
+            <div>
+                <div class="pg-kpi-label">Saldo do Mês</div>
+                <div class="pg-kpi-value">R$ {{ "{:,.2f}".format((total_receitas-total_despesas)|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos de pizza -->
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="pg-card h-100">
+            <div class="pg-card-header"><i class="bi bi-pie-chart-fill"></i> Receitas por Categoria</div>
+            <div class="p-3">
+                {% if receitas_grupo %}
+                <canvas id="graficoReceitas" height="220"></canvas>
+                <ul class="legend-list mt-3">
+                    {% for item in receitas_grupo %}
+                    <li>
+                        <span class="legend-name"><span class="legend-dot" style="background:{{ ['#10b981','#4361ee','#f59e0b','#06b6d4','#8b5cf6','#94a3b8'][loop.index0 % 6] }}"></span>{{ item.nome }}</span>
+                        <span>
+                            <span class="legend-value">R$ {{ "{:,.2f}".format(item.valor)|replace(',','X')|replace('.',',')|replace('X','.') }}</span>
+                            <span class="legend-pct">({{ "%.1f"|format((item.valor/total_receitas*100) if total_receitas>0 else 0) }}%)</span>
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="text-center text-muted py-4">Nenhuma receita neste período</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="pg-card h-100">
+            <div class="pg-card-header"><i class="bi bi-pie-chart-fill"></i> Despesas por Categoria</div>
+            <div class="p-3">
+                {% if despesas_grupo %}
+                <canvas id="graficoDespesas" height="220"></canvas>
+                <ul class="legend-list mt-3">
+                    {% for item in despesas_grupo %}
+                    <li>
+                        <span class="legend-name"><span class="legend-dot" style="background:{{ ['#ef4444','#f59e0b','#4361ee','#10b981','#06b6d4','#8b5cf6','#ec4899','#84cc16','#f97316','#0ea5e9','#94a3b8'][loop.index0 % 11] }}"></span>{{ item.nome }}</span>
+                        <span>
+                            <span class="legend-value">R$ {{ "{:,.2f}".format(item.valor)|replace(',','X')|replace('.',',')|replace('X','.') }}</span>
+                            <span class="legend-pct">({{ "%.1f"|format((item.valor/total_despesas*100) if total_despesas>0 else 0) }}%)</span>
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="text-center text-muted py-4">Nenhuma despesa neste período</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+{% if receitas_grupo %}
+new Chart(document.getElementById('graficoReceitas'), {
+    type: 'pie',
+    data: {
+        labels: [{% for item in receitas_grupo %}'{{ item.nome|replace("'", "") }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            data: [{% for item in receitas_grupo %}{{ item.valor }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: ['#10b981','#4361ee','#f59e0b','#06b6d4','#8b5cf6','#94a3b8']
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: c => c.label + ': R$ ' + c.parsed.toLocaleString('pt-BR', {minimumFractionDigits:2}) } }
+        }
+    }
+});
+{% endif %}
+
+{% if despesas_grupo %}
+new Chart(document.getElementById('graficoDespesas'), {
+    type: 'pie',
+    data: {
+        labels: [{% for item in despesas_grupo %}'{{ item.nome|replace("'", "") }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            data: [{% for item in despesas_grupo %}{{ item.valor }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: ['#ef4444','#f59e0b','#4361ee','#10b981','#06b6d4','#8b5cf6','#ec4899','#84cc16','#f97316','#0ea5e9','#94a3b8']
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: c => c.label + ': R$ ' + c.parsed.toLocaleString('pt-BR', {minimumFractionDigits:2}) } }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

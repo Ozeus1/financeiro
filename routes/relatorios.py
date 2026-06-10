@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
-from models import db, Despesa, Receita, CategoriaDespesa, Orcamento, MeioPagamento, FechamentoCartao, PrevisaoFinanceiraItem
+from models import db, Despesa, Receita, CategoriaDespesa, CategoriaReceita, Orcamento, MeioPagamento, FechamentoCartao, PrevisaoFinanceiraItem
 from sqlalchemy import func, extract, desc
 from datetime import datetime, timedelta, date
 import calendar
@@ -1228,3 +1228,59 @@ def api_previsao_financeira_salvar_itens():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@relatorios_bp.route('/extrato-financeiro')
+@login_required
+def extrato_financeiro():
+    """Extrato financeiro do mês: receitas x despesas por categoria, em gráficos de pizza."""
+    mes = request.args.get('mes', datetime.now().month, type=int)
+    ano = request.args.get('ano', datetime.now().year, type=int)
+
+    # Receitas por categoria
+    receitas_query = db.session.query(
+        CategoriaReceita.nome,
+        func.sum(Receita.valor).label('total')
+    ).join(Receita).filter(
+        extract('month', Receita.data_recebimento) == mes,
+        extract('year', Receita.data_recebimento) == ano,
+        Receita.user_id == current_user.id
+    ).group_by(CategoriaReceita.nome).order_by(func.sum(Receita.valor).desc()).all()
+
+    # Despesas por categoria
+    despesas_query = db.session.query(
+        CategoriaDespesa.nome,
+        func.sum(Despesa.valor).label('total')
+    ).join(Despesa).filter(
+        extract('month', Despesa.data_pagamento) == mes,
+        extract('year', Despesa.data_pagamento) == ano,
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).group_by(CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).all()
+
+    def _agrupar(itens, limite):
+        principais = itens[:limite]
+        resto = itens[limite:]
+        resultado = [{'nome': nome, 'valor': round(total, 2)} for nome, total in principais]
+        if resto:
+            outros = round(sum(total for _, total in resto), 2)
+            if outros > 0:
+                resultado.append({'nome': 'Outros', 'valor': outros})
+        return resultado
+
+    receitas_grupo = _agrupar(receitas_query, 5)
+    despesas_grupo = _agrupar(despesas_query, 10)
+
+    total_receitas = round(sum(r['valor'] for r in receitas_grupo), 2)
+    total_despesas = round(sum(d['valor'] for d in despesas_grupo), 2)
+
+    _meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = _meses_pt[mes - 1]
+
+    return render_template('relatorios/extrato_financeiro.html',
+                           receitas_grupo=receitas_grupo,
+                           despesas_grupo=despesas_grupo,
+                           total_receitas=total_receitas,
+                           total_despesas=total_despesas,
+                           mes=mes, ano=ano, nome_mes=nome_mes)

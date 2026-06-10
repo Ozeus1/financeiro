@@ -21,7 +21,7 @@
 
 <div class="rp-filter">
     <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:.75rem"><i class="bi bi-funnel me-1"></i>Filtros</div>
-    <form method="get" class="row g-2 align-items-end">
+    <form method="get" class="row g-2 align-items-end" id="formFiltroEvolucao">
         <div class="col-sm-5 col-md-4">
             <label class="form-label small fw-semibold">Categoria</label>
             <select class="form-select form-select-sm" name="categoria_id" onchange="this.form.submit()">
@@ -31,19 +31,25 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-sm-3 col-md-2">
-            <label class="form-label small fw-semibold">Mês Inicial</label>
-            <input type="month" class="form-control form-control-sm" name="mes_inicio" value="{{ mes_inicio if mes_inicio else '' }}" onchange="this.form.submit()">
-            <div class="form-text" style="font-size:.7rem">Clique para escolher mês/ano</div>
+        <div class="col-6 col-sm-auto">
+            <label class="form-label small fw-semibold mb-1">De</label>
+            <div class="input-group input-group-sm">
+                <select class="form-select form-select-sm" id="mes-inicio-sel" style="flex:1.2"></select>
+                <input type="number" class="form-control form-control-sm" id="ano-inicio-sel" style="width:90px;flex:0 0 90px">
+            </div>
         </div>
-        <div class="col-sm-3 col-md-2">
-            <label class="form-label small fw-semibold">Mês Final</label>
-            <input type="month" class="form-control form-control-sm" name="mes_fim" value="{{ mes_fim if mes_fim else '' }}" onchange="this.form.submit()">
-            <div class="form-text" style="font-size:.7rem">Clique para escolher mês/ano</div>
+        <div class="col-6 col-sm-auto">
+            <label class="form-label small fw-semibold mb-1">Até</label>
+            <div class="input-group input-group-sm">
+                <select class="form-select form-select-sm" id="mes-fim-sel" style="flex:1.2"></select>
+                <input type="number" class="form-control form-control-sm" id="ano-fim-sel" style="width:90px;flex:0 0 90px">
+            </div>
         </div>
         <div class="col-auto">
             <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Filtrar</button>
         </div>
+        <input type="hidden" name="mes_inicio" id="mes_inicio_hidden" value="{{ mes_inicio if mes_inicio else '' }}">
+        <input type="hidden" name="mes_fim" id="mes_fim_hidden" value="{{ mes_fim if mes_fim else '' }}">
     </form>
 </div>
 
@@ -82,6 +88,40 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+(function () {
+    const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const selMesIni = document.getElementById('mes-inicio-sel');
+    const selMesFim = document.getElementById('mes-fim-sel');
+    meses.forEach((nome, i) => {
+        selMesIni.add(new Option(nome, i + 1));
+        selMesFim.add(new Option(nome, i + 1));
+    });
+
+    const inicio = document.getElementById('mes_inicio_hidden').value;
+    const fim = document.getElementById('mes_fim_hidden').value;
+
+    if (inicio) {
+        const [ai, mi] = inicio.split('-');
+        selMesIni.value = parseInt(mi);
+        document.getElementById('ano-inicio-sel').value = ai;
+    }
+    if (fim) {
+        const [af, mf] = fim.split('-');
+        selMesFim.value = parseInt(mf);
+        document.getElementById('ano-fim-sel').value = af;
+    }
+
+    document.getElementById('formFiltroEvolucao').addEventListener('submit', function () {
+        const mi = selMesIni.value.padStart(2, '0');
+        const ai = document.getElementById('ano-inicio-sel').value;
+        const mf = selMesFim.value.padStart(2, '0');
+        const af = document.getElementById('ano-fim-sel').value;
+        document.getElementById('mes_inicio_hidden').value = `${ai}-${mi}`;
+        document.getElementById('mes_fim_hidden').value = `${af}-${mf}`;
+    });
+})();
+</script>
 {% if resultados %}
 <script>
 new Chart(document.getElementById('evolutionChart'), {

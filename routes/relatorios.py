@@ -586,6 +586,12 @@ def despesas_por_categoria_evolucao():
     mes_inicio = request.args.get('mes_inicio')
     mes_fim = request.args.get('mes_fim')
 
+    # Padrão: últimos 12 meses (até o mês atual)
+    if not mes_inicio and not mes_fim:
+        hoje = date.today()
+        mes_fim = hoje.strftime('%Y-%m')
+        mes_inicio = (hoje - relativedelta(months=11)).strftime('%Y-%m')
+
     # Base query - sempre filtrar por usuário
     query = db.session.query(
         func.to_char(Despesa.data_pagamento, 'YYYY-MM').label('mes_ano'),

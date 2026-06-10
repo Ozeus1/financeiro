@@ -4,7 +4,6 @@ from models import db, BalancoMensal, EventoCaixaAvulso, Receita, Despesa, Categ
 from datetime import datetime, date
 from sqlalchemy import extract, and_, func, or_
 import pandas as pd
-import io
 
 fluxo_caixa_bp = Blueprint('fluxo_caixa', __name__, url_prefix='/fluxo-caixa')
 
@@ -503,17 +502,17 @@ def exportar_excel(ano, mes):
         } for e in eventos])
         
         # Criar arquivo Excel em memória
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            if not df_receitas.empty:
-                df_receitas.to_excel(writer, sheet_name='Entradas (Receitas)', index=False)
-            if not df_despesas.empty:
-                df_despesas.to_excel(writer, sheet_name='Saídas (Despesas)', index=False)
-            if not df_eventos.empty:
-                df_eventos.to_excel(writer, sheet_name='Saídas (Eventos Avulsos)', index=False)
-        
-        output.seek(0)
-        
+        from routes.excel_utils import gerar_excel_multiplas_abas
+        output = gerar_excel_multiplas_abas(
+            [
+                ('Entradas (Receitas)', df_receitas),
+                ('Saídas (Despesas)', df_despesas),
+                ('Saídas (Eventos Avulsos)', df_eventos),
+            ],
+            f'Fluxo de Caixa - {mes:02d}/{ano}',
+            current_user.username
+        )
+
         nome_arquivo = f'Fluxo_Caixa_{ano}_{mes:02d}.xlsx'
         
         return send_file(

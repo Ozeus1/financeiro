@@ -9,6 +9,22 @@ from dateutil.relativedelta import relativedelta
 
 relatorios_bp = Blueprint('relatorios', __name__)
 
+MESES_ABREV_PT = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+                  'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+MESES_PT = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+
+
+def formatar_mes_ano(d):
+    """Formata uma data como 'Mes/Ano' usando abreviações em português."""
+    return f'{MESES_ABREV_PT[d.month]}/{d.year}'
+
+
+def formatar_mes_ano_extenso(mes, ano):
+    """Formata mes/ano como 'Mes/Ano' usando nome completo em português."""
+    return f'{MESES_PT[mes]}/{ano}'
+
 
 def calcular_primeira_fatura(data_compra, dia_fechamento, dia_vencimento):
     """Retorna o primeiro mes de vencimento da fatura para uma compra."""
@@ -282,9 +298,9 @@ def previsao_cartoes():
     print(f"DEBUG: End Date calculated: {end_date}")
     print(f"DEBUG: Max DB: {max_db_date}, Max Parcela: {max_parcela_date}, Futuro 12m: {futuro_12m}")
         
-    # MODIFICADO: Definir intervalo fixo de visualização [-6 meses, +6 meses]
+    # MODIFICADO: Definir intervalo fixo de visualização [-6 meses, +12 meses]
     start_date = (hoje - relativedelta(months=6)).replace(day=1)
-    end_date_disp = (hoje + relativedelta(months=6)).replace(day=1)
+    end_date_disp = (hoje + relativedelta(months=12)).replace(day=1)
     
     # Gerar lista de meses para EXIBIÇÃO
     meses_projecao = []
@@ -351,7 +367,7 @@ def previsao_cartoes():
             
             # Adicionar fatura à lista
             faturas.append({
-                'mes_referencia': data_ref.strftime('%b/%Y'),
+                'mes_referencia': formatar_mes_ano(data_ref),
                 'mes_int': mes,
                 'ano_int': ano,
                 'vencimento': vencimento,
@@ -390,7 +406,7 @@ def previsao_cartoes():
         })
     
     # Gerar labels para o cabeçalho (não mais usado no layout vertical, mas mantido por compatibilidade se precisar)
-    meses_labels = [d.strftime('%b/%Y') for d in meses_projecao]
+    meses_labels = [formatar_mes_ano(d) for d in meses_projecao]
     
     # Calcular resumo global (soma de todas as faturas previstas de todos os cartões)
     resumo_global = {
@@ -419,6 +435,18 @@ def previsao_cartoes():
         totais_globais_por_mes.values(),
         key=lambda x: (x['ano_int'], x['mes_int'])
     )
+
+    # Passivo: soma do mês atual em diante (até o último registro disponível)
+    resumo_global['passivo_total'] = sum(
+        item['total'] for item in resumo_global['detalhes_mensais']
+        if (item['ano_int'], item['mes_int']) >= (hoje.year, hoje.month)
+    )
+    resumo_global['passivo_inicio'] = formatar_mes_ano_extenso(hoje.month, hoje.year)
+    if resumo_global['detalhes_mensais']:
+        ultimo = resumo_global['detalhes_mensais'][-1]
+        resumo_global['passivo_fim'] = formatar_mes_ano_extenso(ultimo['mes_int'], ultimo['ano_int'])
+    else:
+        resumo_global['passivo_fim'] = resumo_global['passivo_inicio']
 
     categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id)\
                                        .order_by(CategoriaDespesa.nome).all()

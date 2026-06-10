@@ -74,9 +74,10 @@
     background: #f8fafc;
     border-top: 2px solid var(--fc-border);
     padding: .75rem 1.25rem;
-    display: flex; justify-content: center; align-items: center; gap: 2rem;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; gap: .35rem;
+    text-align: center;
 }
-.fc-total-row-label { font-size: 1rem; font-weight: 700; color: var(--fc-text); }
+.fc-total-row-label { font-size: .82rem; font-weight: 700; color: var(--fc-text); letter-spacing: .02em; }
 .fc-total-row-value { font-size: 1.2rem; font-weight: 800; color: var(--fc-success); }
 
 .fc-summary-chart-area {
@@ -311,15 +312,39 @@
 
     <!-- Gráfico Global -->
     <div class="fc-summary-chart-area">
-        <div class="fc-summary-chart-label"><i class="bi bi-bar-chart-line me-1"></i>Evolução Mensal — Todos os Cartões</div>
-        <div style="height:200px;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <div class="fc-summary-chart-label mb-0"><i class="bi bi-bar-chart-line me-1"></i>Evolução Mensal — Todos os Cartões</div>
+            <div class="d-flex gap-3" style="font-size:.78rem">
+                <span><span style="display:inline-block;width:12px;height:12px;background:#10b981;border-radius:3px;margin-right:4px"></span>Faturas Previstas</span>
+            </div>
+        </div>
+        <div class="row g-2 align-items-end mb-2">
+            <div class="col-auto">
+                <label class="form-label small fw-semibold mb-1">De</label>
+                <div class="input-group input-group-sm">
+                    <select class="form-select form-select-sm" id="fc-mes-inicio"></select>
+                    <input type="number" class="form-control form-control-sm" id="fc-ano-inicio" style="max-width:72px">
+                </div>
+            </div>
+            <div class="col-auto">
+                <label class="form-label small fw-semibold mb-1">Até</label>
+                <div class="input-group input-group-sm">
+                    <select class="form-select form-select-sm" id="fc-mes-fim"></select>
+                    <input type="number" class="form-control form-control-sm" id="fc-ano-fim" style="max-width:72px">
+                </div>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-sm btn-primary" id="btnAtualizarGraficoGlobal"><i class="bi bi-arrow-repeat"></i></button>
+            </div>
+        </div>
+        <div style="height:220px;">
             <canvas id="chart-global"></canvas>
         </div>
     </div>
 
     <div class="fc-total-row">
-        <span class="fc-total-row-label">TOTAL GERAL</span>
-        <span class="fc-total-row-value">R$ {{ "{:,.2f}".format(resumo_global.total_geral|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</span>
+        <span class="fc-total-row-label">Passivo a partir de {{ resumo_global.passivo_inicio }} (último registro {{ resumo_global.passivo_fim }})</span>
+        <span class="fc-total-row-value">R$ {{ "{:,.2f}".format(resumo_global.passivo_total|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</span>
     </div>
 </div>
 {% endif %}
@@ -562,37 +587,8 @@
         loadFilterState();
 
         // Gráfico Global
-        (function () {
-            const ctx = document.getElementById('chart-global');
-            if (!ctx) return;
-            const labels = {{ resumo_global.detalhes_mensais | map(attribute='mes_referencia') | list | tojson }};
-            const data   = {{ resumo_global.detalhes_mensais | map(attribute='total') | list | tojson }};
-            new Chart(ctx.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Total (R$)',
-                        data: data,
-                        backgroundColor: 'rgba(16,185,129,0.55)',
-                        borderColor: 'rgba(16,185,129,1)',
-                        borderWidth: 1,
-                        borderRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: c => 'R$ ' + c.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) } }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { font: { size: 10 }, callback: v => v >= 1000 ? 'R$' + (v/1000).toFixed(0) + 'k' : v } },
-                        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45, minRotation: 45 } }
-                    }
-                }
-            });
-        })();
+        initGraficoGlobal();
+        document.getElementById('btnAtualizarGraficoGlobal').addEventListener('click', renderGraficoGlobal);
 
         // Inicializar gráficos para cada cartão
         {% for cartao in previsoes %}
@@ -648,6 +644,77 @@
         })();
         {% endfor %}
     });
+
+    // ── Gráfico Global ──────────────────────────────────────────────
+    const meusMesesPt = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const dadosGlobalMensais = {{ resumo_global.detalhes_mensais | tojson }};
+    let chartGlobal = null;
+
+    function initGraficoGlobal() {
+        const selMesIni = document.getElementById('fc-mes-inicio');
+        const selMesFim = document.getElementById('fc-mes-fim');
+        meusMesesPt.forEach((nome, i) => {
+            selMesIni.add(new Option(nome, i + 1));
+            selMesFim.add(new Option(nome, i + 1));
+        });
+
+        const hoje = new Date();
+        const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 12, 1);
+
+        document.getElementById('fc-mes-inicio').value = hoje.getMonth() + 1;
+        document.getElementById('fc-ano-inicio').value = hoje.getFullYear();
+        document.getElementById('fc-mes-fim').value = fim.getMonth() + 1;
+        document.getElementById('fc-ano-fim').value = fim.getFullYear();
+
+        renderGraficoGlobal();
+    }
+
+    function renderGraficoGlobal() {
+        const mi = parseInt(document.getElementById('fc-mes-inicio').value);
+        const ai = parseInt(document.getElementById('fc-ano-inicio').value);
+        const mf = parseInt(document.getElementById('fc-mes-fim').value);
+        const af = parseInt(document.getElementById('fc-ano-fim').value);
+
+        const filtrados = dadosGlobalMensais.filter(item => {
+            const chaveAtual = item.ano_int * 12 + item.mes_int;
+            return chaveAtual >= (ai * 12 + mi) && chaveAtual <= (af * 12 + mf);
+        });
+
+        const labels = filtrados.map(item => item.mes_referencia);
+        const data = filtrados.map(item => item.total);
+
+        const ctx = document.getElementById('chart-global');
+        if (!ctx) return;
+        if (chartGlobal) chartGlobal.destroy();
+        chartGlobal = new Chart(ctx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Faturas Previstas',
+                    data: data,
+                    backgroundColor: 'rgba(16,185,129,.75)',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ' R$ ' + ctx.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                    y: { grid: { color: '#f1f5f9' },
+                         ticks: { callback: v => 'R$' + (Math.abs(v)/1000).toFixed(0)+'k', font: { size: 11 } } }
+                }
+            }
+        });
+    }
 
     // Funções de Filtro de Cartões
     function toggleCardVisibility(index) {

@@ -259,6 +259,16 @@ function carregarGrafico() {
                 },
                 options: {
                     responsive: true, interaction: { mode: 'index', intersect: false },
+                    onClick: (evt, elements, chart) => {
+                        const points = chart.getElementsAtEventForMode(evt, 'index', { intersect: false }, true);
+                        if (!points.length) return;
+                        const [mesRef, anoRef] = data.labels[points[0].index].split('/');
+                        window.location.href = `{{ url_for('fluxo_caixa.detalhes_mes', ano=0, mes=0) }}`.replace('/0/0', `/${anoRef}/${parseInt(mesRef)}`);
+                    },
+                    onHover: (evt, elements, chart) => {
+                        const points = chart.getElementsAtEventForMode(evt, 'index', { intersect: false }, true);
+                        evt.native.target.style.cursor = points.length ? 'pointer' : 'default';
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: {

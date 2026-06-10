@@ -3,7 +3,6 @@ from flask_login import login_required, current_user
 from models import db, BalancoMensal, EventoCaixaAvulso, Receita, Despesa, CategoriaDespesa, MeioPagamento
 from datetime import datetime, date
 from sqlalchemy import extract, and_, func, or_
-import calendar
 import pandas as pd
 import io
 
@@ -11,6 +10,9 @@ fluxo_caixa_bp = Blueprint('fluxo_caixa', __name__, url_prefix='/fluxo-caixa')
 
 # Meios de pagamento considerados como saída de caixa
 MEIOS_PAGAMENTO_CAIXA = ['Boleto', 'Dinheiro', 'PIX', 'Transferência', 'Débito em Conta']
+
+MESES_PT = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
 
 @fluxo_caixa_bp.route('/')
@@ -34,7 +36,7 @@ def index():
                          eventos=eventos,
                          ano_atual=ano_atual,
                          mes_atual=mes_atual,
-                         meses=calendar.month_name[1:],
+                         meses=MESES_PT[1:],
                          date=date)
 
 
@@ -566,7 +568,7 @@ def detalhes_mes(ano, mes):
     total_despesas = sum(d.valor for d in despesas)
     total_eventos = sum(e.valor for e in eventos)
     
-    mes_nome = calendar.month_name[mes]
+    mes_nome = MESES_PT[mes]
     
     return render_template('fluxo_caixa/detalhes.html',
                          ano=ano,

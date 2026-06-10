@@ -9,15 +9,6 @@
 .pg-header-title{font-size:1.3rem;font-weight:700;margin:0;letter-spacing:-.02em}
 .pg-card{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);overflow:hidden;margin-bottom:1.25rem}
 .pg-card-header{padding:.8rem 1.25rem;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--pg-muted);border-bottom:1px solid var(--pg-border);background:#f8fafc;display:flex;align-items:center;gap:.4rem}
-/* tabs */
-.pg-tabs{display:flex;gap:.3rem;background:#f8fafc;border-radius:10px;padding:.25rem;border:1px solid var(--pg-border);margin-bottom:1.25rem;width:fit-content}
-.pg-tab{border:none;background:transparent;font-size:.82rem;font-weight:600;padding:.3rem .9rem;border-radius:8px;color:var(--pg-muted);cursor:pointer;transition:background .15s,color .15s}
-.pg-tab.active{background:var(--pg-surface);color:#0f172a;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-/* form card */
-.pg-form-card{background:var(--pg-surface);border-radius:var(--pg-radius);box-shadow:var(--pg-shadow-md);overflow:hidden}
-.pg-form-header{padding:.8rem 1.1rem;background:linear-gradient(135deg,#1e3a8a,#4361ee);color:#fff;font-size:.85rem;font-weight:700}
-.pg-form-body{padding:1rem 1.1rem}
-.pg-label{font-size:.75rem;font-weight:700;color:#374151;margin-bottom:.25rem;display:block}
 .pg-input{border-radius:8px;border:1.5px solid var(--pg-border);font-size:.875rem;transition:border-color .15s}
 .pg-input:focus{border-color:var(--pg-blue);box-shadow:0 0 0 3px rgba(67,97,238,.1)}
 /* table */
@@ -52,9 +43,58 @@
 
 <div class="container-fluid px-3">
 
+<!-- Histórico de Balanços -->
+<div class="pg-card">
+    <div class="pg-card-header"><i class="bi bi-clock-history"></i>Histórico de Balanços</div>
+    <div class="table-responsive" style="max-height:320px;overflow-y:auto">
+        <table class="pg-table table">
+            <thead>
+                <tr>
+                    <th>Mês/Ano</th>
+                    <th class="text-end">Entradas</th>
+                    <th class="text-end">Saídas</th>
+                    <th class="text-end">Saldo</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in balancos %}
+                <tr onclick="window.location.href='{{ url_for('fluxo_caixa.detalhes_mes', ano=b.ano, mes=b.mes) }}'">
+                    <td class="fw-semibold">{{ '%02d'|format(b.mes) }}/{{ b.ano }}</td>
+                    <td class="text-end" style="color:var(--pg-green)">R$ {{ '{:,.2f}'.format(b.total_entradas) }}</td>
+                    <td class="text-end" style="color:var(--pg-red)">R$ {{ '{:,.2f}'.format(b.total_saidas) }}</td>
+                    <td class="text-end fw-bold" style="color:{% if b.saldo_mes >= 0 %}var(--pg-green){% else %}var(--pg-red){% endif %}">
+                        R$ {{ '{:,.2f}'.format(b.saldo_mes) }}
+                    </td>
+                    <td class="text-center">
+                        <a href="{{ url_for('fluxo_caixa.detalhes_mes', ano=b.ano, mes=b.mes) }}" onclick="event.stopPropagation()"
+                           class="btn btn-sm" style="background:var(--pg-cyan);color:#fff;border-radius:7px;width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center" title="Ver detalhes">
+                            <i class="bi bi-eye" style="font-size:.75rem"></i>
+                        </a>
+                        <a href="{{ url_for('fluxo_caixa.exportar_excel', ano=b.ano, mes=b.mes) }}" onclick="event.stopPropagation()"
+                           class="btn btn-sm ms-1" style="background:var(--pg-green);color:#fff;border-radius:7px;width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center" title="Exportar Excel">
+                            <i class="bi bi-file-earmark-excel" style="font-size:.75rem"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Nenhum balanço encontrado. Use "Recalcular Tudo".</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <!-- Gráfico de Evolução do Fluxo de Caixa -->
 <div class="pg-card">
-    <div class="pg-card-header"><i class="bi bi-graph-up-arrow"></i>Evolução do Fluxo de Caixa</div>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 pt-3">
+        <div class="pg-card-header" style="border:none;padding:0;background:none"><i class="bi bi-graph-up-arrow"></i>Evolução Mensal</div>
+        <div class="d-flex gap-3" style="font-size:.78rem">
+            <span><span style="display:inline-block;width:12px;height:12px;background:#10b981;border-radius:3px;margin-right:4px"></span>Receitas</span>
+            <span><span style="display:inline-block;width:12px;height:12px;background:#ef4444;border-radius:3px;margin-right:4px"></span>Saídas</span>
+            <span><span style="display:inline-block;width:12px;height:3px;background:#4361ee;border-radius:3px;margin-right:4px;vertical-align:middle"></span>Saldo</span>
+        </div>
+    </div>
     <div class="p-3">
         <div class="row g-2 align-items-end mb-3">
             <div class="col">
@@ -79,7 +119,7 @@
                 <button class="btn btn-sm btn-primary" id="btnAtualizarGrafico"><i class="bi bi-arrow-repeat"></i></button>
             </div>
         </div>
-        <canvas id="chartFluxoCaixa" height="150"></canvas>
+        <canvas id="chartFluxoCaixa"></canvas>
     </div>
 </div>
 
@@ -204,21 +244,34 @@ function carregarGrafico() {
         .then(r => r.json()).then(data => {
             if (chartFluxoCaixa) chartFluxoCaixa.destroy();
             chartFluxoCaixa = new Chart(document.getElementById('chartFluxoCaixa').getContext('2d'), {
-                type: 'bar',
                 data: {
                     labels: data.labels,
                     datasets: [
-                        { label: 'Entradas', data: data.entradas, backgroundColor: 'rgba(16,185,129,.65)', borderColor: 'rgba(16,185,129,1)', borderWidth: 1, borderRadius: 4 },
-                        { label: 'Saídas',   data: data.saidas,   backgroundColor: 'rgba(239,68,68,.65)',  borderColor: 'rgba(239,68,68,1)',  borderWidth: 1, borderRadius: 4 },
-                        { label: 'Saldo',    data: data.saldos,   type: 'line', borderColor: 'rgba(67,97,238,1)', backgroundColor: 'rgba(67,97,238,.1)', borderWidth: 2, fill: false, tension: .3, yAxisID: 'y1', pointRadius: 4 }
+                        { type: 'bar',  label: 'Receitas', data: data.entradas,
+                          backgroundColor: 'rgba(16,185,129,.75)', borderRadius: 6, order: 2 },
+                        { type: 'bar',  label: 'Saídas',   data: data.saidas,
+                          backgroundColor: 'rgba(239,68,68,.75)', borderRadius: 6, order: 2 },
+                        { type: 'line', label: 'Saldo',    data: data.saldos,
+                          borderColor: '#4361ee', backgroundColor: 'rgba(67,97,238,.10)',
+                          borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#4361ee',
+                          fill: true, tension: .35, order: 1 }
                     ]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: true,
-                    plugins: { tooltip: { callbacks: { label: c => c.dataset.label + ': R$ ' + c.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits:2}) } } },
+                    responsive: true, interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ' ' + ctx.dataset.label + ': R$ ' +
+                                    Math.abs(ctx.parsed.y).toLocaleString('pt-BR', {minimumFractionDigits:2})
+                            }
+                        }
+                    },
                     scales: {
-                        y:  { beginAtZero: true, position: 'left',  title: { display: true, text: 'Entradas/Saídas (R$)' }, ticks: { callback: v => 'R$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } },
-                        y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'Saldo (R$)' }, grid: { drawOnChartArea: false }, ticks: { callback: v => 'R$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
+                        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                        y: { grid: { color: '#f1f5f9' },
+                             ticks: { callback: v => 'R$' + (Math.abs(v)/1000).toFixed(0)+'k', font: { size: 11 } } }
                     }
                 }
             });

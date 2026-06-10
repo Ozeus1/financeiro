@@ -34,14 +34,16 @@
         <div class="col-sm-3 col-md-2">
             <label class="form-label small fw-semibold">Mês Inicial</label>
             <input type="month" class="form-control form-control-sm" name="mes_inicio" value="{{ mes_inicio if mes_inicio else '' }}" onchange="this.form.submit()">
+            <div class="form-text" style="font-size:.7rem">Clique para escolher mês/ano</div>
         </div>
         <div class="col-sm-3 col-md-2">
             <label class="form-label small fw-semibold">Mês Final</label>
             <input type="month" class="form-control form-control-sm" name="mes_fim" value="{{ mes_fim if mes_fim else '' }}" onchange="this.form.submit()">
+            <div class="form-text" style="font-size:.7rem">Clique para escolher mês/ano</div>
         </div>
-        <noscript>
-        <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm">Filtrar</button></div>
-        </noscript>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Filtrar</button>
+        </div>
     </form>
 </div>
 

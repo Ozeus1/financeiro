@@ -1261,11 +1261,11 @@ def extrato_financeiro():
     def _agrupar(itens, limite):
         principais = itens[:limite]
         resto = itens[limite:]
-        resultado = [{'nome': nome, 'valor': round(total, 2)} for nome, total in principais]
+        resultado = [{'nome': nome, 'valor': round(total, 2), 'categorias': [nome]} for nome, total in principais]
         if resto:
             outros = round(sum(total for _, total in resto), 2)
             if outros > 0:
-                resultado.append({'nome': 'Outros', 'valor': outros})
+                resultado.append({'nome': 'Outros', 'valor': outros, 'categorias': [nome for nome, _ in resto]})
         return resultado
 
     receitas_grupo = _agrupar(receitas_query, 5)
@@ -1284,3 +1284,45 @@ def extrato_financeiro():
                            total_receitas=total_receitas,
                            total_despesas=total_despesas,
                            mes=mes, ano=ano, nome_mes=nome_mes)
+
+
+@relatorios_bp.route('/api/extrato-financeiro/itens')
+@login_required
+def api_extrato_financeiro_itens():
+    """Retorna os lançamentos (despesas ou receitas) das categorias informadas, no mês/ano."""
+    tipo = request.args.get('tipo')  # 'receita' ou 'despesa'
+    mes = request.args.get('mes', type=int)
+    ano = request.args.get('ano', type=int)
+    categorias = request.args.getlist('categoria')
+
+    if tipo not in ('receita', 'despesa') or not mes or not ano or not categorias:
+        return jsonify({'success': False, 'error': 'Parâmetros inválidos'}), 400
+
+    if tipo == 'despesa':
+        registros = Despesa.query.join(CategoriaDespesa).filter(
+            CategoriaDespesa.nome.in_(categorias),
+            extract('month', Despesa.data_pagamento) == mes,
+            extract('year', Despesa.data_pagamento) == ano,
+            Despesa.user_id == current_user.id
+        ).order_by(Despesa.data_pagamento.desc()).all()
+        itens = [{
+            'descricao': r.descricao,
+            'categoria': r.categoria.nome,
+            'data': r.data_pagamento.strftime('%d/%m/%Y'),
+            'valor': round(r.valor, 2),
+        } for r in registros]
+    else:
+        registros = Receita.query.join(CategoriaReceita).filter(
+            CategoriaReceita.nome.in_(categorias),
+            extract('month', Receita.data_recebimento) == mes,
+            extract('year', Receita.data_recebimento) == ano,
+            Receita.user_id == current_user.id
+        ).order_by(Receita.data_recebimento.desc()).all()
+        itens = [{
+            'descricao': r.descricao,
+            'categoria': r.categoria.nome,
+            'data': r.data_recebimento.strftime('%d/%m/%Y'),
+            'valor': round(r.valor, 2),
+        } for r in registros]
+
+    return jsonify({'success': True, 'itens': itens})

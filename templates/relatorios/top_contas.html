@@ -25,6 +25,26 @@
 .rank-silver{background:rgba(100,116,139,.12);color:#475569}
 .rank-bronze{background:rgba(217,119,6,.12);color:#92400e}
 .rank-normal{background:#f1f5f9;color:#64748b}
+
+.donut-wrap{position:relative;width:100%;max-width:320px;margin:0 auto}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;width:80%}
+.donut-center .dc-label{font-size:.7rem;color:var(--pg-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.donut-center .dc-value{font-size:1.1rem;font-weight:800;color:var(--pg-text);word-break:break-word}
+
+.legend-list{list-style:none;padding:0;margin:1rem 0 0}
+.legend-list li{display:flex;align-items:center;justify-content:space-between;padding:.5rem .25rem;border-bottom:1px solid var(--pg-border);font-size:.85rem;cursor:pointer;border-radius:6px;transition:background .12s}
+.legend-list li:hover{background:#f0f7ff}
+.legend-list li:last-child{border-bottom:none}
+.legend-dot{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:.5rem;flex-shrink:0}
+.legend-name{display:flex;align-items:center;color:var(--pg-text);min-width:0}
+.legend-name span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legend-value{font-weight:700;white-space:nowrap}
+.legend-pct{color:var(--pg-muted);font-size:.78rem;margin-left:.4rem}
+
+@media (max-width: 767px){
+  .donut-wrap{max-width:240px}
+  .donut-center .dc-value{font-size:.95rem}
+}
 </style>
 {% endblock %}
 
@@ -130,11 +150,40 @@
     </div>
 </div>
 
-<!-- Gráfico -->
+<!-- Gráficos -->
 {% if top_contas %}
-<div class="pg-card">
-    <div class="pg-card-header"><i class="bi bi-bar-chart-line"></i> Visualização Gráfica</div>
-    <div class="p-3"><canvas id="graficoTop10" height="80"></canvas></div>
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="pg-card h-100">
+            <div class="pg-card-header"><i class="bi bi-bar-chart-line"></i> Visualização Gráfica</div>
+            <div class="p-3" style="height:380px"><canvas id="graficoTop10"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="pg-card h-100">
+            <div class="pg-card-header"><i class="bi bi-pie-chart-fill"></i> Despesas por Categoria</div>
+            <div class="p-3">
+                <div class="donut-wrap">
+                    <canvas id="graficoDonut"></canvas>
+                    <div class="donut-center">
+                        <div class="dc-label">Total do Mês</div>
+                        <div class="dc-value">R$ {{ "{:,.2f}".format(total_mes|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</div>
+                    </div>
+                </div>
+                <ul class="legend-list">
+                    {% for categoria, valor, quantidade in top_contas %}
+                    <li class="legend-item" data-href="{{ url_for('relatorios.detalhes_despesas', categoria=categoria, mes=mes, ano=ano) }}">
+                        <span class="legend-name"><span class="legend-dot" style="background:{{ ['#ef4444','#f59e0b','#4361ee','#10b981','#06b6d4','#8b5cf6','#ec4899','#84cc16','#f97316','#0ea5e9'][loop.index0 % 10] }}"></span><span>{{ categoria }}</span></span>
+                        <span>
+                            <span class="legend-value">R$ {{ "{:,.2f}".format(valor|float)|replace(',','X')|replace('.',',')|replace('X','.') }}</span>
+                            <span class="legend-pct">({{ "%.1f"|format((valor/total_mes*100) if total_mes>0 else 0) }}%)</span>
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
 </div>
 {% endif %}
 
@@ -145,22 +194,71 @@
 {% block extra_js %}
 {% if top_contas %}
 <script>
+const topData = [
+    {% for categoria, valor, quantidade in top_contas %}
+    { categoria: {{ categoria|tojson }}, valor: {{ valor }}, href: {{ url_for('relatorios.detalhes_despesas', categoria=categoria, mes=mes, ano=ano)|tojson }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+const coresTop = ['#ef4444','#f59e0b','#4361ee','#10b981','#06b6d4','#8b5cf6','#ec4899','#84cc16','#f97316','#0ea5e9'];
+
 new Chart(document.getElementById('graficoTop10'), {
     type:'bar',
     data:{
-        labels:[{% for c,v,q in top_contas %}'{{ c }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        labels: topData.map(d => d.categoria),
         datasets:[{
             label:'Valor Total (R$)',
-            data:[{% for c,v,q in top_contas %}{{ v }}{% if not loop.last %},{% endif %}{% endfor %}],
-            backgroundColor:['rgba(239,68,68,.7)','rgba(239,68,68,.6)','rgba(239,68,68,.5)','rgba(245,158,11,.7)','rgba(245,158,11,.6)','rgba(245,158,11,.5)','rgba(148,163,184,.7)','rgba(148,163,184,.6)','rgba(148,163,184,.5)','rgba(148,163,184,.4)'],
-            borderRadius:4
+            data: topData.map(d => d.valor),
+            backgroundColor: topData.map((d,i) => coresTop[i % coresTop.length]),
+            borderRadius:6,
+            maxBarThickness: 32
         }]
     },
     options:{
-        indexAxis:'y',responsive:true,
-        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'R$ '+c.parsed.x.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},
+        indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        onClick: (evt, elements) => {
+            if (!elements.length) return;
+            window.location.href = topData[elements[0].index].href;
+        },
+        onHover: (evt, elements) => {
+            evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+        },
+        plugins:{
+            legend:{display:false},
+            tooltip:{callbacks:{label:c=>'R$ '+c.parsed.x.toLocaleString('pt-BR',{minimumFractionDigits:2})}}
+        },
         scales:{x:{beginAtZero:true,ticks:{callback:v=>'R$ '+(v>=1000?(v/1000).toFixed(0)+'k':v)}}}
     }
+});
+
+new Chart(document.getElementById('graficoDonut'), {
+    type:'doughnut',
+    data:{
+        labels: topData.map(d => d.categoria),
+        datasets:[{
+            data: topData.map(d => d.valor),
+            backgroundColor: coresTop,
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options:{
+        responsive:true, maintainAspectRatio:true, cutout:'68%',
+        plugins:{
+            legend:{display:false},
+            tooltip:{callbacks:{label:c=>c.label+': R$ '+c.parsed.toLocaleString('pt-BR',{minimumFractionDigits:2})}}
+        },
+        onClick: (evt, elements) => {
+            if (!elements.length) return;
+            window.location.href = topData[elements[0].index].href;
+        },
+        onHover: (evt, elements) => {
+            evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+        }
+    }
+});
+
+document.querySelectorAll('.legend-item').forEach(li => {
+    li.addEventListener('click', () => { window.location.href = li.dataset.href; });
 });
 </script>
 {% endif %}

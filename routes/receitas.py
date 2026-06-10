@@ -202,8 +202,7 @@ def excluir_lote():
 def exportar():
     """Exportar receitas para Excel"""
     import pandas as pd
-    from io import BytesIO
-    
+
     # Query base - todos os usuários veem apenas seus dados
     receitas = Receita.query.filter_by(user_id=current_user.id).all()
     
@@ -221,13 +220,11 @@ def exportar():
         })
     
     df = pd.DataFrame(dados)
-    
+
     # Criar arquivo Excel em memória
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Receitas')
-    output.seek(0)
-    
+    from routes.excel_utils import gerar_excel_relatorio
+    output = gerar_excel_relatorio(df, 'Relatório de Receitas', 'Receitas', current_user.username)
+
     return send_file(
         output,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

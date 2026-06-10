@@ -33,8 +33,15 @@
 
 <!-- Gráfico -->
 <div class="pg-card">
-    <div class="pg-card-header"><i class="bi bi-graph-up"></i> Evolução Receitas × Despesas × Saldo</div>
-    <div class="p-3"><div style="height:380px;"><canvas id="graficoBalanco"></canvas></div></div>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 pt-3">
+        <div class="pg-card-header" style="border:none;padding:0;background:none"><i class="bi bi-graph-up"></i> Evolução Mensal</div>
+        <div class="d-flex gap-3" style="font-size:.78rem">
+            <span><span style="display:inline-block;width:12px;height:12px;background:#10b981;border-radius:3px;margin-right:4px"></span>Receitas</span>
+            <span><span style="display:inline-block;width:12px;height:12px;background:#ef4444;border-radius:3px;margin-right:4px"></span>Despesas</span>
+            <span><span style="display:inline-block;width:12px;height:3px;background:#4361ee;border-radius:3px;margin-right:4px;vertical-align:middle"></span>Saldo</span>
+        </div>
+    </div>
+    <div class="p-3"><canvas id="graficoBalanco"></canvas></div>
 </div>
 
 <!-- Tabelas -->
@@ -97,29 +104,34 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(data => {
             const canvas = document.getElementById('graficoBalanco');
             const chart = new Chart(canvas.getContext('2d'), {
-                type: 'bar',
                 data: {
                     labels: data.labels,
                     datasets: [
-                        { label:'Receitas', data:data.receitas, backgroundColor:'rgba(16,185,129,.65)', borderColor:'rgba(16,185,129,1)', borderWidth:1, borderRadius:4, order:2 },
-                        { label:'Despesas', data:data.despesas, backgroundColor:'rgba(239,68,68,.65)', borderColor:'rgba(239,68,68,1)', borderWidth:1, borderRadius:4, order:3 },
-                        { label:'Saldo',    data:data.saldos,   type:'line', borderColor:'rgba(67,97,238,1)', backgroundColor:'rgba(67,97,238,.08)', borderWidth:2, fill:false, tension:.3, order:1, pointRadius:4, pointHoverRadius:6 }
+                        { type: 'bar',  label: 'Receitas', data: data.receitas,
+                          backgroundColor: 'rgba(16,185,129,.75)', borderRadius: 6, order: 2 },
+                        { type: 'bar',  label: 'Despesas', data: data.despesas,
+                          backgroundColor: 'rgba(239,68,68,.75)', borderRadius: 6, order: 2 },
+                        { type: 'line', label: 'Saldo',    data: data.saldos,
+                          borderColor: '#4361ee', backgroundColor: 'rgba(67,97,238,.10)',
+                          borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#4361ee',
+                          fill: true, tension: .35, order: 1 }
                     ]
                 },
                 options: {
-                    responsive:true, maintainAspectRatio:false,
-                    interaction:{ mode:'index', intersect:false },
+                    responsive:true, interaction:{ mode:'index', intersect:false },
                     plugins: {
-                        legend:{ position:'top' },
+                        legend: { display: false },
                         tooltip:{
                             callbacks:{
-                                label: c => (c.dataset.label||'') + ': R$ ' + c.parsed.y.toLocaleString('pt-BR',{minimumFractionDigits:2}),
+                                label: c => ' ' + c.dataset.label + ': R$ ' + Math.abs(c.parsed.y).toLocaleString('pt-BR',{minimumFractionDigits:2}),
                                 footer: () => '🖱 Clique na barra para ver detalhes'
                             }
                         }
                     },
                     scales: {
-                        y:{ beginAtZero:true, ticks:{ callback: v => 'R$ ' + (v>=1000?(v/1000).toFixed(0)+'k':v) } }
+                        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                        y: { grid: { color: '#f1f5f9' },
+                             ticks: { callback: v => 'R$' + (Math.abs(v)/1000).toFixed(0)+'k', font:{ size:11 } } }
                     }
                 }
             });

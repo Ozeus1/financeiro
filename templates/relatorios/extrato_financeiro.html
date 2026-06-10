@@ -120,7 +120,7 @@
                 </div>
                 <ul class="legend-list">
                     {% for item in receitas_grupo %}
-                    <li onclick="abrirDetalhe('receita', {{ item.categorias|tojson }}, '{{ item.nome|replace("'","") }}')">
+                    <li class="legend-item" data-tipo="receita" data-categorias='{{ item.categorias|tojson }}' data-nome="{{ item.nome }}">
                         <span class="legend-name"><span class="legend-dot" style="background:{{ ['#10b981','#4361ee','#f59e0b','#06b6d4','#8b5cf6','#94a3b8'][loop.index0 % 6] }}"></span><span>{{ item.nome }}</span></span>
                         <span>
                             <span class="legend-value">R$ {{ "{:,.2f}".format(item.valor)|replace(',','X')|replace('.',',')|replace('X','.') }}</span>
@@ -149,7 +149,7 @@
                 </div>
                 <ul class="legend-list">
                     {% for item in despesas_grupo %}
-                    <li onclick="abrirDetalhe('despesa', {{ item.categorias|tojson }}, '{{ item.nome|replace("'","") }}')">
+                    <li class="legend-item" data-tipo="despesa" data-categorias='{{ item.categorias|tojson }}' data-nome="{{ item.nome }}">
                         <span class="legend-name"><span class="legend-dot" style="background:{{ ['#ef4444','#f59e0b','#4361ee','#10b981','#06b6d4','#8b5cf6','#ec4899','#84cc16','#f97316','#0ea5e9','#94a3b8'][loop.index0 % 11] }}"></span><span>{{ item.nome }}</span></span>
                         <span>
                             <span class="legend-value">R$ {{ "{:,.2f}".format(item.valor)|replace(',','X')|replace('.',',')|replace('X','.') }}</span>
@@ -253,6 +253,15 @@ const graficoDespesas = new Chart(document.getElementById('graficoDespesas'), {
 
 // ── Detalhamento ─────────────────────────────────────────────────────────
 const modalDetalhe = new bootstrap.Modal(document.getElementById('modalDetalhe'));
+
+document.querySelectorAll('.legend-item').forEach(li => {
+  li.addEventListener('click', () => {
+    const tipo = li.dataset.tipo;
+    const categorias = JSON.parse(li.dataset.categorias);
+    const nome = li.dataset.nome;
+    abrirDetalhe(tipo, categorias, nome);
+  });
+});
 
 function fmtMoeda(v) {
   return 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});

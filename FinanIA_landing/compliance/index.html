@@ -3,21 +3,367 @@
 
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <meta name="description" content="Compliance e uso responsável do FinanIA - Ferramenta de organização financeira com inteligência artificial" />
     <meta name="keywords" content="compliance, finanças, IA, organização financeira, FinanIA" />
     <title>Compliance FinanIA — Transparência e responsabilidade</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/compliance/assets/index-OCNcCg6P.js"></script>
-    <link rel="stylesheet" crossorigin href="/compliance/assets/index-agQzJa5o.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+      .container { width: 100%; margin-left: auto; margin-right: auto; padding-left: 1rem; padding-right: 1rem; }
+      @media (min-width: 640px) { .container { padding-left: 1.5rem; padding-right: 1.5rem; } }
+      @media (min-width: 1024px) { .container { padding-left: 2rem; padding-right: 2rem; max-width: 1280px; } }
+      .gradient-bg { background: linear-gradient(135deg,#1e3a8a 0%,#4361ee 55%,#7c3aed 100%); }
+      .gradient-text {
+        background: linear-gradient(135deg,#1e3a8a 0%,#4361ee 55%,#7c3aed 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .accordion-icon { transition: transform .2s ease; }
+      .accordion-content { display: none; }
+      .accordion.open .accordion-icon { transform: rotate(180deg); }
+      .accordion.open .accordion-content { display: block; }
+    </style>
   </head>
 
-  <body>
-    <div id="root"></div>
+  <body class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 text-white shadow-md gradient-bg">
+      <div class="container py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <h1 class="text-2xl font-bold text-white">FinanIA</h1>
+        </div>
+        <nav class="hidden md:flex items-center gap-8">
+          <a href="#compromisso" class="text-sm font-medium text-white/85 hover:text-white transition">Compromisso</a>
+          <a href="#o-que-fazemos" class="text-sm font-medium text-white/85 hover:text-white transition">O que fazemos</a>
+          <a href="#responsabilidade" class="text-sm font-medium text-white/85 hover:text-white transition">Responsabilidade</a>
+          <a href="/landing/" class="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 bg-white text-blue-700 hover:bg-white/90 transition">Voltar ao FinanIA</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="container py-16 md:py-24">
+      <div class="max-w-3xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Compliance e uso responsável
+        </div>
+        <h2 class="text-4xl md:text-5xl font-bold mb-6 leading-tight gradient-text">
+          Transparência e responsabilidade no FinanIA
+        </h2>
+        <p class="text-lg text-slate-600 mb-8 leading-relaxed">
+          O FinanIA foi criado para ajudar pessoas, famílias, autônomos e pequenos negócios a organizarem melhor suas informações financeiras. Nossa proposta é oferecer uma ferramenta de <strong>clareza, controle e prevenção</strong>.
+        </p>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+          <p class="text-blue-900 font-medium">
+            <strong>O FinanIA é uma ferramenta de organização financeira.</strong> Ele não substitui advogado, contador, consultor financeiro, terapeuta, instituição financeira, órgão público ou entidade de defesa do consumidor.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <section class="container py-12 md:py-16">
+      <div class="grid md:grid-cols-2 gap-8 mb-16">
+        <!-- O que o FinanIA faz -->
+        <div id="o-que-fazemos" class="border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition bg-white p-6">
+          <div class="flex items-center gap-2 text-lg font-semibold mb-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+            O que o FinanIA faz
+          </div>
+          <p class="text-sm text-slate-500 mb-4">Funcionalidades e propósito da plataforma</p>
+          <div class="space-y-3">
+            <div class="flex gap-3">
+              <div class="w-2 h-2 rounded-full bg-green-600 mt-2 flex-shrink-0"></div>
+              <div>
+                <p class="font-medium text-slate-900">Classificação com IA</p>
+                <p class="text-sm text-slate-600">Categoriza despesas automaticamente para melhor organização</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="w-2 h-2 rounded-full bg-green-600 mt-2 flex-shrink-0"></div>
+              <div>
+                <p class="font-medium text-slate-900">Controle de faturas</p>
+                <p class="text-sm text-slate-600">Acompanha valores estimados e lançamentos de cartões</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="w-2 h-2 rounded-full bg-green-600 mt-2 flex-shrink-0"></div>
+              <div>
+                <p class="font-medium text-slate-900">Orçamento por categoria</p>
+                <p class="text-sm text-slate-600">Acompanha limites definidos pelo próprio usuário</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="w-2 h-2 rounded-full bg-green-600 mt-2 flex-shrink-0"></div>
+              <div>
+                <p class="font-medium text-slate-900">Relatórios e gráficos</p>
+                <p class="text-sm text-slate-600">Visualiza entradas, saídas, saldo e tendências</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- O que o FinanIA não promete -->
+        <div class="border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition bg-white p-6">
+          <div class="flex items-center gap-2 text-lg font-semibold mb-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            O que o FinanIA não promete
+          </div>
+          <p class="text-sm text-slate-500 mb-4">Limitações e responsabilidades</p>
+          <div class="space-y-3">
+            <div class="flex gap-3">
+              <div class="w-2 h-2 rounded-full bg-amber-600 mt-2 flex-shrink-0"></div>
+              <div>
+                <p class="font-medium text-slate-900">Não quita dívidas</p>
+                <p class="text-sm text-slate-600">Organiza informações, mas não elimina dívidas</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="w-2 h-2 rounded-full bg-amber-600 mt-2 flex-shrink-0"></div>
+              <div>
+                <p class="font-medium text-slate-900">Não garante renegociação</p>
+                <p class="text-sm text-slate-600">Negociações dependem de credores e condições individuais</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="w-2 h-2 rounded-full bg-amber-600 mt-2 flex-shrink-0"></div>
+              <div>
+                <p class="font-medium text-slate-900">Não trata compulsão</p>
+                <p class="text-sm text-slate-600">Não é serviço médico, psicológico ou terapêutico</p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="w-2 h-2 rounded-full bg-amber-600 mt-2 flex-shrink-0"></div>
+              <div>
+                <p class="font-medium text-slate-900">Não substitui profissionais</p>
+                <p class="text-sm text-slate-600">Não oferece aconselhamento jurídico, contábil ou financeiro</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seções expansíveis -->
+      <div class="space-y-4">
+
+        <!-- Compromisso -->
+        <div id="compromisso" class="accordion border border-slate-200 rounded-xl shadow-sm bg-white overflow-hidden">
+          <button class="accordion-toggle w-full text-left p-6 hover:bg-slate-50 transition flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Nosso compromisso</h3>
+              <p class="text-sm text-slate-600 mt-1">Transparência e responsabilidade em cada funcionalidade</p>
+            </div>
+            <div class="accordion-icon text-slate-400">▼</div>
+          </button>
+          <div class="accordion-content border-t border-slate-200 px-6 pt-6 pb-6">
+            <div class="space-y-4 text-slate-700">
+              <p>O FinanIA não deve ser interpretado como promessa de eliminação de dívidas, enriquecimento, recuperação financeira garantida ou substituição de orientação profissional. O objetivo da plataforma é facilitar a organização dos dados financeiros para que o usuário tenha mais condições de compreender sua realidade e tomar decisões de forma consciente.</p>
+              <p>Adotamos uma comunicação responsável e não realizamos promessas incompatíveis com a natureza da ferramenta.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Superendividamento -->
+        <div class="accordion border border-slate-200 rounded-xl shadow-sm bg-white overflow-hidden">
+          <button class="accordion-toggle w-full text-left p-6 hover:bg-slate-50 transition flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Superendividamento e busca de orientação</h3>
+              <p class="text-sm text-slate-600 mt-1">Quando procurar órgãos oficiais e profissionais</p>
+            </div>
+            <div class="accordion-icon text-slate-400">▼</div>
+          </button>
+          <div class="accordion-content border-t border-slate-200 px-6 pt-6 pb-6">
+            <div class="space-y-4">
+              <p class="text-slate-700">Pessoas em situação de endividamento grave, inadimplência persistente ou impossibilidade de pagar dívidas sem comprometer despesas essenciais devem buscar orientação adequada.</p>
+              <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p class="text-red-900 font-medium mb-2">Recomendamos procurar:</p>
+                <ul class="text-red-800 text-sm space-y-1">
+                  <li>• <strong>Procon</strong> — Órgão de defesa do consumidor</li>
+                  <li>• <strong>Defensoria Pública</strong> — Assistência jurídica gratuita</li>
+                  <li>• <strong>Centros judiciários de solução de conflitos</strong> — Mediação de dívidas</li>
+                  <li>• <strong>Advogados especializados</strong> — Orientação jurídica</li>
+                  <li>• <strong>Contadores qualificados</strong> — Orientação contábil</li>
+                </ul>
+              </div>
+              <p class="text-slate-700">O FinanIA pode ajudar o usuário a organizar informações importantes para essa etapa, como lista de dívidas, despesas mensais, receitas e histórico financeiro. No entanto, a plataforma não decide estratégias jurídicas, não negocia automaticamente com credores e não garante aceitação de propostas de pagamento.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Apostas e compulsão -->
+        <div class="accordion border border-slate-200 rounded-xl shadow-sm bg-white overflow-hidden">
+          <button class="accordion-toggle w-full text-left p-6 hover:bg-slate-50 transition flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Apostas, compulsão e saúde mental</h3>
+              <p class="text-sm text-slate-600 mt-1">Quando procurar apoio profissional</p>
+            </div>
+            <div class="accordion-icon text-slate-400">▼</div>
+          </button>
+          <div class="accordion-content border-t border-slate-200 px-6 pt-6 pb-6">
+            <div class="space-y-4">
+              <p class="text-slate-700">O FinanIA pode ajudar o usuário a identificar gastos recorrentes, inclusive despesas relacionadas a apostas, jogos, compras por impulso ou outras categorias de consumo. Essa visualização pode ser útil para reconhecer padrões financeiros, mas não constitui diagnóstico, tratamento ou cura de vício, compulsão, transtorno mental ou sofrimento emocional.</p>
+              <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <p class="text-purple-900 font-medium mb-2">Se você perceber:</p>
+                <ul class="text-purple-800 text-sm space-y-1">
+                  <li>• Perda de controle sobre gastos</li>
+                  <li>• Sofrimento emocional relacionado a dinheiro</li>
+                  <li>• Endividamento recorrente</li>
+                  <li>• Prejuízo familiar ou profissional</li>
+                  <li>• Dificuldade de interromper determinado comportamento</li>
+                </ul>
+              </div>
+              <p class="text-slate-700">Recomendamos buscar apoio profissional de saúde, serviços públicos competentes, grupos de apoio ou atendimento especializado.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inteligência Artificial -->
+        <div class="accordion border border-slate-200 rounded-xl shadow-sm bg-white overflow-hidden">
+          <button class="accordion-toggle w-full text-left p-6 hover:bg-slate-50 transition flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Inteligência artificial e limitações</h3>
+              <p class="text-sm text-slate-600 mt-1">Como a IA funciona e suas limitações</p>
+            </div>
+            <div class="accordion-icon text-slate-400">▼</div>
+          </button>
+          <div class="accordion-content border-t border-slate-200 px-6 pt-6 pb-6">
+            <div class="space-y-4 text-slate-700">
+              <p>O FinanIA utiliza recursos de inteligência artificial para apoiar tarefas como categorização, leitura, organização, resposta a perguntas e geração de relatórios. Embora esses recursos possam facilitar o controle financeiro, eles podem apresentar erros, incompletudes, classificações imprecisas ou interpretações inadequadas quando os dados forem insuficientes, ambíguos ou importados com inconsistências.</p>
+              <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p class="text-yellow-900 font-medium">Importante:</p>
+                <p class="text-yellow-800 text-sm mt-2">O usuário deve revisar informações importantes antes de tomar decisões financeiras relevantes. A responsabilidade por conferir lançamentos, confirmar categorias, validar saldos, revisar relatórios e decidir como agir permanece com o usuário.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Responsabilidade do usuário -->
+        <div id="responsabilidade" class="accordion border border-slate-200 rounded-xl shadow-sm bg-white overflow-hidden">
+          <button class="accordion-toggle w-full text-left p-6 hover:bg-slate-50 transition flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Responsabilidade do usuário</h3>
+              <p class="text-sm text-slate-600 mt-1">Seu papel na utilização responsável</p>
+            </div>
+            <div class="accordion-icon text-slate-400">▼</div>
+          </button>
+          <div class="accordion-content border-t border-slate-200 px-6 pt-6 pb-6">
+            <div class="space-y-4">
+              <p class="text-slate-700">O usuário é responsável por fornecer dados corretos, revisar informações importadas, confirmar lançamentos, proteger seus acessos e utilizar a plataforma de forma compatível com a legislação aplicável.</p>
+              <div class="space-y-3">
+                <div class="flex gap-3">
+                  <div class="w-2 h-2 rounded-full bg-blue-600 mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p class="font-medium text-slate-900">Forneça dados corretos</p>
+                    <p class="text-sm text-slate-600">Informações precisas garantem relatórios confiáveis</p>
+                  </div>
+                </div>
+                <div class="flex gap-3">
+                  <div class="w-2 h-2 rounded-full bg-blue-600 mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p class="font-medium text-slate-900">Revise informações importantes</p>
+                    <p class="text-sm text-slate-600">Antes de tomar decisões financeiras relevantes</p>
+                  </div>
+                </div>
+                <div class="flex gap-3">
+                  <div class="w-2 h-2 rounded-full bg-blue-600 mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p class="font-medium text-slate-900">Proteja seus acessos</p>
+                    <p class="text-sm text-slate-600">Mantenha senhas protegidas e evite compartilhamento</p>
+                  </div>
+                </div>
+                <div class="flex gap-3">
+                  <div class="w-2 h-2 rounded-full bg-blue-600 mt-2 flex-shrink-0"></div>
+                  <div>
+                    <p class="font-medium text-slate-900">Busque orientação profissional</p>
+                    <p class="text-sm text-slate-600">Quando necessário, para decisões de impacto patrimonial</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Privacidade -->
+        <div id="privacidade" class="accordion border border-slate-200 rounded-xl shadow-sm bg-white overflow-hidden">
+          <button class="accordion-toggle w-full text-left p-6 hover:bg-slate-50 transition flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Privacidade e segurança</h3>
+              <p class="text-sm text-slate-600 mt-1">Como protegemos seus dados</p>
+            </div>
+            <div class="accordion-icon text-slate-400">▼</div>
+          </button>
+          <div class="accordion-content border-t border-slate-200 px-6 pt-6 pb-6">
+            <div class="space-y-4 text-slate-700">
+              <p>O FinanIA deve ser utilizado de acordo com sua Política de Privacidade, Termos de Uso e demais documentos legais aplicáveis. A plataforma adota medidas de segurança para proteção dos dados, mas o usuário também deve contribuir para a segurança de sua conta.</p>
+              <p>Sempre que houver tratamento de dados pessoais, a utilização da plataforma deve observar a legislação aplicável, incluindo a Lei Geral de Proteção de Dados Pessoais (LGPD), quando pertinente.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="container py-16 md:py-20">
+      <div class="rounded-2xl p-8 md:p-12 text-white text-center gradient-bg">
+        <h3 class="text-3xl md:text-4xl font-bold mb-4">Pronto para começar?</h3>
+        <p class="text-blue-100 mb-8 max-w-2xl mx-auto text-lg">
+          Organize suas finanças com clareza, controle e prevenção. Comece grátis, sem cartão de crédito.
+        </p>
+        <a href="/landing/" class="inline-flex items-center justify-center rounded-md text-base font-medium h-10 px-6 bg-white text-blue-600 hover:bg-white/90 hover:text-blue-700 transition">
+          Ir para FinanIA
+        </a>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200 bg-slate-50 py-12">
+      <div class="container">
+        <div class="grid md:grid-cols-4 gap-8 mb-8">
+          <div>
+            <h4 class="font-bold text-slate-900 mb-4">FinanIA</h4>
+            <p class="text-sm text-slate-600">Organização financeira com inteligência artificial.</p>
+          </div>
+          <div>
+            <h4 class="font-bold text-slate-900 mb-4">Links</h4>
+            <ul class="space-y-2 text-sm">
+              <li><a href="/landing/" class="text-slate-600 hover:text-blue-600 transition">Site principal</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-bold text-slate-900 mb-4">Legal</h4>
+            <ul class="space-y-2 text-sm">
+              <li><a href="#privacidade" class="text-slate-600 hover:text-blue-600 transition">Privacidade e segurança</a></li>
+              <li><a href="#compromisso" class="text-slate-600 hover:text-blue-600 transition">Nosso compromisso</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-bold text-slate-900 mb-4">Contato</h4>
+            <p class="text-sm text-slate-600">
+              <a href="mailto:contato@finania.pro" class="hover:text-blue-600 transition">contato@finania.pro</a>
+            </p>
+          </div>
+        </div>
+        <div class="border-t border-slate-200 pt-8 flex flex-col md:flex-row items-center justify-between">
+          <p class="text-sm text-slate-600">© 2026 FinanIA. Todos os direitos reservados.</p>
+          <p class="text-sm text-slate-600 mt-4 md:mt-0">Última atualização: junho de 2026</p>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      document.querySelectorAll('.accordion-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          btn.parentElement.classList.toggle('open');
+        });
+      });
+    </script>
   </body>
 
 </html>

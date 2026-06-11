@@ -351,7 +351,7 @@ function FinaniaLanding() {
           </div>
           <div>
             <h5>{dict.footer.legal}</h5>
-            <ul>{dict.footer.legalLinks.map((l, i) => <li key={i}><a href="#">{l}</a></li>)}</ul>
+            <ul>{dict.footer.legalLinks.map((l, i) => <li key={i}><a href="/compliance/">{l}</a></li>)}</ul>
           </div>
         </div>
         <div className="container">

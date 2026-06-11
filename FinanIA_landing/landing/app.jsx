@@ -11,6 +11,7 @@ function FinaniaLanding() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [scrolled, setScrolled] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [videoOpen, setVideoOpen] = React.useState(false);
   const lang = t.lang;
   const dict = window.I18N[lang];
 
@@ -67,6 +68,7 @@ function FinaniaLanding() {
             <a href="#dashboard">{dict.nav.product}</a>
             <a href="#pricing">{dict.nav.pricing}</a>
             <a href="#faq">{dict.nav.faq}</a>
+            <a href="/compliance/">{dict.nav.compliance}</a>
           </nav>
           <div className="nav-right">
             <div className="lang-toggle" role="group" aria-label="Language">
@@ -89,6 +91,7 @@ function FinaniaLanding() {
           <a href="#dashboard" onClick={() => setMenuOpen(false)}>{dict.nav.product}</a>
           <a href="#pricing" onClick={() => setMenuOpen(false)}>{dict.nav.pricing}</a>
           <a href="#faq" onClick={() => setMenuOpen(false)}>{dict.nav.faq}</a>
+          <a href="/compliance/" onClick={() => setMenuOpen(false)}>{dict.nav.compliance}</a>
           <div className="nav-mobile-cta">
             <a href="https://finania.pro" target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">{dict.nav.login}</a>
             <a href="https://finania.pro/assinatura/assine-agora" target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">{dict.nav.cta}</a>
@@ -108,9 +111,22 @@ function FinaniaLanding() {
             <p className="hero-sub" style={{ marginInline: "auto" }}>{dict.hero.sub}</p>
             <div className="hero-cta">
               <a href="https://finania.pro/assinatura/assine-agora" target="_blank" rel="noopener noreferrer" className="btn btn-primary">{dict.hero.cta_primary} <span>→</span></a>
-              <a href="#dashboard" className="btn btn-ghost">▶ {dict.hero.cta_secondary}</a>
+              <button type="button" className="btn btn-ghost" aria-expanded={videoOpen} onClick={() => setVideoOpen(o => !o)}>▶ {dict.hero.cta_secondary}</button>
             </div>
             <div className="hero-note">{dict.hero.cta_note}</div>
+            {videoOpen && (
+              <div className="hero-video">
+                <div className="hero-video-frame">
+                  <iframe
+                    src="https://www.youtube.com/embed/bFCNJTrRc28?autoplay=1"
+                    title="FinanIA — Intro"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  ></iframe>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="hero-visual">
@@ -343,11 +359,19 @@ function FinaniaLanding() {
           </div>
           <div>
             <h5>{dict.footer.product}</h5>
-            <ul>{dict.footer.productLinks.map((l, i) => <li key={i}><a href="#">{l}</a></li>)}</ul>
+            <ul>{dict.footer.productLinks.map((l, i) => <li key={i}><a href={["#features", "#pricing", "#whatsapp", "#features"][i]}>{l}</a></li>)}</ul>
           </div>
           <div>
             <h5>{dict.footer.company}</h5>
-            <ul>{dict.footer.companyLinks.map((l, i) => <li key={i}><a href="#">{l}</a></li>)}</ul>
+            <ul>
+              <li>{dict.footer.about}</li>
+              <li><a href="https://blog.finania.pro" target="_blank" rel="noopener noreferrer">{dict.footer.companyLinks[1]}</a></li>
+              <li>
+                <a href="tel:+5585986651130">{dict.footer.contactPhone}</a>
+                {" · "}
+                <a href={"mailto:" + dict.footer.contactEmail}>{dict.footer.contactEmail}</a>
+              </li>
+            </ul>
           </div>
           <div>
             <h5>{dict.footer.legal}</h5>

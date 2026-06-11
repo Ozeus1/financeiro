@@ -348,6 +348,24 @@ function FinaniaLanding() {
         </div>
       </section>
 
+      {/* SOBRE & CONTATO */}
+      <section className="section" id="sobre" data-screen-label="10b Sobre e Contato">
+        <div className="container about-contact-grid">
+          <div id="sobre-card">
+            <h3>{dict.about.title}</h3>
+            <p>{dict.about.text}</p>
+          </div>
+          <div id="contato">
+            <h3>{dict.contact.title}</h3>
+            <p>
+              WhatsApp: <a href="https://wa.me/5585986651130" target="_blank" rel="noopener noreferrer">{dict.footer.contactPhone}</a>
+              <br />
+              {lang === "pt" ? "E-mail" : "Email"}: <a href={"mailto:" + dict.footer.contactEmail}>{dict.footer.contactEmail}</a>
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* FOOTER */}
       <footer className="footer" data-screen-label="11 Footer">
         <div className="container footer-grid">
@@ -364,13 +382,9 @@ function FinaniaLanding() {
           <div>
             <h5>{dict.footer.company}</h5>
             <ul>
-              <li>{dict.footer.about}</li>
+              <li><a href="#sobre">{dict.footer.companyLinks[0]}</a></li>
               <li><a href="https://blog.finania.pro" target="_blank" rel="noopener noreferrer">{dict.footer.companyLinks[1]}</a></li>
-              <li>
-                <a href="tel:+5585986651130">{dict.footer.contactPhone}</a>
-                {" · "}
-                <a href={"mailto:" + dict.footer.contactEmail}>{dict.footer.contactEmail}</a>
-              </li>
+              <li><a href="#contato">{dict.footer.companyLinks[2]}</a></li>
             </ul>
           </div>
           <div>

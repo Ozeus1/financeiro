@@ -1031,6 +1031,23 @@ img, svg { display: block; max-width: 100%; }
   gap: 64px;
   align-items: start;
 }
+.about-contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+}
+.about-contact-grid h3 {
+  font: 700 22px/1.2 var(--font-sans);
+  margin-bottom: 12px;
+}
+.about-contact-grid p {
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+.about-contact-grid a {
+  color: var(--ink-1);
+  text-decoration: underline;
+}
 .faq-list {
   display: grid;
   gap: 4px;
@@ -1248,6 +1265,7 @@ img, svg { display: block; max-width: 100%; }
   .demo-split { grid-template-columns: 1fr; gap: 36px; }
   .demo-split.reverse > div:first-child { order: 0; }
   .faq-grid { grid-template-columns: 1fr; gap: 32px; }
+  .about-contact-grid { grid-template-columns: 1fr; gap: 32px; }
   .features-head { grid-template-columns: 1fr; gap: 16px; }
 
   /* Features */

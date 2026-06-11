@@ -308,10 +308,16 @@ window.I18N = {
       productLinks: ["Recursos", "Planos", "WhatsApp", "Importação"],
       companyLinks: ["Sobre", "Blog", "Contato"],
       legalLinks: ["Privacidade", "Termos", "LGPD", "Segurança"],
-      about: "Empresa localizada em Fortaleza",
       contactPhone: "85 98665-1130",
       contactEmail: "contato@finania.pro",
       copy: "© 2026 FinanIA. Feito com cuidado em Fortaleza.",
+    },
+    about: {
+      title: "Sobre",
+      text: "Empresa localizada em Fortaleza/CE focada em soluções de IA.",
+    },
+    contact: {
+      title: "Contato",
     },
   },
 
@@ -539,10 +545,16 @@ window.I18N = {
       productLinks: ["Features", "Pricing", "WhatsApp", "Import"],
       companyLinks: ["About", "Blog", "Contact"],
       legalLinks: ["Privacy", "Terms", "LGPD", "Security"],
-      about: "Company located in Fortaleza, Brazil",
       contactPhone: "+55 85 98665-1130",
       contactEmail: "contato@finania.pro",
       copy: "© 2026 FinanIA. Made with care in Fortaleza.",
+    },
+    about: {
+      title: "About",
+      text: "Company located in Fortaleza, CE, Brazil, focused on AI solutions.",
+    },
+    contact: {
+      title: "Contact",
     },
   },
 };

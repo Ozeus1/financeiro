@@ -242,7 +242,7 @@ def index():
         crypto_profit = crypto_current - crypto_invested
 
         # Localização (Brasil x Internacional)
-        total_intl = t_intl_rv + t_intl_rf + t_crypto + val_etfs
+        total_intl = t_intl_rv + t_intl_rf + t_crypto
         total_br = total_portfolio - total_intl
         location_chart = {'Brasil': total_br, 'Internacional': total_intl}
 
@@ -255,13 +255,13 @@ def index():
 
         total_acoes_consol = val_acoes + val_pension_acao
         total_fii = val_fiis
-        total_rv_br = total_acoes_consol + total_fii
+        total_etf = val_etfs
+        total_rv_br = total_acoes_consol + total_fii + total_etf
 
         total_cripto = types_total.get('Cripto', 0)
         total_intl_rv = types_total.get('Internacional RV', 0)
         total_intl_rf = types_total.get('Internacional RF', 0)
-        total_etf_intl = val_etfs
-        total_rv_intl_general = total_cripto + total_intl_rv + total_intl_rf + total_etf_intl
+        total_rv_intl_general = total_cripto + total_intl_rv + total_intl_rf
 
         def calc_pct(v):
             return (v / total_portfolio * 100) if total_portfolio > 0 else 0
@@ -281,7 +281,7 @@ def index():
                 'group': 'RV Brasil',
                 'lines': [
                     {'label': 'Ações', 'value': total_acoes_consol, 'pct': calc_pct(total_acoes_consol)},
-                    {'label': 'FII', 'value': total_fii, 'pct': calc_pct(total_fii)},
+                    {'label': 'ETF', 'value': total_etf, 'pct': calc_pct(total_etf)},
                 ],
                 'total': total_rv_br,
                 'total_pct': calc_pct(total_rv_br)
@@ -290,7 +290,6 @@ def index():
                 'group': 'RV Internacional',
                 'lines': [
                     {'label': 'Criptomoedas', 'value': total_cripto, 'pct': calc_pct(total_cripto)},
-                    {'label': 'ETF', 'value': total_etf_intl, 'pct': calc_pct(total_etf_intl)},
                     {'label': 'Renda Variável Internacional', 'value': total_intl_rv, 'pct': calc_pct(total_intl_rv)},
                     {'label': 'Renda Fixa Internacional', 'value': total_intl_rf, 'pct': calc_pct(total_intl_rf)},
                 ],

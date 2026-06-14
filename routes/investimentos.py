@@ -9,7 +9,8 @@ investimentos_bp = Blueprint('investimentos', __name__)
 
 
 def _check_acesso():
-    if not (current_user.is_pro() or current_user.is_promax()):
+    if not (current_user.is_pro() or current_user.is_promax()
+            or current_user.is_familia() or current_user.is_admin()):
         abort(403)
 
 

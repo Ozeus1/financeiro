@@ -29,6 +29,9 @@
 .btn-del-lote{background:#ef4444;border:none;color:#fff;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;font-weight:600;display:none;align-items:center;gap:.4rem;transition:.15s}
 .btn-del-lote:hover{opacity:.85}
 .btn-del-lote.show{display:flex}
+.btn-edit-lote{background:var(--pg-amber);border:none;color:#fff;border-radius:8px;padding:.35rem .85rem;font-size:.82rem;font-weight:600;display:none;align-items:center;gap:.4rem;transition:.15s}
+.btn-edit-lote:hover{opacity:.85}
+.btn-edit-lote.show{display:flex}
 .check-row{width:16px;height:16px;cursor:pointer;accent-color:#ef4444}
 /* hint do operador */
 .op-hint{font-size:.62rem;color:var(--pg-muted);margin-top:.15rem}
@@ -43,6 +46,9 @@
         <h1 class="pg-header-title">Gerenciar Despesas</h1>
     </div>
     <div class="d-flex gap-2 align-items-center">
+        <button id="btnEditarLote" class="btn-edit-lote" data-bs-toggle="modal" data-bs-target="#modalEditarLote">
+            <i class="bi bi-pencil-square"></i> Editar Selecionados (<span id="contSelEdit">0</span>)
+        </button>
         <button id="btnExcluirLote" class="btn-del-lote" onclick="excluirLote()">
             <i class="bi bi-trash"></i> Excluir Selecionados (<span id="contSel">0</span>)
         </button>
@@ -217,6 +223,46 @@
 
 </div>
 </div>
+
+<!-- ── Modal Editar Selecionados ── -->
+<div class="modal fade" id="modalEditarLote" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Selecionados</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">
+                    <span id="contSelEditModal">0</span> despesa(s) selecionada(s). Os campos preenchidos
+                    abaixo serão aplicados a todas. Deixe em branco para não alterar.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Categoria</label>
+                    <select class="form-select" id="loteCategoriaId">
+                        <option value="">— Não alterar —</option>
+                        {% for c in categorias %}
+                        <option value="{{ c.id }}">{{ c.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Meio de Pagamento</label>
+                    <select class="form-select" id="loteMeioPagamentoId">
+                        <option value="">— Não alterar —</option>
+                        {% for m in meios_pagamento %}
+                        <option value="{{ m.id }}">{{ m.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="editarLote()">Aplicar</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -229,14 +275,18 @@ function toggleDatas(){
 document.addEventListener('DOMContentLoaded',toggleDatas);
 
 // ── Seleção em massa ──
-const checkTodos = document.getElementById('checkTodos');
-const btnLote    = document.getElementById('btnExcluirLote');
-const contSel    = document.getElementById('contSel');
+const checkTodos   = document.getElementById('checkTodos');
+const btnLote      = document.getElementById('btnExcluirLote');
+const btnEditLote  = document.getElementById('btnEditarLote');
+const contSel      = document.getElementById('contSel');
+const contSelEdit  = document.getElementById('contSelEdit');
 
 function atualizarBotaoLote() {
     const selecionados = document.querySelectorAll('.check-item:checked').length;
     contSel.textContent = selecionados;
+    contSelEdit.textContent = selecionados;
     btnLote.classList.toggle('show', selecionados > 0);
+    btnEditLote.classList.toggle('show', selecionados > 0);
     checkTodos.indeterminate = selecionados > 0 && selecionados < document.querySelectorAll('.check-item').length;
     checkTodos.checked = selecionados > 0 && selecionados === document.querySelectorAll('.check-item').length;
 }
@@ -274,6 +324,54 @@ async function excluirLote() {
             mostrarToast(data.message, 'success');
         } else {
             mostrarToast(data.error || 'Erro ao excluir.', 'danger');
+        }
+    } catch(e) {
+        mostrarToast('Erro de conexão.', 'danger');
+    }
+}
+
+async function editarLote() {
+    const ids = [...document.querySelectorAll('.check-item:checked')].map(c => c.dataset.id);
+    if (!ids.length) return;
+
+    const categoriaSel = document.getElementById('loteCategoriaId');
+    const meioSel       = document.getElementById('loteMeioPagamentoId');
+    const categoriaId   = categoriaSel.value;
+    const meioId        = meioSel.value;
+
+    if (!categoriaId && !meioId) {
+        mostrarToast('Selecione ao menos uma categoria ou meio de pagamento.', 'danger');
+        return;
+    }
+
+    const form = new FormData();
+    ids.forEach(id => form.append('ids[]', id));
+    if (categoriaId) form.append('categoria_id', categoriaId);
+    if (meioId) form.append('meio_pagamento_id', meioId);
+
+    try {
+        const resp = await fetch('{{ url_for("despesas.editar_lote") }}', {
+            method: 'POST', credentials: 'same-origin', body: form
+        });
+        const data = await resp.json();
+        if (data.success) {
+            // Atualizar badges das linhas selecionadas
+            document.querySelectorAll('.check-item:checked').forEach(c => {
+                const tr = c.closest('tr');
+                if (categoriaId) {
+                    tr.querySelector('.pg-badge-cat').textContent = categoriaSel.options[categoriaSel.selectedIndex].text;
+                }
+                if (meioId) {
+                    tr.querySelector('.pg-badge-meio').textContent = meioSel.options[meioSel.selectedIndex].text;
+                }
+            });
+            const modalEl = document.getElementById('modalEditarLote');
+            bootstrap.Modal.getInstance(modalEl).hide();
+            categoriaSel.value = '';
+            meioSel.value = '';
+            mostrarToast(data.message, 'success');
+        } else {
+            mostrarToast(data.error || 'Erro ao editar.', 'danger');
         }
     } catch(e) {
         mostrarToast('Erro de conexão.', 'danger');

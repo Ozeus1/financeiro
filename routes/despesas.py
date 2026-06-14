@@ -349,6 +349,43 @@ def excluir_lote():
                     'message': f'{removidos} despesa(s) excluída(s) com sucesso!'})
 
 
+@despesas_bp.route('/editar-lote', methods=['POST'])
+@login_required
+def editar_lote():
+    """Editar categoria e/ou meio de pagamento de múltiplas despesas selecionadas"""
+    ids = request.form.getlist('ids[]')
+    if not ids:
+        return jsonify({'success': False, 'error': 'Nenhuma despesa selecionada.'}), 400
+    try:
+        ids = [int(i) for i in ids]
+    except ValueError:
+        return jsonify({'success': False, 'error': 'IDs inválidos.'}), 400
+
+    categoria_id = request.form.get('categoria_id', type=int)
+    meio_pagamento_id = request.form.get('meio_pagamento_id', type=int)
+
+    if not categoria_id and not meio_pagamento_id:
+        return jsonify({'success': False, 'error': 'Selecione ao menos uma categoria ou meio de pagamento.'}), 400
+
+    if categoria_id and not CategoriaDespesa.query.filter_by(id=categoria_id, user_id=current_user.id).first():
+        return jsonify({'success': False, 'error': 'Categoria inválida.'}), 400
+
+    if meio_pagamento_id and not MeioPagamento.query.filter_by(id=meio_pagamento_id, user_id=current_user.id).first():
+        return jsonify({'success': False, 'error': 'Meio de pagamento inválido.'}), 400
+
+    despesas = Despesa.query.filter(
+        Despesa.id.in_(ids), Despesa.user_id == current_user.id
+    ).all()
+    for d in despesas:
+        if categoria_id:
+            d.categoria_id = categoria_id
+        if meio_pagamento_id:
+            d.meio_pagamento_id = meio_pagamento_id
+    db.session.commit()
+    return jsonify({'success': True, 'atualizados': len(despesas),
+                    'message': f'{len(despesas)} despesa(s) atualizada(s) com sucesso!'})
+
+
 @despesas_bp.route('/exportar')
 @login_required
 def exportar():

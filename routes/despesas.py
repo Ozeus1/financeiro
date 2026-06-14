@@ -204,7 +204,7 @@ def editar(id):
         db.session.commit()
         flash('Despesa atualizada com sucesso!', 'success')
 
-        if next_url:
+        if next_url and next_url.startswith('/') and not next_url.startswith('//'):
             return redirect(next_url)
 
         filtros_redirect = {}
@@ -284,7 +284,9 @@ def excluir(id):
     db.session.commit()
 
     flash('Despesa excluída com sucesso!', 'success')
-    return redirect(next_url if next_url else url_for('despesas.lista'))
+    if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+        return redirect(next_url)
+    return redirect(url_for('despesas.lista'))
 
 @despesas_bp.route('/excluir-lote', methods=['POST'])
 @login_required

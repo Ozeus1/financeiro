@@ -20,10 +20,6 @@
 .inv-summary-card .label{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--inv-muted);font-weight:700}
 .inv-summary-card .value{font-size:1.25rem;font-weight:700;color:var(--inv-text);margin-top:.25rem}
 .inv-chart-box{height:280px;position:relative}
-.inv-donut-wrap{position:relative;height:100%;width:100%}
-.inv-donut-center{position:absolute;top:46%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;width:80%}
-.inv-donut-center .dc-label{font-size:.65rem;color:var(--inv-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
-.inv-donut-center .dc-value{font-size:1rem;font-weight:800;color:var(--inv-text);word-break:break-word}
 .table-responsive{overflow-x:auto}
 </style>
 {% endblock %}
@@ -77,99 +73,43 @@
     <div class="col-md-6 col-lg-4">
         <div class="inv-card">
             <div class="inv-card-header"><i class="bi bi-pie-chart"></i> Por Classe de Ativo</div>
-            <div class="p-3 inv-chart-box">
-                <div class="inv-donut-wrap">
-                    <canvas id="chartPorClasse"></canvas>
-                    <div class="inv-donut-center">
-                        <div class="dc-label">Patrimônio Total</div>
-                        <div class="dc-value">R$ {{ total_portfolio | moeda }}</div>
-                    </div>
-                </div>
-            </div>
+            <div class="p-3 inv-chart-box"><canvas id="chartPorClasse" data-center-label="Patrimônio Total" data-center-value="R$ {{ total_portfolio | moeda }}"></canvas></div>
         </div>
     </div>
     <div class="col-md-6 col-lg-4">
         <div class="inv-card">
             <div class="inv-card-header"><i class="bi bi-calendar3"></i> Renda Fixa por Prazo</div>
-            <div class="p-3 inv-chart-box">
-                <div class="inv-donut-wrap">
-                    <canvas id="chartPrazo"></canvas>
-                    <div class="inv-donut-center">
-                        <div class="dc-label">Renda Fixa</div>
-                        <div class="dc-value">R$ {{ summary.get('Renda Fixa', 0) | moeda }}</div>
-                    </div>
-                </div>
-            </div>
+            <div class="p-3 inv-chart-box"><canvas id="chartPrazo" data-center-label="Renda Fixa" data-center-value="R$ {{ summary.get('Renda Fixa', 0) | moeda }}"></canvas></div>
         </div>
     </div>
     <div class="col-md-6 col-lg-4">
         <div class="inv-card">
             <div class="inv-card-header"><i class="bi bi-bar-chart"></i> Renda Fixa por Tipo</div>
-            <div class="p-3 inv-chart-box">
-                <div class="inv-donut-wrap">
-                    <canvas id="chartRfTipo"></canvas>
-                    <div class="inv-donut-center">
-                        <div class="dc-label">Renda Fixa</div>
-                        <div class="dc-value">R$ {{ summary.get('Renda Fixa', 0) | moeda }}</div>
-                    </div>
-                </div>
-            </div>
+            <div class="p-3 inv-chart-box"><canvas id="chartRfTipo" data-center-label="Renda Fixa" data-center-value="R$ {{ summary.get('Renda Fixa', 0) | moeda }}"></canvas></div>
         </div>
     </div>
     <div class="col-md-6 col-lg-4">
         <div class="inv-card">
             <div class="inv-card-header"><i class="bi bi-bar-chart-line"></i> Renda Fixa por Subtipo</div>
-            <div class="p-3 inv-chart-box">
-                <div class="inv-donut-wrap">
-                    <canvas id="chartRfSubtipo"></canvas>
-                    <div class="inv-donut-center">
-                        <div class="dc-label">Renda Fixa</div>
-                        <div class="dc-value">R$ {{ summary.get('Renda Fixa', 0) | moeda }}</div>
-                    </div>
-                </div>
-            </div>
+            <div class="p-3 inv-chart-box"><canvas id="chartRfSubtipo" data-center-label="Renda Fixa" data-center-value="R$ {{ summary.get('Renda Fixa', 0) | moeda }}"></canvas></div>
         </div>
     </div>
     <div class="col-md-6 col-lg-4">
         <div class="inv-card">
             <div class="inv-card-header"><i class="bi bi-globe-americas"></i> Brasil x Internacional</div>
-            <div class="p-3 inv-chart-box">
-                <div class="inv-donut-wrap">
-                    <canvas id="chartLocalizacao"></canvas>
-                    <div class="inv-donut-center">
-                        <div class="dc-label">Patrimônio Total</div>
-                        <div class="dc-value">R$ {{ total_portfolio | moeda }}</div>
-                    </div>
-                </div>
-            </div>
+            <div class="p-3 inv-chart-box"><canvas id="chartLocalizacao" data-center-label="Patrimônio Total" data-center-value="R$ {{ total_portfolio | moeda }}"></canvas></div>
         </div>
     </div>
     <div class="col-md-6 col-lg-4">
         <div class="inv-card">
             <div class="inv-card-header"><i class="bi bi-diagram-3"></i> Resumo Hierárquico</div>
-            <div class="p-3 inv-chart-box">
-                <div class="inv-donut-wrap">
-                    <canvas id="chartHierarquia"></canvas>
-                    <div class="inv-donut-center">
-                        <div class="dc-label">Patrimônio Total</div>
-                        <div class="dc-value">R$ {{ total_portfolio | moeda }}</div>
-                    </div>
-                </div>
-            </div>
+            <div class="p-3 inv-chart-box"><canvas id="chartHierarquia" data-center-label="Patrimônio Total" data-center-value="R$ {{ total_portfolio | moeda }}"></canvas></div>
         </div>
     </div>
     <div class="col-md-6 col-lg-4">
         <div class="inv-card">
             <div class="inv-card-header"><i class="bi bi-pie-chart-fill"></i> Resumo Detalhado</div>
-            <div class="p-3 inv-chart-box">
-                <div class="inv-donut-wrap">
-                    <canvas id="chartExploded"></canvas>
-                    <div class="inv-donut-center">
-                        <div class="dc-label">Patrimônio Total</div>
-                        <div class="dc-value">R$ {{ total_portfolio | moeda }}</div>
-                    </div>
-                </div>
-            </div>
+            <div class="p-3 inv-chart-box"><canvas id="chartExploded" data-center-label="Patrimônio Total" data-center-value="R$ {{ total_portfolio | moeda }}"></canvas></div>
         </div>
     </div>
 </div>
@@ -770,6 +710,28 @@
 <script>
 const PALETTE = ['#4361ee','#7c3aed','#10b981','#f59e0b','#ef4444','#0ea5e9','#ec4899','#84cc16','#14b8a6','#a855f7','#f97316'];
 
+const centerTextPlugin = {
+    id: 'centerText',
+    afterDraw(chart) {
+        const label = chart.canvas.dataset.centerLabel;
+        const value = chart.canvas.dataset.centerValue;
+        if (!label || !value) return;
+        const { ctx, chartArea } = chart;
+        const cx = (chartArea.left + chartArea.right) / 2;
+        const cy = (chartArea.top + chartArea.bottom) / 2;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#64748b';
+        ctx.font = '700 10px sans-serif';
+        ctx.fillText(label.toUpperCase(), cx, cy - 10);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '800 14px sans-serif';
+        ctx.fillText(value, cx, cy + 8);
+        ctx.restore();
+    }
+};
+
 function makePie(canvasId, labels, data, type) {
     const el = document.getElementById(canvasId);
     if (!el) return;
@@ -792,7 +754,8 @@ function makePie(canvasId, labels, data, type) {
             maintainAspectRatio: false,
             cutout: (type === 'pie' || type === 'bar') ? undefined : '68%',
             plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } }
-        }
+        },
+        plugins: (type === 'pie' || type === 'bar') ? [] : [centerTextPlugin]
     });
 }
 

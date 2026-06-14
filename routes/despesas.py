@@ -127,8 +127,32 @@ def lista():
     # Filtro de parcelas com operador
     query = _apply_op(query, Despesa.num_parcelas, parcelas_filtro)
 
+    # Ordenação por coluna (clique no cabeçalho)
+    colunas_ordenacao = {
+        'data':       Despesa.data_pagamento,
+        'descricao':  Despesa.descricao,
+        'categoria':  CategoriaDespesa.nome,
+        'meio':       MeioPagamento.nome,
+        'valor':      Despesa.valor,
+        'parcelas':   Despesa.num_parcelas,
+    }
+    ordenar  = request.args.get('ordenar', 'data')
+    direcao  = request.args.get('direcao', 'desc')
+    if ordenar not in colunas_ordenacao:
+        ordenar = 'data'
+    if direcao not in ('asc', 'desc'):
+        direcao = 'desc'
+
+    if ordenar == 'categoria' and not categoria_busca and not categoria_id:
+        query = query.join(CategoriaDespesa, Despesa.categoria_id == CategoriaDespesa.id)
+    elif ordenar == 'meio' and not meio_busca and not meio_pagamento_id:
+        query = query.join(MeioPagamento, Despesa.meio_pagamento_id == MeioPagamento.id)
+
+    coluna = colunas_ordenacao[ordenar]
+    ordem = coluna.asc() if direcao == 'asc' else coluna.desc()
+
     # Ordenar e paginar
-    despesas = query.order_by(Despesa.data_pagamento.desc()).paginate(
+    despesas = query.order_by(ordem).paginate(
         page=page, per_page=per_page, error_out=False
     )
 
@@ -136,7 +160,7 @@ def lista():
     categorias      = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
     meios_pagamento = MeioPagamento.query.filter_by(ativo=True, user_id=current_user.id).order_by(MeioPagamento.nome).all()
 
-    filtros_url = {k: v for k, v in request.args.items() if k != 'page'}
+    filtros_url = {k: v for k, v in request.args.items() if k not in ('page', 'ordenar', 'direcao')}
 
     return render_template('despesas/lista.html',
                          despesas=despesas,
@@ -145,7 +169,9 @@ def lista():
                          periodo=periodo,
                          data_inicio_filtro=data_inicio,
                          data_fim_filtro=data_fim,
-                         filtros_url=filtros_url)
+                         filtros_url=filtros_url,
+                         ordenar=ordenar,
+                         direcao=direcao)
 
 @despesas_bp.route('/criar', methods=['GET', 'POST'])
 @login_required

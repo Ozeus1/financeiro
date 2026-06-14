@@ -12,6 +12,8 @@
 .pg-section-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pg-muted);margin-bottom:.6rem;display:flex;align-items:center;gap:.3rem}
 .pg-table{margin:0;width:100%}
 .pg-table thead th{background:#f8fafc;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--pg-muted);border-bottom:2px solid var(--pg-border);padding:.55rem .75rem;white-space:nowrap}
+.pg-th-sort a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem}
+.pg-th-sort a:hover{color:var(--pg-red)}
 .pg-table tbody tr{transition:background .12s}
 .pg-table tbody tr:hover{background:#fff5f5}
 .pg-table tbody td{padding:.5rem .75rem;font-size:.855rem;border-bottom:1px solid var(--pg-border);vertical-align:middle}
@@ -135,12 +137,24 @@
             <thead>
                 <tr>
                     <th style="width:36px;"><input type="checkbox" class="check-row" id="checkTodos" title="Selecionar todos"></th>
-                    <th>Data</th>
-                    <th>Descrição</th>
-                    <th>Categoria</th>
-                    <th>Meio Pagamento</th>
-                    <th class="text-end">Valor</th>
-                    <th class="text-center">Parcelas</th>
+                    {% macro th_sort(campo, label, extra_class='') %}
+                    <th class="pg-th-sort {{ extra_class }}">
+                        <a href="{{ url_for('despesas.lista', **dict(filtros_url, ordenar=campo, direcao=('asc' if ordenar == campo and direcao == 'desc' else 'desc'))) }}">
+                            {{ label }}
+                            {% if ordenar == campo %}
+                                <i class="bi bi-caret-{{ 'up' if direcao == 'asc' else 'down' }}-fill"></i>
+                            {% else %}
+                                <i class="bi bi-caret-down opacity-25"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endmacro %}
+                    {{ th_sort('data', 'Data') }}
+                    {{ th_sort('descricao', 'Descrição') }}
+                    {{ th_sort('categoria', 'Categoria') }}
+                    {{ th_sort('meio', 'Meio Pagamento') }}
+                    {{ th_sort('valor', 'Valor', 'text-end') }}
+                    {{ th_sort('parcelas', 'Parcelas', 'text-center') }}
                     <th class="text-center">Ações</th>
                 </tr>
             </thead>

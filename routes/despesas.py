@@ -3,7 +3,19 @@ from flask_login import login_required, current_user
 from models import db, Despesa, Receita, CategoriaDespesa, MeioPagamento
 from datetime import datetime, date
 from sqlalchemy import extract, func
+from urllib.parse import urlparse
 import re
+
+
+def _safe_next_path(next_url):
+    """Extrai path+query de next_url, mesmo que venha como URL absoluta."""
+    if not next_url:
+        return None
+    parsed = urlparse(next_url)
+    path = parsed.path or '/'
+    if not path.startswith('/'):
+        return None
+    return path + (('?' + parsed.query) if parsed.query else '')
 
 def _verificar_limite_free(usuario):
     """Retorna (True, None) se pode registrar, (False, msg) se limite atingido."""
@@ -204,8 +216,9 @@ def editar(id):
         db.session.commit()
         flash('Despesa atualizada com sucesso!', 'success')
 
-        if next_url and next_url.startswith('/') and not next_url.startswith('//'):
-            return redirect(next_url)
+        safe_next = _safe_next_path(next_url)
+        if safe_next:
+            return redirect(safe_next)
 
         filtros_redirect = {}
         _all_keys = ['periodo','data_inicio','data_fim','categoria_id','meio_pagamento_id',
@@ -284,9 +297,8 @@ def excluir(id):
     db.session.commit()
 
     flash('Despesa excluída com sucesso!', 'success')
-    if next_url and next_url.startswith('/') and not next_url.startswith('//'):
-        return redirect(next_url)
-    return redirect(url_for('despesas.lista'))
+    safe_next = _safe_next_path(next_url)
+    return redirect(safe_next if safe_next else url_for('despesas.lista'))
 
 @despesas_bp.route('/excluir-lote', methods=['POST'])
 @login_required

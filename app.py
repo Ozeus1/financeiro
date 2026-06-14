@@ -84,6 +84,93 @@ def create_app(config_name='default'):
                 conn.execute(text(
                     "UPDATE users SET email_confirmado = TRUE WHERE email_confirmado = FALSE AND ativo = TRUE"
                 ))
+                # Tabelas do módulo Investimentos (Pro/ProMax)
+                conn.execute(text('''
+                    CREATE TABLE IF NOT EXISTS invest_renda_fixa (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        category VARCHAR(20) NOT NULL,
+                        product_type VARCHAR(20),
+                        institution VARCHAR(50) NOT NULL,
+                        name VARCHAR(100) NOT NULL,
+                        value FLOAT NOT NULL DEFAULT 0,
+                        rate VARCHAR(50),
+                        maturity_date DATE
+                    )
+                '''))
+                conn.execute(text('''
+                    CREATE TABLE IF NOT EXISTS invest_fundo (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        institution VARCHAR(50) NOT NULL,
+                        name VARCHAR(100) NOT NULL,
+                        value FLOAT NOT NULL DEFAULT 0,
+                        indexer VARCHAR(20),
+                        maturity_date DATE
+                    )
+                '''))
+                conn.execute(text('''
+                    CREATE TABLE IF NOT EXISTS invest_cripto (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        institution VARCHAR(50) NOT NULL,
+                        name VARCHAR(50) NOT NULL,
+                        quantity FLOAT,
+                        avg_price FLOAT DEFAULT 0,
+                        invested_value FLOAT,
+                        current_value FLOAT NOT NULL DEFAULT 0,
+                        quote FLOAT
+                    )
+                '''))
+                conn.execute(text('''
+                    CREATE TABLE IF NOT EXISTS invest_previdencia (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        institution VARCHAR(50) NOT NULL,
+                        name VARCHAR(100) NOT NULL,
+                        value FLOAT NOT NULL DEFAULT 0,
+                        type VARCHAR(20),
+                        certificate VARCHAR(50)
+                    )
+                '''))
+                conn.execute(text('''
+                    CREATE TABLE IF NOT EXISTS invest_internacional (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        institution VARCHAR(50) NOT NULL,
+                        name VARCHAR(20) NOT NULL,
+                        quantity FLOAT,
+                        avg_price FLOAT,
+                        quote FLOAT,
+                        value_usd FLOAT NOT NULL DEFAULT 0,
+                        rate_usd FLOAT,
+                        category VARCHAR(10) DEFAULT 'RV',
+                        invested_value FLOAT,
+                        current_price FLOAT,
+                        daily_change FLOAT DEFAULT 0,
+                        description VARCHAR(100)
+                    )
+                '''))
+                conn.execute(text('''
+                    CREATE TABLE IF NOT EXISTS invest_ativo (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        ticker VARCHAR(10) NOT NULL,
+                        type VARCHAR(10) NOT NULL,
+                        strategy VARCHAR(10) NOT NULL DEFAULT 'HOLDER',
+                        quantity INTEGER NOT NULL DEFAULT 0,
+                        avg_price FLOAT NOT NULL DEFAULT 0,
+                        current_price FLOAT DEFAULT 0,
+                        daily_change FLOAT DEFAULT 0,
+                        last_update TIMESTAMP,
+                        last_dividend FLOAT,
+                        last_dividend_date DATE,
+                        dividend_yield FLOAT,
+                        entry_date DATE,
+                        fii_type VARCHAR(50),
+                        sector VARCHAR(50)
+                    )
+                '''))
                 conn.commit()
         except Exception:
             pass
@@ -100,6 +187,7 @@ def create_app(config_name='default'):
     from routes.api_v1 import api_bp
     from routes.assinatura import assinatura_bp
     from routes.familia import familia_bp
+    from routes.investimentos import investimentos_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -112,6 +200,7 @@ def create_app(config_name='default'):
     app.register_blueprint(fluxo_caixa_bp)
     app.register_blueprint(upload_database_bp)
     app.register_blueprint(api_bp, url_prefix='/api/v1')
+    app.register_blueprint(investimentos_bp, url_prefix='/investimentos')
     
     return app
 

@@ -1,0 +1,775 @@
+{% extends "base.html" %}
+{% block title %}Investimentos{% endblock %}
+
+{% block extra_css %}
+<style>
+:root{--inv-bg:#f1f5f9;--inv-surface:#fff;--inv-border:#e2e8f0;--inv-text:#0f172a;--inv-muted:#64748b;--inv-green:#10b981;--inv-red:#ef4444;--inv-blue:#4361ee;--inv-radius:14px;--inv-shadow-md:0 4px 16px rgba(0,0,0,.09)}
+.inv-page{background:var(--inv-bg);min-height:70vh;padding-bottom:2.5rem}
+.inv-header{background:linear-gradient(135deg,#1e3a8a 0%,#4361ee 55%,#7c3aed 100%);padding:1.4rem 1.5rem 1.2rem;color:#fff;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem}
+.inv-header-title{font-size:1.3rem;font-weight:700;margin:0;letter-spacing:-.02em}
+.inv-card{background:var(--inv-surface);border-radius:var(--inv-radius);box-shadow:var(--inv-shadow-md);overflow:hidden;margin-bottom:1.25rem}
+.inv-card-header{padding:.8rem 1.25rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--inv-muted);border-bottom:1px solid var(--inv-border);background:#f8fafc;display:flex;align-items:center;justify-content:space-between;gap:.4rem;flex-wrap:wrap}
+.inv-table{margin:0;width:100%}
+.inv-table thead th{background:#f8fafc;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--inv-muted);border-bottom:2px solid var(--inv-border);padding:.5rem .7rem;white-space:nowrap}
+.inv-table tbody td{padding:.5rem .7rem;font-size:.85rem;border-bottom:1px solid var(--inv-border);vertical-align:middle;white-space:nowrap}
+.inv-table tbody tr:last-child td{border-bottom:none}
+.inv-table tfoot td{padding:.5rem .7rem;font-size:.85rem;font-weight:700;background:#f8fafc;border-top:2px solid var(--inv-border)}
+.inv-positive{color:var(--inv-green);font-weight:700}
+.inv-negative{color:var(--inv-red);font-weight:700}
+.inv-summary-card{background:var(--inv-surface);border-radius:var(--inv-radius);box-shadow:var(--inv-shadow-md);padding:1rem;text-align:center;height:100%}
+.inv-summary-card .label{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--inv-muted);font-weight:700}
+.inv-summary-card .value{font-size:1.25rem;font-weight:700;color:var(--inv-text);margin-top:.25rem}
+.inv-chart-box{height:280px;position:relative}
+.table-responsive{overflow-x:auto}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="inv-page">
+<div class="inv-header">
+    <div>
+        <div style="font-size:.8rem;opacity:.7;margin-bottom:.2rem"><i class="bi bi-graph-up-arrow me-1"></i>Investimentos</div>
+        <h1 class="inv-header-title">Carteira de Investimentos</h1>
+    </div>
+    <form method="POST" action="{{ url_for('investimentos.update_quotes') }}">
+        <button type="submit" class="btn btn-light btn-sm fw-semibold">
+            <i class="bi bi-arrow-repeat me-1"></i>Atualizar Cotações
+        </button>
+    </form>
+</div>
+
+<div class="container-fluid px-3">
+
+<!-- Cards de Resumo -->
+<div class="row g-3 mb-1">
+    <div class="col-6 col-md-3">
+        <div class="inv-summary-card">
+            <div class="label">Patrimônio Total</div>
+            <div class="value">R$ {{ total_portfolio | moeda }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="inv-summary-card">
+            <div class="label">Renda Fixa</div>
+            <div class="value">R$ {{ summary.get('Renda Fixa', 0) | moeda }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="inv-summary-card">
+            <div class="label">Renda Variável</div>
+            <div class="value">R$ {{ summary.get('Renda Variável', 0) | moeda }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="inv-summary-card">
+            <div class="label">Internacional</div>
+            <div class="value">R$ {{ location_chart.get('Internacional', 0) | moeda }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row g-3 mt-2">
+    <div class="col-md-6 col-lg-4">
+        <div class="inv-card">
+            <div class="inv-card-header"><i class="bi bi-pie-chart"></i> Por Classe de Ativo</div>
+            <div class="p-3 inv-chart-box"><canvas id="chartPorClasse"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <div class="inv-card">
+            <div class="inv-card-header"><i class="bi bi-calendar3"></i> Renda Fixa por Prazo</div>
+            <div class="p-3 inv-chart-box"><canvas id="chartPrazo"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <div class="inv-card">
+            <div class="inv-card-header"><i class="bi bi-bar-chart"></i> Renda Fixa por Tipo</div>
+            <div class="p-3 inv-chart-box"><canvas id="chartRfTipo"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <div class="inv-card">
+            <div class="inv-card-header"><i class="bi bi-bar-chart-line"></i> Renda Fixa por Subtipo</div>
+            <div class="p-3 inv-chart-box"><canvas id="chartRfSubtipo"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <div class="inv-card">
+            <div class="inv-card-header"><i class="bi bi-globe-americas"></i> Brasil x Internacional</div>
+            <div class="p-3 inv-chart-box"><canvas id="chartLocalizacao"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <div class="inv-card">
+            <div class="inv-card-header"><i class="bi bi-diagram-3"></i> Resumo Hierárquico</div>
+            <div class="p-3 inv-chart-box"><canvas id="chartHierarquia"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <div class="inv-card">
+            <div class="inv-card-header"><i class="bi bi-pie-chart-fill"></i> Resumo Detalhado</div>
+            <div class="p-3 inv-chart-box"><canvas id="chartExploded"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- Resumo Hierárquico (tabela) -->
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="inv-card">
+            <div class="inv-card-header"><i class="bi bi-list-columns"></i> Resumo Geral</div>
+            <div class="table-responsive">
+                <table class="inv-table table">
+                    <thead><tr><th>Grupo</th><th>Item</th><th class="text-end">Valor</th><th class="text-end">% Carteira</th></tr></thead>
+                    <tbody>
+                    {% for group in summary_hierarchy %}
+                        {% for line in group.lines %}
+                        <tr>
+                            {% if loop.first %}<td class="fw-semibold">{{ group.group }}</td>{% else %}<td></td>{% endif %}
+                            <td>{{ line.label }}</td>
+                            <td class="text-end">R$ {{ line.value | moeda }}</td>
+                            <td class="text-end">{{ "%.2f"|format(line.pct)|replace('.', ',') }}%</td>
+                        </tr>
+                        {% endfor %}
+                        <tr style="background:#f8fafc">
+                            <td colspan="2" class="fw-bold">Total {{ group.group }}</td>
+                            <td class="text-end fw-bold">R$ {{ group.total | moeda }}</td>
+                            <td class="text-end fw-bold">{{ "%.2f"|format(group.total_pct)|replace('.', ',') }}%</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Renda Fixa Pós -->
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="inv-card">
+            <div class="inv-card-header">
+                <span><i class="bi bi-piggy-bank"></i> Renda Fixa Pós-Fixada</span>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddRfPos">+ Adicionar</button>
+            </div>
+            <div class="table-responsive">
+                <table class="inv-table table">
+                    <thead><tr><th>Tipo</th><th>Banco</th><th>Descrição</th><th class="text-end">Valor</th><th>Taxa</th><th>Vencimento</th><th></th></tr></thead>
+                    <tbody>
+                    {% for r in rf_pos %}
+                    <tr>
+                        <td>{{ r.product_type or '-' }}</td>
+                        <td>{{ r.institution }}</td>
+                        <td>{{ r.name }}</td>
+                        <td class="text-end">R$ {{ r.value | moeda }}</td>
+                        <td>{{ r.rate or '-' }}</td>
+                        <td>{{ r.maturity_date.strftime('%d/%m/%Y') if r.maturity_date else '-' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('investimentos.edit_item', tipo='rf', id=r.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('investimentos.delete_item', tipo='rf', id=r.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir item?')"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="text-center text-muted py-3">Sem dados</td></tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="3">Total</td><td class="text-end">R$ {{ types_total.get('Renda Fixa Pós', 0) | moeda }}</td><td colspan="3"></td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Renda Fixa Pré -->
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="inv-card">
+            <div class="inv-card-header">
+                <span><i class="bi bi-piggy-bank"></i> Renda Fixa Pré-Fixada</span>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddRfPre">+ Adicionar</button>
+            </div>
+            <div class="table-responsive">
+                <table class="inv-table table">
+                    <thead><tr><th>Tipo</th><th>Banco</th><th>Descrição</th><th class="text-end">Valor</th><th>Taxa</th><th>Vencimento</th><th></th></tr></thead>
+                    <tbody>
+                    {% for r in rf_pre %}
+                    <tr>
+                        <td>{{ r.product_type or '-' }}</td>
+                        <td>{{ r.institution }}</td>
+                        <td>{{ r.name }}</td>
+                        <td class="text-end">R$ {{ r.value | moeda }}</td>
+                        <td>{{ r.rate or '-' }}</td>
+                        <td>{{ r.maturity_date.strftime('%d/%m/%Y') if r.maturity_date else '-' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('investimentos.edit_item', tipo='rf', id=r.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('investimentos.delete_item', tipo='rf', id=r.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir item?')"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="text-center text-muted py-3">Sem dados</td></tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="3">Total</td><td class="text-end">R$ {{ types_total.get('Renda Fixa Pré', 0) | moeda }}</td><td colspan="3"></td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Renda Fixa IPCA -->
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="inv-card">
+            <div class="inv-card-header">
+                <span><i class="bi bi-piggy-bank"></i> Renda Fixa IPCA</span>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddRfIpca">+ Adicionar</button>
+            </div>
+            <div class="table-responsive">
+                <table class="inv-table table">
+                    <thead><tr><th>Tipo</th><th>Banco</th><th>Descrição</th><th class="text-end">Valor</th><th>Taxa</th><th>Vencimento</th><th></th></tr></thead>
+                    <tbody>
+                    {% for r in rf_ipca %}
+                    <tr>
+                        <td>{{ r.product_type or '-' }}</td>
+                        <td>{{ r.institution }}</td>
+                        <td>{{ r.name }}</td>
+                        <td class="text-end">R$ {{ r.value | moeda }}</td>
+                        <td>{{ r.rate or '-' }}</td>
+                        <td>{{ r.maturity_date.strftime('%d/%m/%Y') if r.maturity_date else '-' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('investimentos.edit_item', tipo='rf', id=r.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('investimentos.delete_item', tipo='rf', id=r.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir item?')"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="text-center text-muted py-3">Sem dados</td></tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="3">Total</td><td class="text-end">R$ {{ types_total.get('Renda Fixa IPCA', 0) | moeda }}</td><td colspan="3"></td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fundos -->
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="inv-card">
+            <div class="inv-card-header">
+                <span><i class="bi bi-bank2"></i> Fundos de Investimento</span>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddFund">+ Adicionar</button>
+            </div>
+            <div class="table-responsive">
+                <table class="inv-table table">
+                    <thead><tr><th>Banco</th><th>Descrição</th><th class="text-end">Valor</th><th>Indexador</th><th>Vencimento</th><th></th></tr></thead>
+                    <tbody>
+                    {% for f in funds %}
+                    <tr>
+                        <td>{{ f.institution }}</td>
+                        <td>{{ f.name }}</td>
+                        <td class="text-end">R$ {{ f.value | moeda }}</td>
+                        <td>{{ f.indexer or '-' }}</td>
+                        <td>{{ f.maturity_date.strftime('%d/%m/%Y') if f.maturity_date else '-' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('investimentos.edit_item', tipo='fund', id=f.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('investimentos.delete_item', tipo='fund', id=f.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir item?')"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-3">Sem dados</td></tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="2">Total</td><td class="text-end">R$ {{ types_total.get('Fundos', 0) | moeda }}</td><td colspan="3"></td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Criptomoedas -->
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="inv-card">
+            <div class="inv-card-header">
+                <span><i class="bi bi-currency-bitcoin"></i> Criptomoedas</span>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddCrypto">+ Adicionar</button>
+            </div>
+            <div class="table-responsive">
+                <table class="inv-table table">
+                    <thead><tr><th>Corretora</th><th>Ativo</th><th class="text-end">Qtd</th><th class="text-end">PM</th><th class="text-end">Cotação</th><th class="text-end">Investido</th><th class="text-end">Atual</th><th class="text-end">Lucro</th><th></th></tr></thead>
+                    <tbody>
+                    {% for c in cryptos %}
+                    <tr>
+                        <td>{{ c.institution }}</td>
+                        <td>{{ c.name }}</td>
+                        <td class="text-end">{{ c.quantity }}</td>
+                        <td class="text-end">R$ {{ (c.avg_price or 0) | moeda }}</td>
+                        <td class="text-end">R$ {{ (c.quote or 0) | moeda }}</td>
+                        <td class="text-end">R$ {{ ((c.quantity or 0) * (c.avg_price or 0)) | moeda }}</td>
+                        <td class="text-end">R$ {{ (c.current_value or 0) | moeda }}</td>
+                        {% set lucro_c = (c.current_value or 0) - ((c.quantity or 0) * (c.avg_price or 0)) %}
+                        <td class="text-end {{ 'inv-positive' if lucro_c >= 0 else 'inv-negative' }}">R$ {{ lucro_c | moeda }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('investimentos.edit_item', tipo='crypto', id=c.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('investimentos.delete_item', tipo='crypto', id=c.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir item?')"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="9" class="text-center text-muted py-3">Sem dados</td></tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="5">Total</td><td class="text-end">R$ {{ crypto_invested | moeda }}</td><td class="text-end">R$ {{ crypto_current | moeda }}</td><td class="text-end {{ 'inv-positive' if crypto_profit >= 0 else 'inv-negative' }}">R$ {{ crypto_profit | moeda }}</td><td></td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Previdência -->
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="inv-card">
+            <div class="inv-card-header">
+                <span><i class="bi bi-shield-check"></i> Previdência Privada</span>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddPension">+ Adicionar</button>
+            </div>
+            <div class="table-responsive">
+                <table class="inv-table table">
+                    <thead><tr><th>Banco</th><th>Descrição</th><th class="text-end">Valor</th><th>Tipo</th><th>Certificado</th><th></th></tr></thead>
+                    <tbody>
+                    {% for p in pensions %}
+                    <tr>
+                        <td>{{ p.institution }}</td>
+                        <td>{{ p.name }}</td>
+                        <td class="text-end">R$ {{ p.value | moeda }}</td>
+                        <td>{{ p.type or '-' }}</td>
+                        <td>{{ p.certificate or '-' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('investimentos.edit_item', tipo='pension', id=p.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('investimentos.delete_item', tipo='pension', id=p.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir item?')"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-3">Sem dados</td></tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="2">Total</td><td class="text-end">R$ {{ types_total.get('Previdência', 0) | moeda }}</td><td colspan="3"></td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Renda Variável Internacional -->
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="inv-card">
+            <div class="inv-card-header">
+                <span><i class="bi bi-globe"></i> Renda Variável Internacional</span>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddIntlRv">+ Adicionar</button>
+            </div>
+            <div class="table-responsive">
+                <table class="inv-table table">
+                    <thead><tr><th>Corretora</th><th>Ticker</th><th class="text-end">Qtd</th><th class="text-end">PM (US$)</th><th class="text-end">Cotação (US$)</th><th class="text-end">Investido (US$)</th><th class="text-end">Atual (US$)</th><th class="text-end">Câmbio</th><th></th></tr></thead>
+                    <tbody>
+                    {% for i in intls_rv %}
+                    <tr>
+                        <td>{{ i.institution }}</td>
+                        <td>{{ i.name }}</td>
+                        <td class="text-end">{{ i.quantity }}</td>
+                        <td class="text-end">$ {{ (i.avg_price or 0) | moeda }}</td>
+                        <td class="text-end">$ {{ (i.quote or 0) | moeda }}</td>
+                        <td class="text-end">$ {{ ((i.quantity or 0) * (i.avg_price or 0)) | moeda }}</td>
+                        <td class="text-end">$ {{ ((i.quantity or 0) * (i.quote or 0)) | moeda }}</td>
+                        <td class="text-end">R$ {{ (i.rate_usd or 0) | moeda }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('investimentos.edit_item', tipo='intl', id=i.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('investimentos.delete_item', tipo='intl', id=i.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir item?')"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="9" class="text-center text-muted py-3">Sem dados</td></tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="5">Total</td><td class="text-end">$ {{ intl_rv_invested | moeda }}</td><td class="text-end">$ {{ intl_rv_current | moeda }}</td><td colspan="2" class="text-end {{ 'inv-positive' if intl_rv_profit >= 0 else 'inv-negative' }}">Lucro: $ {{ intl_rv_profit | moeda }}</td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Renda Fixa Internacional -->
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="inv-card">
+            <div class="inv-card-header">
+                <span><i class="bi bi-globe2"></i> Renda Fixa Internacional</span>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddIntlRf">+ Adicionar</button>
+            </div>
+            <div class="table-responsive">
+                <table class="inv-table table">
+                    <thead><tr><th>Corretora</th><th>Descrição</th><th class="text-end">Investido (US$)</th><th class="text-end">Valor Atual (US$)</th><th class="text-end">Câmbio</th><th></th></tr></thead>
+                    <tbody>
+                    {% for i in intls_rf %}
+                    <tr>
+                        <td>{{ i.institution }}</td>
+                        <td>{{ i.description or i.name }}</td>
+                        <td class="text-end">$ {{ (i.invested_value or 0) | moeda }}</td>
+                        <td class="text-end">$ {{ (i.value_usd or 0) | moeda }}</td>
+                        <td class="text-end">R$ {{ (i.rate_usd or 0) | moeda }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('investimentos.edit_item', tipo='intl', id=i.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('investimentos.delete_item', tipo='intl', id=i.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir item?')"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-3">Sem dados</td></tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="2">Total</td><td class="text-end">$ {{ types_total.get('Internacional RF', 0) | moeda }}</td><td colspan="3"></td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Carteira de Ações -->
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="inv-card">
+            <div class="inv-card-header">
+                <span><i class="bi bi-graph-up"></i> Carteira de Ações</span>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddAtivoAcao">+ Adicionar</button>
+            </div>
+            <div class="table-responsive">
+                <table class="inv-table table">
+                    <thead><tr><th>Ativo</th><th class="text-end">Qtd</th><th class="text-end">Preço Médio</th><th class="text-end">Cotação</th><th class="text-end">Var. Dia</th><th class="text-end">Investido</th><th class="text-end">Atual</th><th class="text-end">Lucro</th><th class="text-end">Lucro %</th><th class="text-end">Peso</th></tr></thead>
+                    <tbody>
+                    {% for item in acoes %}
+                    <tr>
+                        <td>{{ item.asset.ticker }}</td>
+                        <td class="text-end">{{ item.asset.quantity }}</td>
+                        <td class="text-end">R$ {{ item.asset.avg_price | moeda }}</td>
+                        <td class="text-end">R$ {{ item.current_price | moeda }}</td>
+                        <td class="text-end {{ 'inv-positive' if item.change_percent >= 0 else 'inv-negative' }}">{{ "%.2f"|format(item.change_percent)|replace('.', ',') }}%</td>
+                        <td class="text-end">R$ {{ item.total_invested | moeda }}</td>
+                        <td class="text-end">R$ {{ item.current_total | moeda }}</td>
+                        <td class="text-end {{ 'inv-positive' if item.profit >= 0 else 'inv-negative' }}">R$ {{ item.profit | moeda }}</td>
+                        <td class="text-end {{ 'inv-positive' if item.profit_pct >= 0 else 'inv-negative' }}">{{ "%.2f"|format(item.profit_pct)|replace('.', ',') }}%</td>
+                        <td class="text-end">{{ "%.2f"|format(item.weight)|replace('.', ',') }}%</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="10" class="text-center text-muted py-3">Sem dados</td></tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="5">Total</td><td class="text-end">R$ {{ total_acoes_invested | moeda }}</td><td class="text-end">R$ {{ total_acoes_current | moeda }}</td><td colspan="3" class="text-end {{ 'inv-positive' if (total_acoes_current - total_acoes_invested) >= 0 else 'inv-negative' }}">Lucro: R$ {{ (total_acoes_current - total_acoes_invested) | moeda }}</td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Carteira de ETFs -->
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="inv-card">
+            <div class="inv-card-header">
+                <span><i class="bi bi-collection"></i> Carteira de ETFs</span>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddAtivoEtf">+ Adicionar</button>
+            </div>
+            <div class="table-responsive">
+                <table class="inv-table table">
+                    <thead><tr><th>Ativo</th><th class="text-end">Qtd</th><th class="text-end">Preço Médio</th><th class="text-end">Cotação</th><th class="text-end">Var. Dia</th><th class="text-end">Investido</th><th class="text-end">Atual</th><th class="text-end">Lucro</th><th class="text-end">Lucro %</th><th class="text-end">Peso</th></tr></thead>
+                    <tbody>
+                    {% for item in etfs %}
+                    <tr>
+                        <td>{{ item.asset.ticker }}</td>
+                        <td class="text-end">{{ item.asset.quantity }}</td>
+                        <td class="text-end">R$ {{ item.asset.avg_price | moeda }}</td>
+                        <td class="text-end">R$ {{ item.current_price | moeda }}</td>
+                        <td class="text-end {{ 'inv-positive' if item.change_percent >= 0 else 'inv-negative' }}">{{ "%.2f"|format(item.change_percent)|replace('.', ',') }}%</td>
+                        <td class="text-end">R$ {{ item.total_invested | moeda }}</td>
+                        <td class="text-end">R$ {{ item.current_total | moeda }}</td>
+                        <td class="text-end {{ 'inv-positive' if item.profit >= 0 else 'inv-negative' }}">R$ {{ item.profit | moeda }}</td>
+                        <td class="text-end {{ 'inv-positive' if item.profit_pct >= 0 else 'inv-negative' }}">{{ "%.2f"|format(item.profit_pct)|replace('.', ',') }}%</td>
+                        <td class="text-end">{{ "%.2f"|format(item.weight)|replace('.', ',') }}%</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="10" class="text-center text-muted py-3">Sem dados</td></tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="5">Total</td><td class="text-end">R$ {{ total_etfs_invested | moeda }}</td><td class="text-end">R$ {{ total_etfs_current | moeda }}</td><td colspan="3" class="text-end {{ 'inv-positive' if (total_etfs_current - total_etfs_invested) >= 0 else 'inv-negative' }}">Lucro: R$ {{ (total_etfs_current - total_etfs_invested) | moeda }}</td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+</div>
+
+<!-- Modais de Cadastro -->
+<div class="modal fade" id="modalAddRfPos" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('investimentos.add_rf') }}">
+            <input type="hidden" name="category" value="POS">
+            <div class="modal-header"><h5 class="modal-title">Adicionar Renda Fixa Pós-Fixada</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Tipo (CDB, LCI, ...)</label><input type="text" name="product_type" class="form-control"></div>
+                <div class="mb-2"><label class="form-label">Banco</label><input type="text" name="institution" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Descrição</label><input type="text" name="name" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Valor</label><input type="text" name="value" class="form-control" required placeholder="0,00"></div>
+                <div class="mb-2"><label class="form-label">Taxa</label><input type="text" name="rate" class="form-control"></div>
+                <div class="mb-2"><label class="form-label">Vencimento</label><input type="date" name="maturity_date" class="form-control"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Salvar</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAddRfPre" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('investimentos.add_rf') }}">
+            <input type="hidden" name="category" value="PRE">
+            <div class="modal-header"><h5 class="modal-title">Adicionar Renda Fixa Pré-Fixada</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Tipo (CDB, LCI, ...)</label><input type="text" name="product_type" class="form-control"></div>
+                <div class="mb-2"><label class="form-label">Banco</label><input type="text" name="institution" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Descrição</label><input type="text" name="name" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Valor</label><input type="text" name="value" class="form-control" required placeholder="0,00"></div>
+                <div class="mb-2"><label class="form-label">Taxa</label><input type="text" name="rate" class="form-control"></div>
+                <div class="mb-2"><label class="form-label">Vencimento</label><input type="date" name="maturity_date" class="form-control"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Salvar</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAddRfIpca" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('investimentos.add_rf') }}">
+            <input type="hidden" name="category" value="IPCA">
+            <div class="modal-header"><h5 class="modal-title">Adicionar Renda Fixa IPCA</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Tipo (CDB, LCI, ...)</label><input type="text" name="product_type" class="form-control"></div>
+                <div class="mb-2"><label class="form-label">Banco</label><input type="text" name="institution" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Descrição</label><input type="text" name="name" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Valor</label><input type="text" name="value" class="form-control" required placeholder="0,00"></div>
+                <div class="mb-2"><label class="form-label">Taxa</label><input type="text" name="rate" class="form-control"></div>
+                <div class="mb-2"><label class="form-label">Vencimento</label><input type="date" name="maturity_date" class="form-control"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Salvar</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAddFund" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('investimentos.add_fund') }}">
+            <div class="modal-header"><h5 class="modal-title">Adicionar Fundo de Investimento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Banco</label><input type="text" name="institution" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Descrição</label><input type="text" name="name" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Valor</label><input type="text" name="value" class="form-control" required placeholder="0,00"></div>
+                <div class="mb-2"><label class="form-label">Indexador (CDI, SELIC, IPCA...)</label><input type="text" name="indexer" class="form-control"></div>
+                <div class="mb-2"><label class="form-label">Vencimento</label><input type="date" name="maturity_date" class="form-control"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Salvar</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAddCrypto" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('investimentos.add_crypto') }}">
+            <div class="modal-header"><h5 class="modal-title">Adicionar Criptomoeda</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Corretora</label><input type="text" name="institution" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Ativo (BTC, ETH...)</label><input type="text" name="name" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Quantidade</label><input type="text" name="quantity" class="form-control" placeholder="0,00"></div>
+                <div class="mb-2"><label class="form-label">Preço Médio (R$)</label><input type="text" name="avg_price" class="form-control" placeholder="0,00"></div>
+                <div class="mb-2"><label class="form-label">Valor Atual (R$)</label><input type="text" name="current_value" class="form-control" placeholder="0,00"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Salvar</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAddPension" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('investimentos.add_pension') }}">
+            <div class="modal-header"><h5 class="modal-title">Adicionar Previdência Privada</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Banco</label><input type="text" name="institution" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Descrição</label><input type="text" name="name" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Valor</label><input type="text" name="value" class="form-control" required placeholder="0,00"></div>
+                <div class="mb-2"><label class="form-label">Tipo</label>
+                    <select name="type" class="form-select">
+                        <option value="Renda Fixa">Renda Fixa</option>
+                        <option value="Acao">Ação</option>
+                    </select>
+                </div>
+                <div class="mb-2"><label class="form-label">Certificado</label><input type="text" name="certificate" class="form-control"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Salvar</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAddIntlRv" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('investimentos.add_intl') }}">
+            <input type="hidden" name="category" value="RV">
+            <div class="modal-header"><h5 class="modal-title">Adicionar Renda Variável Internacional</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Corretora</label><input type="text" name="institution" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Ticker</label><input type="text" name="name" class="form-control" required placeholder="AAPL"></div>
+                <div class="mb-2"><label class="form-label">Quantidade</label><input type="text" name="quantity" class="form-control" placeholder="0,00"></div>
+                <div class="mb-2"><label class="form-label">Preço Médio (US$)</label><input type="text" name="avg_price" class="form-control" placeholder="0,00"></div>
+                <div class="mb-2"><label class="form-label">Descrição</label><input type="text" name="description" class="form-control"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Salvar</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAddIntlRf" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('investimentos.add_intl') }}">
+            <input type="hidden" name="category" value="RF">
+            <input type="hidden" name="name" value="Renda Fixa">
+            <div class="modal-header"><h5 class="modal-title">Adicionar Renda Fixa Internacional</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Corretora</label><input type="text" name="institution" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Descrição</label><input type="text" name="description" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Valor Investido (US$)</label><input type="text" name="avg_price" class="form-control" placeholder="0,00"></div>
+                <div class="mb-2"><label class="form-label">Quantidade</label><input type="hidden" name="quantity" value="1"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Salvar</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAddAtivoAcao" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('investimentos.add_ativo') }}">
+            <input type="hidden" name="type" value="ACAO">
+            <div class="modal-header"><h5 class="modal-title">Adicionar Ação</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Ticker</label><input type="text" name="ticker" class="form-control" required placeholder="PETR4"></div>
+                <div class="mb-2"><label class="form-label">Quantidade</label><input type="number" name="quantity" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Preço Médio (R$)</label><input type="text" name="avg_price" class="form-control" placeholder="0,00"></div>
+                <div class="mb-2"><label class="form-label">Data de Entrada</label><input type="date" name="entry_date" class="form-control"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Salvar</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAddAtivoEtf" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('investimentos.add_ativo') }}">
+            <input type="hidden" name="type" value="ETF">
+            <div class="modal-header"><h5 class="modal-title">Adicionar ETF</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Ticker</label><input type="text" name="ticker" class="form-control" required placeholder="BOVA11"></div>
+                <div class="mb-2"><label class="form-label">Quantidade</label><input type="number" name="quantity" class="form-control" required></div>
+                <div class="mb-2"><label class="form-label">Preço Médio (R$)</label><input type="text" name="avg_price" class="form-control" placeholder="0,00"></div>
+                <div class="mb-2"><label class="form-label">Data de Entrada</label><input type="date" name="entry_date" class="form-control"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Salvar</button></div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PALETTE = ['#4361ee','#7c3aed','#10b981','#f59e0b','#ef4444','#0ea5e9','#ec4899','#84cc16','#14b8a6','#a855f7','#f97316'];
+
+function makePie(canvasId, labels, data, type) {
+    const el = document.getElementById(canvasId);
+    if (!el) return;
+    if (!labels.length) {
+        el.parentElement.insertAdjacentHTML('beforeend', '<div class="text-center text-muted small mt-2">Sem dados</div>');
+        return;
+    }
+    new Chart(el.getContext('2d'), {
+        type: type || 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: PALETTE.slice(0, labels.length),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } }
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Por Classe
+    makePie('chartPorClasse',
+        {{ pie_chart_data.keys() | list | tojson }},
+        {{ pie_chart_data.values() | list | tojson }});
+
+    // Renda Fixa por Prazo
+    makePie('chartPrazo',
+        {{ rf_chart_term.keys() | list | tojson }},
+        {{ rf_chart_term.values() | list | tojson }});
+
+    // Renda Fixa por Tipo
+    makePie('chartRfTipo',
+        {{ rf_chart_type.keys() | list | tojson }},
+        {{ rf_chart_type.values() | list | tojson }});
+
+    // Renda Fixa por Subtipo
+    makePie('chartRfSubtipo',
+        {{ rf_subtypes.keys() | list | tojson }},
+        {{ rf_subtypes.values() | list | tojson }});
+
+    // Brasil x Internacional
+    makePie('chartLocalizacao',
+        {{ location_chart.keys() | list | tojson }},
+        {{ location_chart.values() | list | tojson }});
+
+    // Resumo Hierárquico (totais por grupo)
+    makePie('chartHierarquia',
+        {{ summary_hierarchy | map(attribute='group') | list | tojson }},
+        {{ summary_hierarchy | map(attribute='total') | list | tojson }});
+
+    // Resumo Detalhado (exploded)
+    makePie('chartExploded',
+        {{ summary_exploded.keys() | list | tojson }},
+        {{ summary_exploded.values() | list | tojson }});
+});
+</script>
+{% endblock %}

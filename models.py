@@ -622,3 +622,113 @@ def populate_db(app):
 
         db.session.commit()
         print("Banco de dados populado com sucesso!")
+
+
+class InvestRendaFixa(db.Model):
+    """Investimentos em renda fixa (Pós/Pré/IPCA)"""
+    __tablename__ = 'invest_renda_fixa'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    category = db.Column(db.String(20), nullable=False)  # 'POS', 'PRE', 'IPCA'
+    product_type = db.Column(db.String(20), nullable=True)
+    institution = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    value = db.Column(db.Float, nullable=False, default=0.0)
+    rate = db.Column(db.String(50), nullable=True)
+    maturity_date = db.Column(db.Date, nullable=True)
+
+    user = db.relationship('User', backref=db.backref('invest_renda_fixa', cascade='all, delete-orphan'))
+
+
+class InvestFundo(db.Model):
+    """Fundos de investimento"""
+    __tablename__ = 'invest_fundo'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    institution = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    value = db.Column(db.Float, nullable=False, default=0.0)
+    indexer = db.Column(db.String(20), nullable=True)
+    maturity_date = db.Column(db.Date, nullable=True)
+
+    user = db.relationship('User', backref=db.backref('invest_fundos', cascade='all, delete-orphan'))
+
+
+class InvestCripto(db.Model):
+    """Criptomoedas"""
+    __tablename__ = 'invest_cripto'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    institution = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(50), nullable=False)  # BTC, ETH...
+    quantity = db.Column(db.Float, nullable=True)
+    avg_price = db.Column(db.Float, nullable=True, default=0.0)
+    invested_value = db.Column(db.Float, nullable=True)
+    current_value = db.Column(db.Float, nullable=False, default=0.0)
+    quote = db.Column(db.Float, nullable=True)
+
+    user = db.relationship('User', backref=db.backref('invest_criptos', cascade='all, delete-orphan'))
+
+
+class InvestPrevidencia(db.Model):
+    """Previdência privada"""
+    __tablename__ = 'invest_previdencia'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    institution = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    value = db.Column(db.Float, nullable=False, default=0.0)
+    type = db.Column(db.String(20), nullable=True)  # 'Acao' ou 'Renda Fixa'
+    certificate = db.Column(db.String(50), nullable=True)
+
+    user = db.relationship('User', backref=db.backref('invest_previdencias', cascade='all, delete-orphan'))
+
+
+class InvestInternacional(db.Model):
+    """Ativos internacionais (RV e RF)"""
+    __tablename__ = 'invest_internacional'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    institution = db.Column(db.String(50), nullable=False)  # Corretora
+    name = db.Column(db.String(20), nullable=False)  # Ticker
+    quantity = db.Column(db.Float, nullable=True)
+    avg_price = db.Column(db.Float, nullable=True)
+    quote = db.Column(db.Float, nullable=True)
+    value_usd = db.Column(db.Float, nullable=False, default=0.0)
+    rate_usd = db.Column(db.Float, nullable=True)
+    category = db.Column(db.String(10), default='RV')  # 'RV' ou 'RF'
+    invested_value = db.Column(db.Float, nullable=True)
+    current_price = db.Column(db.Float, nullable=True)
+    daily_change = db.Column(db.Float, default=0.0)
+    description = db.Column(db.String(100), nullable=True)
+
+    user = db.relationship('User', backref=db.backref('invest_internacionais', cascade='all, delete-orphan'))
+
+
+class InvestAtivo(db.Model):
+    """Ações, FIIs e ETFs (carteira nacional)"""
+    __tablename__ = 'invest_ativo'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    ticker = db.Column(db.String(10), nullable=False)
+    type = db.Column(db.String(10), nullable=False)  # 'ACAO', 'FII', 'ETF'
+    strategy = db.Column(db.String(10), nullable=False, default='HOLDER')
+    quantity = db.Column(db.Integer, nullable=False, default=0)
+    avg_price = db.Column(db.Float, nullable=False, default=0.0)
+    current_price = db.Column(db.Float, default=0.0)
+    daily_change = db.Column(db.Float, default=0.0)
+    last_update = db.Column(db.DateTime, nullable=True)
+    last_dividend = db.Column(db.Float, nullable=True)
+    last_dividend_date = db.Column(db.Date, nullable=True)
+    dividend_yield = db.Column(db.Float, nullable=True)
+    entry_date = db.Column(db.Date, nullable=True)
+    fii_type = db.Column(db.String(50), nullable=True)
+    sector = db.Column(db.String(50), nullable=True)
+
+    user = db.relationship('User', backref=db.backref('invest_ativos', cascade='all, delete-orphan'))

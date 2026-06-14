@@ -92,6 +92,11 @@
                         <li><a class="dropdown-item" href="{{ url_for('relatorios.extrato_financeiro') }}"><i class="bi bi-pie-chart-fill me-1"></i>Extrato Financeiro</a></li>
                     </ul>
                 </li>
+                {% if current_user.is_pro() or current_user.is_promax() %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('investimentos.index') }}"><i class="bi bi-graph-up-arrow me-1"></i>Investimentos</a>
+                </li>
+                {% endif %}
                 {% set membro_familia_sem_controle = current_user.is_familia() and not current_user.eh_assinante_familia %}
                 {% if not membro_familia_sem_controle %}
                 <li class="nav-item dropdown">
@@ -219,6 +224,11 @@
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.previsao_cartoes') }}"><i class="bi bi-credit-card"></i>Previsão Cartões</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.previsao_financeira') }}"><i class="bi bi-graph-up-arrow"></i>Previsão Financeira</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.extrato_financeiro') }}"><i class="bi bi-pie-chart-fill"></i>Extrato Financeiro</a>
+
+        {% if current_user.is_pro() or current_user.is_promax() %}
+        <div class="nav-divider"></div>
+        <a class="nav-link" href="{{ url_for('investimentos.index') }}"><i class="bi bi-graph-up-arrow"></i>Investimentos</a>
+        {% endif %}
 
         {% set membro_familia_sem_controle = current_user.is_familia() and not current_user.eh_assinante_familia %}
         {% if not membro_familia_sem_controle %}

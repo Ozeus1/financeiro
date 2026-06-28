@@ -96,6 +96,7 @@
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('relatorios.orcado_vs_gasto') }}">Orçado vs Gasto</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('relatorios.previsao_cartoes') }}">Previsão Cartões</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('relatorios.previsao_financeira') }}">Previsão Financeira</a></li>
                         {% if current_user.is_promax() %}
                         <li><hr class="dropdown-divider"></li>
                         <li class="dropdown-header"><i class="bi bi-buildings"></i> ProMax — PF/PJ</li>
@@ -217,6 +218,7 @@
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.comparativo_anual') }}"><i class="bi bi-calendar-range"></i>Comparativo Anual</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.orcado_vs_gasto') }}"><i class="bi bi-clipboard-data"></i>Orçado vs Gasto</a>
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.previsao_cartoes') }}"><i class="bi bi-credit-card"></i>Previsão Cartões</a>
+        <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.previsao_financeira') }}"><i class="bi bi-calculator"></i>Previsão Financeira</a>
         {% if current_user.is_promax() %}
         <div class="nav-section"><i class="bi bi-buildings"></i> ProMax PF/PJ</div>
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.pf_pj_despesas') }}"><i class="bi bi-wallet2"></i>Despesas PF vs PJ</a>

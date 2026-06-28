@@ -319,7 +319,7 @@ img, svg { display: block; max-width: 100%; }
 .wa-msg.out { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
 
 /* ═══════════════ TESTIMONIALS ═══════════════ */
-.vid-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 720px; margin: 0 auto; }
+.vid-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1100px; margin: 0 auto; }
 .vid-card { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-md); }
 .vid-frame { position: relative; aspect-ratio: 9/16; background: #0b0c1e; display: grid; place-items: center; overflow: hidden; }
 .vid-frame iframe, .vid-frame video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: cover; }
@@ -347,8 +347,8 @@ img, svg { display: block; max-width: 100%; }
 .print-msg.them { background: #fff; align-self: flex-start; }
 .print-msg em { background: #fff3a8; font-style: normal; padding: 0 2px; border-radius: 2px; }
 .print-msg .hb { color: #e63946; }
-@media (max-width: 1024px){ .prints { grid-template-columns: 1fr 1fr; } .vid-grid { grid-template-columns: 1fr; max-width: 360px; } }
-@media (max-width: 560px){ .prints { grid-template-columns: 1fr; } }
+@media (max-width: 1024px){ .prints { grid-template-columns: 1fr 1fr; } .vid-grid { grid-template-columns: 1fr 1fr; max-width: 720px; } }
+@media (max-width: 640px){ .prints { grid-template-columns: 1fr; } .vid-grid { grid-template-columns: 1fr; max-width: 360px; } }
 
 /* ═══════════════ STORY ═══════════════ */
 .story-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 56px; align-items: center; }

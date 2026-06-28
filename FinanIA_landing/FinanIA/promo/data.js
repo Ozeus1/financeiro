@@ -22,6 +22,14 @@ window.PROMO = {
     chips: ["Grátis para sempre", "Sem cartão pra iniciar", "PF, PJ e Família", "Investimentos no painel"],
     fc1: { label: "Saldo do mês", value: "R$ 751,25" },
     fc2: { label: "Orçamento mercado", value: "74%" },
+    promoVideos: [
+      { id: "bFCNJTrRc28", title: "FinanIA — Apresentação completa" },
+      { id: "Pvx_K_Ijp3Y", title: "Como organizar suas despesas" },
+      { id: "3z0h6vPyuOg", title: "Controle de gastos no mês" },
+      { id: "UeffhB8jghM", title: "Investimentos e carteira" },
+      { id: "sQxAsmHRxKs", title: "Plataforma desde o início" },
+      { id: "2rB8XW4y_r0", title: "IA no WhatsApp" },
+    ],
   },
 
   stats: [

@@ -114,6 +114,81 @@ function Nav() {
   );
 }
 
+// ═══════════════ PROMO VIDEO PLAYER ═══════════════
+function PromoVideoPlayer() {
+  const videos = (window.PROMO.hero.promoVideos || []);
+  const [open, setOpen] = React.useState(false);
+  const [active, setActive] = React.useState(0);
+  const iframeRef = React.useRef(null);
+
+  // Pause iframe when closing or switching — reload src without autoplay
+  function stopCurrent() {
+    if (iframeRef.current) {
+      iframeRef.current.src = iframeRef.current.src.replace("&autoplay=1", "").replace("?autoplay=1", "?");
+    }
+  }
+
+  function toggle() {
+    if (open) stopCurrent();
+    setOpen(o => !o);
+  }
+
+  function select(i) {
+    if (i === active) return;
+    stopCurrent();
+    setActive(i);
+  }
+
+  const vid = videos[active];
+  const embedBase = vid ? "https://www.youtube-nocookie.com/embed/" + vid.id + "?rel=0&playsinline=1&modestbranding=1" : "";
+
+  return (
+    <div className="promo-vp-wrap">
+      {/* Trigger bar */}
+      <button className="promo-vp-trigger" onClick={toggle} aria-expanded={open}>
+        <span className="promo-vp-play-ic">▶</span>
+        <span>Ver vídeo da oferta</span>
+        <span className="promo-vp-chevron">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {/* Suspended panel */}
+      {open && (
+        <div className="promo-vp-panel">
+          {/* Main player */}
+          <div className="promo-vp-main">
+            <iframe
+              ref={iframeRef}
+              key={active}
+              src={embedBase + "&autoplay=1"}
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowFullScreen
+              title={vid ? vid.title : ""}
+            ></iframe>
+          </div>
+          {/* Scrollable playlist */}
+          <div className="promo-vp-list">
+            {videos.map((v, i) => (
+              <button
+                key={v.id}
+                className={"promo-vp-item" + (i === active ? " active" : "")}
+                onClick={() => select(i)}
+              >
+                <img
+                  src={"https://i.ytimg.com/vi/" + v.id + "/mqdefault.jpg"}
+                  alt={v.title}
+                  className="promo-vp-thumb"
+                />
+                <span className="promo-vp-item-title">{v.title}</span>
+                {i === active && <span className="promo-vp-now">▶</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═══════════════ HERO ═══════════════
 function Hero() {
   const d = window.PROMO.hero;
@@ -126,6 +201,7 @@ function Hero() {
           <p className="lead reveal d2">{d.sub}</p>
           <div className="hero-cta reveal d3">
             <a href={U().assinar} className="btn btn-primary btn-lg">{d.cta} →</a>
+            <PromoVideoPlayer />
           </div>
           <p className="hero-price reveal d3"><H html={d.price} /></p>
           <div className="hero-chips reveal d4">

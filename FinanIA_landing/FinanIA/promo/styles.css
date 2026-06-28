@@ -181,10 +181,52 @@ img, svg { display: block; max-width: 100%; }
   background: conic-gradient(var(--neg) 76%, var(--bg-soft) 0); }
 .gauge span { width: 48px; height: 48px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; }
 
+/* Promo video player */
+.promo-vp-wrap { position: relative; }
+.promo-vp-trigger {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: var(--brand-grad); color: #fff;
+  border: none; border-radius: var(--r-pill);
+  padding: 12px 22px; font-size: 14px; font-weight: 700;
+  cursor: pointer; box-shadow: var(--shadow-md);
+  transition: opacity .15s, transform .15s;
+  white-space: nowrap;
+}
+.promo-vp-trigger:hover { opacity: .9; transform: translateY(-1px); }
+.promo-vp-play-ic { font-size: 11px; }
+.promo-vp-chevron { font-size: 10px; opacity: .8; }
+.promo-vp-panel {
+  position: absolute; top: calc(100% + 12px); left: 0; z-index: 200;
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--r-xl); box-shadow: 0 24px 64px rgba(0,0,0,.22);
+  width: min(520px, 90vw); overflow: hidden;
+  animation: vpSlideIn .2s ease;
+}
+@keyframes vpSlideIn { from { opacity:0; transform: translateY(-8px); } to { opacity:1; transform: translateY(0); } }
+.promo-vp-main { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; }
+.promo-vp-main iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.promo-vp-list {
+  max-height: 240px; overflow-y: auto; padding: 8px;
+  display: flex; flex-direction: column; gap: 4px;
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
+.promo-vp-item {
+  display: flex; align-items: center; gap: 12px;
+  background: none; border: none; border-radius: var(--r-md);
+  padding: 8px 10px; cursor: pointer; text-align: left;
+  transition: background .12s; width: 100%;
+}
+.promo-vp-item:hover { background: var(--bg-soft); }
+.promo-vp-item.active { background: color-mix(in oklch, var(--brand-2) 12%, transparent); }
+.promo-vp-thumb { width: 80px; height: 45px; object-fit: cover; border-radius: 6px; flex-shrink: 0; background: var(--bg-soft); }
+.promo-vp-item-title { font-size: 13px; font-weight: 600; color: var(--ink); flex: 1; line-height: 1.35; }
+.promo-vp-now { font-size: 10px; color: var(--brand-2); flex-shrink: 0; }
+
 @media (max-width: 940px){
   .hero-grid { grid-template-columns: 1fr; gap: 64px; }
   .hero-visual { max-width: 520px; margin: 0 auto; }
   .float-card.fc-1 { left: 0; } .float-card.fc-2 { right: 0; }
+  .promo-vp-panel { width: min(440px, 94vw); }
 }
 
 /* ═══════════════ STATS BAND ═══════════════ */

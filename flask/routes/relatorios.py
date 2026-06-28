@@ -1,51 +1,58 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
-from routes.auth import gerente_required
-from models import db, Despesa, Receita, CategoriaDespesa, Orcamento, MeioPagamento, FechamentoCartao
+from models import db, Despesa, Receita, CategoriaDespesa, CategoriaReceita, Orcamento, MeioPagamento, FechamentoCartao, PrevisaoFinanceiraItem
 from sqlalchemy import func, extract, desc
 from datetime import datetime, timedelta, date
 import calendar
+import json
 from dateutil.relativedelta import relativedelta
-from utils.familia import get_user_ids_grupo
 
 relatorios_bp = Blueprint('relatorios', __name__)
 
+MESES_ABREV_PT = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+                  'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
-def _user_ids():
-    """Retorna lista de user_ids para filtrar relatórios (grupo família ou só o próprio)"""
-    if current_user.is_familia() and current_user.grupo_familia_id:
-        return get_user_ids_grupo()
-    return [current_user.id]
-
-
-def _filtro_desp():
-    ids = _user_ids()
-    if len(ids) == 1:
-        return Despesa.user_id == ids[0]
-    return Despesa.user_id.in_(ids)
+MESES_PT = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
 
-def _filtro_rec():
-    ids = _user_ids()
-    if len(ids) == 1:
-        return Receita.user_id == ids[0]
-    return Receita.user_id.in_(ids)
+def formatar_mes_ano(d):
+    """Formata uma data como 'Mes/Ano' usando abreviações em português."""
+    return f'{MESES_ABREV_PT[d.month]}/{d.year}'
+
+
+def formatar_mes_ano_extenso(mes, ano):
+    """Formata mes/ano como 'Mes/Ano' usando nome completo em português."""
+    return f'{MESES_PT[mes]}/{ano}'
+
+
+def calcular_primeira_fatura(data_compra, dia_fechamento, dia_vencimento):
+    """Retorna o primeiro mes de vencimento da fatura para uma compra."""
+    if data_compra.day > dia_fechamento:
+        meses_a_adicionar = 1 if dia_fechamento < dia_vencimento else 2
+    else:
+        meses_a_adicionar = 0 if dia_fechamento < dia_vencimento else 1
+
+    return (data_compra + relativedelta(months=meses_a_adicionar)).replace(day=1)
+
 
 @relatorios_bp.route('/balanco')
 @login_required
 def balanco():
-    """Relatório de balanço mensal (receitas vs despesas)"""
-    # Obter período do filtro ou usar últimos 12 meses
-    meses = request.args.get('meses', 12, type=int)
-    
-    # Cada usuário vê apenas seus próprios dados
+    """Relatório de balanço mensal (receitas vs despesas) — últimos 12 meses"""
+    hoje = datetime.now()
+    data_inicio_12m = (hoje - relativedelta(months=11)).replace(day=1).date()
+    ultimo_dia_mes = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+
     despesas_mensais = db.session.query(
         extract('year', Despesa.data_pagamento).label('ano'),
         extract('month', Despesa.data_pagamento).label('mes'),
         func.sum(Despesa.valor).label('total')
     ).join(Despesa.categoria).filter(
         func.lower(CategoriaDespesa.nome) != 'pagamentos',
-        _filtro_desp()
+        Despesa.user_id == current_user.id,
+        Despesa.data_pagamento >= data_inicio_12m,
+        Despesa.data_pagamento <= ultimo_dia_mes,
     ).group_by('ano', 'mes').order_by('ano', 'mes').all()
 
     receitas_mensais = db.session.query(
@@ -53,9 +60,11 @@ def balanco():
         extract('month', Receita.data_recebimento).label('mes'),
         func.sum(Receita.valor).label('total')
     ).filter(
-        _filtro_rec()
+        Receita.user_id == current_user.id,
+        Receita.data_recebimento >= data_inicio_12m,
+        Receita.data_recebimento <= ultimo_dia_mes,
     ).group_by('ano', 'mes').order_by('ano', 'mes').all()
-    
+
     return render_template('relatorios/balanco.html',
                          despesas_mensais=despesas_mensais,
                          receitas_mensais=receitas_mensais)
@@ -66,10 +75,9 @@ def despesas_mensal():
     """Relatório mensal de despesas"""
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
-    entidade = request.args.get('entidade', '')
 
-    # Query por categoria
-    query = db.session.query(
+    # Query por categoria - sempre filtrar por usuário
+    despesas_por_categoria = db.session.query(
         CategoriaDespesa.id,
         CategoriaDespesa.nome,
         func.sum(Despesa.valor).label('total'),
@@ -77,25 +85,21 @@ def despesas_mensal():
     ).join(Despesa).filter(
         extract('month', Despesa.data_pagamento) == mes,
         extract('year', Despesa.data_pagamento) == ano,
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    )
-
-    query = query.filter(_filtro_desp())
-    if entidade and current_user.usa_separacao_pf_pj():
-        query = query.filter(Despesa.entidade == entidade)
-
-    despesas_por_categoria = query.group_by(CategoriaDespesa.id, CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).all()
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).group_by(CategoriaDespesa.id, CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).all()
 
     total_mes = sum([d[2] for d in despesas_por_categoria])
-    nome_mes = calendar.month_name[mes]
+    _meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = _meses_pt[mes - 1]
 
     return render_template('relatorios/despesas_mensal.html',
                          despesas_por_categoria=despesas_por_categoria,
                          total_mes=total_mes,
                          mes=mes,
                          ano=ano,
-                         nome_mes=nome_mes,
-                         entidade=entidade)
+                         nome_mes=nome_mes)
 
 @relatorios_bp.route('/receitas-mensal')
 @login_required
@@ -103,35 +107,30 @@ def receitas_mensal():
     """Relatório mensal de receitas"""
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
-    entidade = request.args.get('entidade', '')
 
     from models import CategoriaReceita
 
-    # Query por categoria
-    query = db.session.query(
+    # Query por categoria - sempre filtrar por usuário
+    receitas_por_categoria = db.session.query(
         CategoriaReceita.nome,
         func.sum(Receita.valor).label('total')
     ).join(Receita).filter(
         extract('month', Receita.data_recebimento) == mes,
-        extract('year', Receita.data_recebimento) == ano
-    )
-
-    query = query.filter(_filtro_rec())
-    if entidade and current_user.usa_separacao_pf_pj():
-        query = query.filter(Receita.entidade == entidade)
-
-    receitas_por_categoria = query.group_by(CategoriaReceita.nome).order_by(func.sum(Receita.valor).desc()).all()
+        extract('year', Receita.data_recebimento) == ano,
+        Receita.user_id == current_user.id
+    ).group_by(CategoriaReceita.nome).order_by(func.sum(Receita.valor).desc()).all()
 
     total_mes = sum([r[1] for r in receitas_por_categoria])
-    nome_mes = calendar.month_name[mes]
+    _meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = _meses_pt[mes - 1]
 
     return render_template('relatorios/receitas_mensal.html',
                          receitas_por_categoria=receitas_por_categoria,
                          total_mes=total_mes,
                          mes=mes,
                          ano=ano,
-                         nome_mes=nome_mes,
-                         entidade=entidade)
+                         nome_mes=nome_mes)
 
 @relatorios_bp.route('/top-contas')
 @login_required
@@ -139,35 +138,31 @@ def top_contas():
     """Top 10 contas de despesa"""
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
-    
-    # Query top 10
-    query = db.session.query(
+
+    # Query top 10 - sempre filtrar por usuário
+    top_contas = db.session.query(
         CategoriaDespesa.nome,
         func.sum(Despesa.valor).label('total'),
         func.count(Despesa.id).label('quantidade')
     ).join(Despesa).filter(
         extract('month', Despesa.data_pagamento) == mes,
         extract('year', Despesa.data_pagamento) == ano,
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    )
-    
-    query = query.filter(_filtro_desp())
-    
-    top_contas = query.group_by(CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).limit(10).all()
-    
-    # Total do mês
-    total_mes_query = db.session.query(func.sum(Despesa.valor)).join(Despesa.categoria).filter(
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).group_by(CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).limit(10).all()
+
+    # Total do mês - sempre filtrar por usuário
+    total_mes = db.session.query(func.sum(Despesa.valor)).join(Despesa.categoria).filter(
         extract('month', Despesa.data_pagamento) == mes,
         extract('year', Despesa.data_pagamento) == ano,
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    )
-    
-    total_mes_query = total_mes_query.filter(_filtro_desp())
-    
-    total_mes = total_mes_query.scalar() or 0
-    
-    nome_mes = calendar.month_name[mes]
-    
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).scalar() or 0
+
+    _meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = _meses_pt[mes - 1]
+
     return render_template('relatorios/top_contas.html',
                          top_contas=top_contas,
                          total_mes=total_mes,
@@ -182,28 +177,25 @@ def detalhes_despesas():
     categoria_nome = request.args.get('categoria')
     mes = request.args.get('mes', type=int)
     ano = request.args.get('ano', type=int)
-    
+
     if not categoria_nome or not mes or not ano:
         return "Parâmetros inválidos", 400
-    
-    # Construir query para despesas filtradas
-    query = Despesa.query.join(CategoriaDespesa).filter(
+
+    # Construir query para despesas filtradas - sempre filtrar por usuário
+    despesas = Despesa.query.join(CategoriaDespesa).filter(
         CategoriaDespesa.nome == categoria_nome,
         extract('month', Despesa.data_pagamento) == mes,
-        extract('year', Despesa.data_pagamento) == ano
-    )
-    
-    # Filtrar por usuário se não for gerente
-    query = query.filter(_filtro_desp())
-    
-    # Ordenar por data
-    despesas = query.order_by(Despesa.data_pagamento.desc()).all()
-    
+        extract('year', Despesa.data_pagamento) == ano,
+        Despesa.user_id == current_user.id
+    ).order_by(Despesa.data_pagamento.desc()).all()
+
     # Calcular total
     total = sum(d.valor for d in despesas)
-    
-    nome_mes = calendar.month_name[mes]
-    
+
+    _meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = _meses_pt[mes - 1]
+
     return render_template('relatorios/detalhes_despesas.html',
                          despesas=despesas,
                          categoria_nome=categoria_nome,
@@ -218,12 +210,10 @@ def orcado_vs_gasto():
     """Relatório de orçado vs gasto"""
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
-    
-    # Orçamentos: usar user_id do assinante se for membro família
-    from utils.familia import assinante_id_grupo
-    dono_orcamento = assinante_id_grupo()
-    orcamentos = Orcamento.query.filter_by(user_id=dono_orcamento).all()
-    
+
+    # Buscar orçamentos do usuário - sempre filtrar por usuário
+    orcamentos = Orcamento.query.filter_by(user_id=current_user.id).all()
+
     # Para cada orçamento, calcular o gasto
     comparativo = []
     for orc in orcamentos:
@@ -231,12 +221,12 @@ def orcado_vs_gasto():
             Despesa.categoria_id == orc.categoria_id,
             extract('month', Despesa.data_pagamento) == mes,
             extract('year', Despesa.data_pagamento) == ano,
-            _filtro_desp()
+            Despesa.user_id == current_user.id
         ).scalar() or 0
-        
+
         diferenca = orc.valor_orcado - gasto
         percentual = (gasto / orc.valor_orcado * 100) if orc.valor_orcado > 0 else 0
-        
+
         comparativo.append({
             'categoria': orc.categoria.nome,
             'orcado': orc.valor_orcado,
@@ -244,9 +234,11 @@ def orcado_vs_gasto():
             'diferenca': diferenca,
             'percentual': percentual
         })
-    
-    nome_mes = calendar.month_name[mes]
-    
+
+    _meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = _meses_pt[mes - 1]
+
     return render_template('relatorios/orcado_vs_gasto.html',
                          comparativo=comparativo,
                          mes=mes,
@@ -276,14 +268,11 @@ def previsao_cartoes():
     # Buscar despesas parceladas para calcular a data final real
     max_parcela_date = max_db_date
     
-    # Query para buscar a maior data final de parcelamento
-    query_parcelas = db.session.query(Despesa.data_pagamento, Despesa.num_parcelas).filter(
-        Despesa.num_parcelas > 1
-    )
-    
-    query_parcelas = query_parcelas.filter(_filtro_desp())
-        
-    despesas_parceladas = query_parcelas.all()
+    # Query para buscar a maior data final de parcelamento - sempre filtrar por usuário
+    despesas_parceladas = db.session.query(Despesa.data_pagamento, Despesa.num_parcelas).filter(
+        Despesa.num_parcelas > 1,
+        Despesa.user_id == current_user.id
+    ).all()
     
     # Debug logging (print to console which shows in terminal)
     print(f"DEBUG: Found {len(despesas_parceladas)} parcel expenses for user {current_user.id}")
@@ -309,14 +298,14 @@ def previsao_cartoes():
     print(f"DEBUG: End Date calculated: {end_date}")
     print(f"DEBUG: Max DB: {max_db_date}, Max Parcela: {max_parcela_date}, Futuro 12m: {futuro_12m}")
         
-    # Ajustar para o primeiro dia do mês
-    start_date = start_date.replace(day=1)
-    end_date = end_date.replace(day=1)
+    # MODIFICADO: Definir intervalo fixo de visualização [-6 meses, +12 meses]
+    start_date = (hoje - relativedelta(months=6)).replace(day=1)
+    end_date_disp = (hoje + relativedelta(months=12)).replace(day=1)
     
-    # Gerar lista de meses para projeção (Todo o intervalo)
+    # Gerar lista de meses para EXIBIÇÃO
     meses_projecao = []
     curr_date = start_date
-    while curr_date <= end_date:
+    while curr_date <= end_date_disp:
         meses_projecao.append(curr_date)
         curr_date += relativedelta(months=1)
             
@@ -331,10 +320,11 @@ def previsao_cartoes():
         dia_vencimento = config.dia_vencimento if config else 10
         dia_fechamento = config.dia_fechamento if config else 31 # Se não tem fechamento, considera fim do mês
         
-        # Buscar TODAS as despesas deste cartão
-        query_despesas = Despesa.query.filter_by(meio_pagamento_id=cartao.id).filter(_filtro_desp())
-        
-        despesas = query_despesas.all()
+        # Buscar TODAS as despesas deste cartão - sempre filtrar por usuário
+        despesas = Despesa.query.filter_by(
+            meio_pagamento_id=cartao.id,
+            user_id=current_user.id
+        ).all()
         
         # Dicionário para acumular totais por mês (ano, mes) -> valor
         totais_por_mes = {}
@@ -343,15 +333,11 @@ def previsao_cartoes():
             valor_parcela = despesa.valor / despesa.num_parcelas
             data_base = despesa.data_pagamento
             
-            # Ajustar data inicial baseado no fechamento
-            # Se a compra foi feita DEPOIS do fechamento, a primeira parcela cai no mês seguinte (ou próximo vencimento)
-            # Simplificação: Se dia > dia_fechamento, pula 1 mês no início
-            if data_base.day > dia_fechamento:
-                data_base = data_base + relativedelta(months=1)
+            primeira_fatura = calcular_primeira_fatura(data_base, dia_fechamento, dia_vencimento)
                 
             # Distribuir parcelas
             for i in range(despesa.num_parcelas):
-                data_parcela = data_base + relativedelta(months=i)
+                data_parcela = primeira_fatura + relativedelta(months=i)
                 chave = (data_parcela.year, data_parcela.month)
                 
                 if chave not in totais_por_mes:
@@ -375,16 +361,13 @@ def previsao_cartoes():
             # Status e cálculo de restante
             is_futuro = False
             if date.today() > vencimento:
-                status = 'Fechada'
-            else:
                 status = 'Previsto'
                 is_futuro = True
-                # Acumular no total restante apenas faturas futuras
-                total_restante += total
+                # Nota: total_restante agora é calculado separadamente abaixo
             
             # Adicionar fatura à lista
             faturas.append({
-                'mes_referencia': data_ref.strftime('%b/%Y'),
+                'mes_referencia': formatar_mes_ano(data_ref),
                 'mes_int': mes,
                 'ano_int': ano,
                 'vencimento': vencimento,
@@ -392,17 +375,38 @@ def previsao_cartoes():
                 'status': status,
                 'is_futuro': is_futuro
             })
+
+        # MODIFICADO: Calcular Total Restante REAL (soma de TUDO o que é futuro, mesmo fora da lista)
+        total_restante = 0
+        hoje_dt = date.today()
+        # Verificar todas as chaves do dicionário
+        for (ano_t, mes_t), valor_t in totais_por_mes.items():
+             # Estimar vencimento simples (dia 10 ou config)
+             # Não precisa ser exato, só saber se é futuro
+             # Usar o último dia do mês se o dia de vencimento exceder (ex: dia 30 em Fev)
+             last_day_of_month = calendar.monthrange(ano_t, mes_t)[1]
+             effective_day = min(dia_vencimento, last_day_of_month)
+             
+             venc_t = date(ano_t, mes_t, effective_day)
+             if venc_t >= hoje_dt:
+                 total_restante += valor_t
             
+        # Preparar dados para o gráfico (apenas o que está na tela)
+        labels_grafico = [f['mes_referencia'] for f in faturas]
+        dados_grafico = [f['total'] for f in faturas]
+
         # Adicionar cartão (se tiver faturas ou for ativo)
         previsoes.append({
             'cartao': cartao.nome,
             'cartao_id': cartao.id,
             'faturas': faturas,
-            'total_restante': total_restante
+            'total_restante': total_restante,
+            'labels_grafico': labels_grafico,
+            'dados_grafico': dados_grafico
         })
     
     # Gerar labels para o cabeçalho (não mais usado no layout vertical, mas mantido por compatibilidade se precisar)
-    meses_labels = [d.strftime('%b/%Y') for d in meses_projecao]
+    meses_labels = [formatar_mes_ano(d) for d in meses_projecao]
     
     # Calcular resumo global (soma de todas as faturas previstas de todos os cartões)
     resumo_global = {
@@ -432,24 +436,42 @@ def previsao_cartoes():
         key=lambda x: (x['ano_int'], x['mes_int'])
     )
 
-    return render_template('relatorios/previsao_cartoes.html', 
+    # Passivo: soma do mês atual em diante (até o último registro disponível)
+    resumo_global['passivo_total'] = sum(
+        item['total'] for item in resumo_global['detalhes_mensais']
+        if (item['ano_int'], item['mes_int']) >= (hoje.year, hoje.month)
+    )
+    resumo_global['passivo_inicio'] = formatar_mes_ano_extenso(hoje.month, hoje.year)
+    if resumo_global['detalhes_mensais']:
+        ultimo = resumo_global['detalhes_mensais'][-1]
+        resumo_global['passivo_fim'] = formatar_mes_ano_extenso(ultimo['mes_int'], ultimo['ano_int'])
+    else:
+        resumo_global['passivo_fim'] = resumo_global['passivo_inicio']
+
+    categorias = CategoriaDespesa.query.filter_by(ativo=True, user_id=current_user.id)\
+                                       .order_by(CategoriaDespesa.nome).all()
+
+    return render_template('relatorios/previsao_cartoes.html',
                          previsoes=previsoes,
                          meses_labels=meses_labels,
-                         resumo_global=resumo_global)
+                         resumo_global=resumo_global,
+                         categorias=categorias)
 
 @relatorios_bp.route('/api/fatura-detalhes/<int:cartao_id>/<int:mes>/<int:ano>')
 @login_required
 def api_fatura_detalhes(cartao_id, mes, ano):
     """API para retornar detalhes da fatura (transações)"""
     try:
-        # Buscar TODAS as despesas deste cartão
-        query = Despesa.query.filter_by(meio_pagamento_id=cartao_id).filter(_filtro_desp())
-            
-        despesas = query.order_by(Despesa.data_pagamento, Despesa.id).all()
+        # Buscar TODAS as despesas deste cartão - sempre filtrar por usuário
+        despesas = Despesa.query.filter_by(
+            meio_pagamento_id=cartao_id,
+            user_id=current_user.id
+        ).order_by(Despesa.data_pagamento, Despesa.id).all()
         
         # Verificar configuração de fechamento para este cartão
         config = FechamentoCartao.query.filter_by(meio_pagamento_id=cartao_id).first()
         dia_fechamento = config.dia_fechamento if config else 31
+        dia_vencimento = config.dia_vencimento if config else 10
         
         detalhes = []
         
@@ -457,20 +479,18 @@ def api_fatura_detalhes(cartao_id, mes, ano):
             valor_parcela = d.valor / d.num_parcelas
             data_base = d.data_pagamento
             
-            # Ajustar data inicial baseado no fechamento
-            if data_base.day > dia_fechamento:
-                data_base = data_base + relativedelta(months=1)
-                
+            primeira_fatura = calcular_primeira_fatura(data_base, dia_fechamento, dia_vencimento)
             # Verificar se alguma parcela cai no mês/ano solicitado
             for i in range(d.num_parcelas):
-                data_parcela = data_base + relativedelta(months=i)
+                data_parcela = primeira_fatura + relativedelta(months=i)
                 
                 if data_parcela.month == mes and data_parcela.year == ano:
                     # Encontrou! Adicionar aos detalhes
                     detalhes.append({
+                        'id': d.id,
                         'data': d.data_pagamento.strftime('%d/%m/%Y'),
                         'descricao': d.descricao,
-                        'valor': valor_parcela, # Valor da parcela, não total
+                        'valor': valor_parcela,
                         'categoria': d.categoria.nome,
                         'parcelas': f"{i+1}/{d.num_parcelas}" if d.num_parcelas > 1 else "À vista"
                     })
@@ -492,20 +512,18 @@ def api_despesas_categoria():
     """API JSON para gráfico de despesas por categoria"""
     mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
-    
-    query = db.session.query(
+
+    # Query - sempre filtrar por usuário
+    dados = db.session.query(
         CategoriaDespesa.nome,
         func.sum(Despesa.valor).label('total')
     ).join(Despesa).filter(
         extract('month', Despesa.data_pagamento) == mes,
         extract('year', Despesa.data_pagamento) == ano,
-        func.lower(CategoriaDespesa.nome) != 'pagamentos'
-    )
-    
-    query = query.filter(_filtro_desp())
-    
-    dados = query.group_by(CategoriaDespesa.nome).all()
-    
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).group_by(CategoriaDespesa.nome).all()
+
     return jsonify({
         'labels': [d[0] for d in dados],
         'values': [float(d[1]) for d in dados]
@@ -514,38 +532,51 @@ def api_despesas_categoria():
 @relatorios_bp.route('/api/graficos/balanco-mensal')
 @login_required
 def api_balanco_mensal():
-    """API JSON para gráfico de balanço mensal (últimos 12 meses alinhados)"""
+    """API JSON para gráfico de balanço mensal (Últimos 12 meses)"""
+    
+    # Gerar lista dos últimos 12 meses (do atual para trás)
     hoje = datetime.now()
     meses_referencia = []
     for i in range(11, -1, -1):
         data = hoje - relativedelta(months=i)
         meses_referencia.append((data.year, data.month))
-
-    dados = {'labels': [], 'receitas': [], 'despesas': [], 'saldos': []}
-
+        
+    # Inicializar estruturas de dados zeradas
+    dados_alinhados = {
+        'labels': [],
+        'receitas': [],
+        'despesas': [],
+        'saldos': []
+    }
+    
     for ano, mes in meses_referencia:
-        dados['labels'].append(f"{mes:02d}/{ano}")
-
-        q_rec = db.session.query(func.sum(Receita.valor)).filter(
+        # Format label
+        label = f"{mes:02d}/{ano}"
+        dados_alinhados['labels'].append(label)
+        
+        # Buscar Receita deste mês
+        receita = db.session.query(func.sum(Receita.valor)).filter(
             extract('month', Receita.data_recebimento) == mes,
             extract('year', Receita.data_recebimento) == ano,
-        )
-        q_desp = db.session.query(func.sum(Despesa.valor)).join(CategoriaDespesa).filter(
+            Receita.user_id == current_user.id
+        ).scalar() or 0.0
+        
+        # Buscar Despesa deste mês (exceto 'Pagamentos')
+        despesa = db.session.query(func.sum(Despesa.valor)).join(CategoriaDespesa).filter(
             func.lower(CategoriaDespesa.nome) != 'pagamentos',
             extract('month', Despesa.data_pagamento) == mes,
             extract('year', Despesa.data_pagamento) == ano,
-        )
-        q_rec = q_rec.filter(_filtro_rec())
-        q_desp = q_desp.filter(_filtro_desp())
+            Despesa.user_id == current_user.id
+        ).scalar() or 0.0
+        
+        # Calcular Saldo
+        saldo = receita - despesa
+        
+        dados_alinhados['receitas'].append(float(receita))
+        dados_alinhados['despesas'].append(float(despesa))
+        dados_alinhados['saldos'].append(float(saldo))
 
-        receita = q_rec.scalar() or 0.0
-        despesa = q_desp.scalar() or 0.0
-
-        dados['receitas'].append(float(receita))
-        dados['despesas'].append(float(despesa))
-        dados['saldos'].append(float(receita - despesa))
-
-    return jsonify(dados)
+    return jsonify(dados_alinhados)
 
 @relatorios_bp.route('/despesas_por_categoria_evolucao')
 @login_required
@@ -554,31 +585,39 @@ def despesas_por_categoria_evolucao():
     categoria_id = request.args.get('categoria_id')
     mes_inicio = request.args.get('mes_inicio')
     mes_fim = request.args.get('mes_fim')
-    
-    # Base query
+
+    # Padrão: últimos 12 meses (até o mês atual)
+    if not mes_inicio and not mes_fim:
+        hoje = date.today()
+        mes_fim = hoje.strftime('%Y-%m')
+        mes_inicio = (hoje - relativedelta(months=11)).strftime('%Y-%m')
+
+    # Base query - sempre filtrar por usuário
     query = db.session.query(
         func.to_char(Despesa.data_pagamento, 'YYYY-MM').label('mes_ano'),
         func.sum(Despesa.valor).label('total'),
         func.count(Despesa.id).label('quantidade')
-    ).join(CategoriaDespesa)
-    
+    ).join(CategoriaDespesa).filter(
+        Despesa.user_id == current_user.id
+    )
+
     # Apply filters
     if categoria_id:
         query = query.filter(Despesa.categoria_id == categoria_id)
-        
+
     if mes_inicio:
         query = query.filter(func.to_char(Despesa.data_pagamento, 'YYYY-MM') >= mes_inicio)
-        
+
     if mes_fim:
         query = query.filter(func.to_char(Despesa.data_pagamento, 'YYYY-MM') <= mes_fim)
-        
+
     # Group and order
     query = query.group_by('mes_ano').order_by(desc('mes_ano'))
-    
+
     resultados = query.all()
-    
+
     # Get all categories for the filter dropdown
-    categorias = CategoriaDespesa.query.order_by(CategoriaDespesa.nome).all()
+    categorias = CategoriaDespesa.query.filter_by(user_id=current_user.id).order_by(CategoriaDespesa.nome).all()
     
     # Prepare data for chart
     chart_labels = []
@@ -626,25 +665,27 @@ def despesas_por_categoria_evolucao():
 def despesas_por_pagamento():
     # Get filter parameters
     meio_pagamento = request.args.get('meio_pagamento')
-    
-    # Base query
+
+    # Base query - sempre filtrar por usuário
     query = db.session.query(
         func.to_char(Despesa.data_pagamento, 'YYYY-MM').label('mes_ano'),
         func.sum(Despesa.valor).label('total'),
         func.count(Despesa.id).label('quantidade')
-    ).join(MeioPagamento)
-    
+    ).join(MeioPagamento).filter(
+        Despesa.user_id == current_user.id
+    )
+
     # Apply filters
     if meio_pagamento:
         query = query.filter(MeioPagamento.nome == meio_pagamento)
-        
+
     # Group and order
     query = query.group_by('mes_ano').order_by(desc('mes_ano'))
-    
+
     resultados = query.all()
-    
+
     # Get all payment methods for the filter dropdown
-    meios_pagamento = [m.nome for m in MeioPagamento.query.order_by(MeioPagamento.nome).all()]
+    meios_pagamento = [m.nome for m in MeioPagamento.query.filter_by(user_id=current_user.id).order_by(MeioPagamento.nome).all()]
     
     # Prepare data for chart
     chart_labels = []
@@ -653,7 +694,7 @@ def despesas_por_pagamento():
     # Get payment method ID if selected
     meio_pagamento_id = None
     if meio_pagamento:
-        mp = MeioPagamento.query.filter_by(nome=meio_pagamento).first()
+        mp = MeioPagamento.query.filter_by(nome=meio_pagamento, user_id=current_user.id).first()
         if mp:
             meio_pagamento_id = mp.id
 
@@ -705,21 +746,23 @@ def despesas_entre_datas():
     chart_data = []
     
     if data_inicio and data_fim:
-        # Query
+        # Query - filtrar por usuário
         query = db.session.query(
             CategoriaDespesa.id.label('categoria_id'),
             CategoriaDespesa.nome.label('categoria'),
             func.sum(Despesa.valor).label('total'),
             func.count(Despesa.id).label('quantidade')
         ).join(CategoriaDespesa).filter(
-            Despesa.data_pagamento.between(data_inicio, data_fim)
+            Despesa.data_pagamento.between(data_inicio, data_fim),
+            func.lower(CategoriaDespesa.nome) != 'pagamentos',
+            Despesa.user_id == current_user.id
         )
-        
+
         # Group and order
         query = query.group_by(CategoriaDespesa.id, CategoriaDespesa.nome).order_by(desc('total'))
-        
+
         resultados = query.all()
-        
+
         # Calculate total
         total_geral = sum(r.total for r in resultados)
         
@@ -751,15 +794,17 @@ def despesas_mensais_periodo():
     chart_data = []
     
     if data_inicio and data_fim:
-        # Query
+        # Query - filtrar por usuário
         query = db.session.query(
             func.to_char(Despesa.data_pagamento, 'YYYY-MM').label('mes_ano'),
             func.sum(Despesa.valor).label('total'),
             func.count(Despesa.id).label('quantidade')
-        ).filter(
-            Despesa.data_pagamento.between(data_inicio, data_fim)
+        ).join(Despesa.categoria).filter(
+            Despesa.data_pagamento.between(data_inicio, data_fim),
+            func.lower(CategoriaDespesa.nome) != 'pagamentos',
+            Despesa.user_id == current_user.id
         )
-        
+
         # Group and order
         query = query.group_by('mes_ano').order_by('mes_ano')
         
@@ -801,143 +846,517 @@ def despesas_mensais_periodo():
         chart_data=chart_data
     )
 
-
 @relatorios_bp.route('/top-10-despesas')
 @login_required
 def top_10_despesas():
-    from flask import redirect, url_for
-    return redirect(url_for('relatorios.top_contas'))
+    """Top 10 Maiores Despesas"""
+    # Filtros de período
+    periodo = request.args.get('periodo', 'mes_atual')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
 
+    # Determinar datas baseado no período
+    hoje = datetime.now()
+    if periodo == 'mes_atual':
+        data_inicio = date(hoje.year, hoje.month, 1)
+        ultimo_dia = calendar.monthrange(hoje.year, hoje.month)[1]
+        data_fim = date(hoje.year, hoje.month, ultimo_dia)
+    elif periodo == 'ultimos_3_meses':
+        data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        data_inicio = (data_fim - timedelta(days=90))
+    elif periodo == 'ultimos_6_meses':
+        data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        data_inicio = (data_fim - timedelta(days=180))
+    elif periodo == 'ultimo_ano':
+        data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        data_inicio = (data_fim - timedelta(days=365))
+    elif periodo == 'personalizado' and data_inicio and data_fim:
+        data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+        data_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+    else:
+        # Padrão: mês atual
+        data_inicio = date(hoje.year, hoje.month, 1)
+        ultimo_dia = calendar.monthrange(hoje.year, hoje.month)[1]
+        data_fim = date(hoje.year, hoje.month, ultimo_dia)
+
+    # Buscar top 10 despesas
+    top_despesas = Despesa.query.join(Despesa.categoria).filter(
+        Despesa.user_id == current_user.id,
+        Despesa.data_pagamento >= data_inicio,
+        Despesa.data_pagamento <= data_fim,
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+    ).order_by(Despesa.valor.desc()).limit(10).all()
+
+    # Calcular estatísticas
+    total_top10 = sum([d.valor for d in top_despesas])
+
+    total_periodo = db.session.query(func.sum(Despesa.valor)).join(Despesa.categoria).filter(
+        Despesa.user_id == current_user.id,
+        Despesa.data_pagamento >= data_inicio,
+        Despesa.data_pagamento <= data_fim,
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+    ).scalar() or 0
+
+    quantidade_total = db.session.query(func.count(Despesa.id)).join(Despesa.categoria).filter(
+        Despesa.user_id == current_user.id,
+        Despesa.data_pagamento >= data_inicio,
+        Despesa.data_pagamento <= data_fim,
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+    ).scalar() or 0
+
+    media_despesa = total_periodo / quantidade_total if quantidade_total > 0 else 0
+
+    # Dados para o gráfico
+    chart_labels = [f"{d.descricao[:30]}..." if len(d.descricao) > 30 else d.descricao for d in top_despesas]
+    chart_data = [float(d.valor) for d in top_despesas]
+
+    return render_template(
+        'relatorios/top_10_despesas.html',
+        top_despesas=top_despesas,
+        periodo=periodo,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        total_top10=total_top10,
+        total_periodo=total_periodo,
+        quantidade_total=quantidade_total,
+        media_despesa=media_despesa,
+        chart_labels=chart_labels,
+        chart_data=chart_data
+    )
 
 @relatorios_bp.route('/evolucao-temporal')
 @login_required
 def evolucao_temporal():
-    return redirect(url_for('relatorios.despesas_por_categoria_evolucao'))
+    """Evolução Temporal dos Gastos (Diários)"""
+    # Filtros de período
+    periodo = request.args.get('periodo', 'mes_atual')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
 
+    # Determinar datas baseado no período
+    hoje = datetime.now()
+    if periodo == 'mes_atual':
+        data_inicio = date(hoje.year, hoje.month, 1)
+        ultimo_dia = calendar.monthrange(hoje.year, hoje.month)[1]
+        data_fim = date(hoje.year, hoje.month, ultimo_dia)
+    elif periodo == 'ultimos_3_meses':
+        data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        data_inicio = (data_fim - timedelta(days=90))
+    elif periodo == 'ultimos_6_meses':
+        data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        data_inicio = (data_fim - timedelta(days=180))
+    elif periodo == 'ultimo_ano':
+        data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
+        data_inicio = (data_fim - timedelta(days=365))
+    elif periodo == 'personalizado' and data_inicio and data_fim:
+        data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+        data_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+    else:
+        # Padrão: mês atual
+        data_inicio = date(hoje.year, hoje.month, 1)
+        ultimo_dia = calendar.monthrange(hoje.year, hoje.month)[1]
+        data_fim = date(hoje.year, hoje.month, ultimo_dia)
+
+    # Buscar despesas agrupadas por dia
+    gastos_diarios = db.session.query(
+        Despesa.data_pagamento,
+        func.sum(Despesa.valor).label('total')
+    ).join(Despesa.categoria).filter(
+        Despesa.user_id == current_user.id,
+        Despesa.data_pagamento >= data_inicio,
+        Despesa.data_pagamento <= data_fim,
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+    ).group_by(Despesa.data_pagamento).order_by(Despesa.data_pagamento).all()
+
+    # Criar série temporal completa (incluindo dias sem gastos)
+    delta = data_fim - data_inicio
+    todos_dias = {}
+    for i in range(delta.days + 1):
+        dia = data_inicio + timedelta(days=i)
+        todos_dias[dia] = 0.0
+
+    # Preencher com gastos reais
+    for gasto in gastos_diarios:
+        todos_dias[gasto.data_pagamento] = float(gasto.total)
+
+    # Preparar dados para o gráfico
+    chart_labels = [dia.strftime('%d/%m') for dia in sorted(todos_dias.keys())]
+    chart_data = [todos_dias[dia] for dia in sorted(todos_dias.keys())]
+
+    # Estatísticas
+    total_periodo = sum(chart_data)
+    dias_com_gastos = len([v for v in chart_data if v > 0])
+    media_diaria = total_periodo / len(chart_data) if len(chart_data) > 0 else 0
+    maior_gasto_dia = max(chart_data) if chart_data else 0
+
+    return render_template(
+        'relatorios/evolucao_temporal.html',
+        periodo=periodo,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        total_periodo=total_periodo,
+        dias_com_gastos=dias_com_gastos,
+        media_diaria=media_diaria,
+        maior_gasto_dia=maior_gasto_dia,
+        chart_labels=chart_labels,
+        chart_data=chart_data
+    )
 
 @relatorios_bp.route('/comparativo-anual')
 @login_required
 def comparativo_anual():
-    return redirect(url_for('relatorios.balanco'))
+    """Comparativo de Gastos Mensais por Ano"""
+    # Buscar todos os anos disponíveis para o usuário
+    anos_disponiveis = db.session.query(
+        extract('year', Despesa.data_pagamento).label('ano')
+    ).filter(
+        Despesa.user_id == current_user.id
+    ).distinct().order_by('ano').all()
+
+    anos = [int(a.ano) for a in anos_disponiveis]
+
+    # Se não há anos, mostrar vazio
+    if not anos:
+        return render_template(
+            'relatorios/comparativo_anual.html',
+            anos=[],
+            meses_pt=['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+            chart_labels=[],
+            datasets=[]
+        )
+
+    # Buscar gastos mensais por ano
+    gastos = db.session.query(
+        extract('year', Despesa.data_pagamento).label('ano'),
+        extract('month', Despesa.data_pagamento).label('mes'),
+        func.sum(Despesa.valor).label('total')
+    ).join(Despesa.categoria).filter(
+        Despesa.user_id == current_user.id,
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+    ).group_by('ano', 'mes').order_by('ano', 'mes').all()
+
+    # Organizar dados por ano e mês
+    dados_por_ano = {}
+    for ano in anos:
+        dados_por_ano[ano] = {m: 0.0 for m in range(1, 13)}
+
+    for gasto in gastos:
+        ano = int(gasto.ano)
+        mes = int(gasto.mes)
+        dados_por_ano[ano][mes] = float(gasto.total)
+
+    # Preparar datasets para Chart.js
+    meses_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    cores = [
+        '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
+        '#1abc9c', '#34495e', '#e67e22', '#95a5a6', '#d35400'
+    ]
+
+    datasets = []
+    for idx, ano in enumerate(anos):
+        datasets.append({
+            'label': str(ano),
+            'data': [dados_por_ano[ano][m] for m in range(1, 13)],
+            'backgroundColor': cores[idx % len(cores)],
+            'borderColor': cores[idx % len(cores)],
+            'borderWidth': 2
+        })
+
+    return render_template(
+        'relatorios/comparativo_anual.html',
+        anos=anos,
+        meses_pt=meses_pt,
+        chart_labels=meses_pt,
+        datasets=datasets
+    )
 
 
-def _promax_required(f):
-    """Decorator que exige nivel promax"""
-    from functools import wraps
-    from flask import abort
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not current_user.is_promax():
-            abort(403)
-        return f(*args, **kwargs)
-    return decorated
 
-
-@relatorios_bp.route('/pf-pj/despesas')
+@relatorios_bp.route('/previsao-financeira')
 @login_required
-@_promax_required
-def pf_pj_despesas():
-    """Relatório ProMax: despesas mensais PF vs PJ"""
-    from models import CategoriaReceita
-    from sqlalchemy import or_
+def previsao_financeira():
+    """Relatório de Previsão Financeira mensal."""
+    from dateutil.relativedelta import relativedelta as _rd
 
+    hoje = date.today()
+    horizonte = request.args.get('horizonte', 'proximo_ano')
+    num_meses = (12 - hoje.month + 1) if horizonte == 'resto_ano' else (12 - hoje.month + 1) + 12
+
+    meses_proj = []
+    for i in range(num_meses):
+        d = hoje.replace(day=1) + _rd(months=i)
+        meses_proj.append({'mes': d.month, 'ano': d.year,
+                           'label': d.strftime('%b/%Y'),
+                           'key': f"{d.year}-{d.month:02d}"})
+
+    # faturas de cartao por mes
+    cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True, user_id=current_user.id).all()
+    fech_map = {fc.meio_pagamento_id: fc for fc in FechamentoCartao.query.filter(
+        FechamentoCartao.meio_pagamento_id.in_([c.id for c in cartoes])).all()}
+    faturas_por_mes = {m['key']: 0.0 for m in meses_proj}
+
+    for cartao in cartoes:
+        fc = fech_map.get(cartao.id)
+        dia_f = fc.dia_fechamento if fc else 1
+        dia_v = fc.dia_vencimento if fc else 10
+        for desp in Despesa.query.filter_by(user_id=current_user.id, meio_pagamento_id=cartao.id).all():
+            if not desp.data_pagamento:
+                continue
+            n = desp.num_parcelas or 1
+            vp = round(desp.valor / n, 2)
+            for p in range(n):
+                mes_fat = calcular_primeira_fatura(desp.data_pagamento + _rd(months=p), dia_f, dia_v)
+                key = f"{mes_fat.year}-{mes_fat.month:02d}"
+                if key in faturas_por_mes:
+                    faturas_por_mes[key] += vp
+
+    meses_data = [{'mes': m['mes'], 'ano': m['ano'], 'label': m['label'], 'key': m['key'],
+                   'fatura_cartao': round(faturas_por_mes[m['key']], 2)} for m in meses_proj]
+
+    # Itens de receita/despesa fixa salvos previamente pelo usuário
+    itens_salvos = PrevisaoFinanceiraItem.query.filter_by(user_id=current_user.id).all()
+    receitas_salvas = []
+    despesas_salvas = []
+    for item in itens_salvos:
+        item_dict = {
+            'nome': item.nome,
+            'valor': item.valor,
+            'tipo': item.recorrencia_tipo,
+            'meses': json.loads(item.meses_json) if item.meses_json else [],
+            'inicio': item.periodo_inicio,
+            'fim': item.periodo_fim,
+            'overrides': json.loads(item.overrides_json) if item.overrides_json else {},
+        }
+        if item.tipo == 'receita':
+            receitas_salvas.append(item_dict)
+        else:
+            despesas_salvas.append(item_dict)
+
+    return render_template('relatorios/previsao_financeira.html',
+                           meses_data=meses_data, horizonte=horizonte,
+                           receitas_salvas=receitas_salvas, despesas_salvas=despesas_salvas)
+
+
+@relatorios_bp.route('/api/previsao-financeira/calcular', methods=['POST'])
+@login_required
+def api_previsao_financeira_calcular():
+    """Calcula previsão com receitas e despesas fixas informadas pelo usuário."""
+    from dateutil.relativedelta import relativedelta as _rd
+
+    payload = request.get_json(force=True) or {}
+    horizonte = payload.get('horizonte', 'proximo_ano')
+    receitas_input = payload.get('receitas', [])
+    despesas_input = payload.get('despesas', [])
+
+    hoje = date.today()
+    num_meses = (12 - hoje.month + 1) if horizonte == 'resto_ano' else (12 - hoje.month + 1) + 12
+
+    meses_proj = []
+    for i in range(num_meses):
+        d = hoje.replace(day=1) + _rd(months=i)
+        meses_proj.append({'mes': d.month, 'ano': d.year,
+                           'label': d.strftime('%b/%Y'),
+                           'key': f"{d.year}-{d.month:02d}"})
+
+    # faturas cartao
+    cartoes = MeioPagamento.query.filter_by(tipo='cartao', ativo=True, user_id=current_user.id).all()
+    fech_map = {fc.meio_pagamento_id: fc for fc in FechamentoCartao.query.filter(
+        FechamentoCartao.meio_pagamento_id.in_([c.id for c in cartoes])).all()}
+    faturas_por_mes = {m['key']: 0.0 for m in meses_proj}
+
+    for cartao in cartoes:
+        fc = fech_map.get(cartao.id)
+        dia_f = fc.dia_fechamento if fc else 1
+        dia_v = fc.dia_vencimento if fc else 10
+        for desp in Despesa.query.filter_by(user_id=current_user.id, meio_pagamento_id=cartao.id).all():
+            if not desp.data_pagamento:
+                continue
+            n = desp.num_parcelas or 1
+            vp = round(desp.valor / n, 2)
+            for p in range(n):
+                mes_fat = calcular_primeira_fatura(desp.data_pagamento + _rd(months=p), dia_f, dia_v)
+                key = f"{mes_fat.year}-{mes_fat.month:02d}"
+                if key in faturas_por_mes:
+                    faturas_por_mes[key] += vp
+
+    def _keys_ativos(item):
+        tipo = item.get('tipo', 'todos')
+        if tipo == 'meses_especificos':
+            sel = set(int(x) for x in item.get('meses', []))
+            return {m['key'] for m in meses_proj if m['mes'] in sel}
+        if tipo == 'periodo':
+            try:
+                ini = datetime.strptime(item.get('inicio', ''), '%Y-%m').date()
+                fim = datetime.strptime(item.get('fim', ''), '%Y-%m').date()
+                return {m['key'] for m in meses_proj
+                        if ini <= date(m['ano'], m['mes'], 1) <= fim}
+            except Exception:
+                pass
+        return {m['key'] for m in meses_proj}
+
+    resultado = []
+    for m in meses_proj:
+        key = m['key']
+        fatura = round(faturas_por_mes[key], 2)
+
+        rec_det = []
+        for r in receitas_input:
+            if key in _keys_ativos(r):
+                ov = r.get('overrides', {})
+                val = float(ov.get(key, r.get('valor', 0)))
+                if val > 0:
+                    rec_det.append({'nome': r.get('nome', 'Receita'), 'valor': round(val, 2)})
+
+        desp_det = []
+        for d in despesas_input:
+            if key in _keys_ativos(d):
+                ov = d.get('overrides', {})
+                val = float(ov.get(key, d.get('valor', 0)))
+                if val > 0:
+                    desp_det.append({'nome': d.get('nome', 'Despesa'), 'valor': round(val, 2)})
+
+        total_rec = sum(r['valor'] for r in rec_det)
+        total_desp = sum(d['valor'] for d in desp_det)
+        total_saidas = round(fatura + total_desp, 2)
+
+        resultado.append({
+            'key': key, 'label': m['label'], 'mes': m['mes'], 'ano': m['ano'],
+            'receitas': rec_det, 'total_receitas': round(total_rec, 2),
+            'fatura_cartao': fatura,
+            'despesas_fixas': desp_det, 'total_despesas_fixas': round(total_desp, 2),
+            'total_saidas': total_saidas,
+            'saldo': round(total_rec - total_saidas, 2),
+        })
+
+    return jsonify({'success': True, 'meses': resultado})
+
+
+@relatorios_bp.route('/api/previsao-financeira/itens', methods=['POST'])
+@login_required
+def api_previsao_financeira_salvar_itens():
+    """Salva (substituindo) as receitas e despesas fixas do usuário."""
+    payload = request.get_json(force=True) or {}
+    receitas_input = payload.get('receitas', [])
+    despesas_input = payload.get('despesas', [])
+
+    try:
+        PrevisaoFinanceiraItem.query.filter_by(user_id=current_user.id).delete()
+
+        for tipo, itens in (('receita', receitas_input), ('despesa', despesas_input)):
+            for it in itens:
+                novo = PrevisaoFinanceiraItem(
+                    tipo=tipo,
+                    nome=(it.get('nome') or ('Receita' if tipo == 'receita' else 'Despesa'))[:120],
+                    valor=float(it.get('valor', 0) or 0),
+                    recorrencia_tipo=it.get('tipo', 'todos'),
+                    meses_json=json.dumps(it.get('meses', [])),
+                    periodo_inicio=it.get('inicio') or None,
+                    periodo_fim=it.get('fim') or None,
+                    overrides_json=json.dumps(it.get('overrides', {})),
+                    user_id=current_user.id,
+                )
+                db.session.add(novo)
+
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@relatorios_bp.route('/extrato-financeiro')
+@login_required
+def extrato_financeiro():
+    """Extrato financeiro do mês: receitas x despesas por categoria, em gráficos de pizza."""
+    mes = request.args.get('mes', datetime.now().month, type=int)
     ano = request.args.get('ano', datetime.now().year, type=int)
 
-    meses_labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+    # Receitas por categoria
+    receitas_query = db.session.query(
+        CategoriaReceita.nome,
+        func.sum(Receita.valor).label('total')
+    ).join(Receita).filter(
+        extract('month', Receita.data_recebimento) == mes,
+        extract('year', Receita.data_recebimento) == ano,
+        Receita.user_id == current_user.id
+    ).group_by(CategoriaReceita.nome).order_by(func.sum(Receita.valor).desc()).all()
 
-    from sqlalchemy import or_
+    # Despesas por categoria
+    despesas_query = db.session.query(
+        CategoriaDespesa.nome,
+        func.sum(Despesa.valor).label('total')
+    ).join(Despesa).filter(
+        extract('month', Despesa.data_pagamento) == mes,
+        extract('year', Despesa.data_pagamento) == ano,
+        func.lower(CategoriaDespesa.nome) != 'pagamentos',
+        Despesa.user_id == current_user.id
+    ).group_by(CategoriaDespesa.nome).order_by(func.sum(Despesa.valor).desc()).all()
 
-    def _por_mes(entidade=None, sem_entidade=False):
-        q = db.session.query(
-            extract('month', Despesa.data_pagamento).label('mes'),
-            func.sum(Despesa.valor).label('total')
-        ).join(CategoriaDespesa).filter(
+    def _agrupar(itens, limite):
+        principais = itens[:limite]
+        resto = itens[limite:]
+        resultado = [{'nome': nome, 'valor': round(total, 2), 'categorias': [nome]} for nome, total in principais]
+        if resto:
+            outros = round(sum(total for _, total in resto), 2)
+            if outros > 0:
+                resultado.append({'nome': 'Outros', 'valor': outros, 'categorias': [nome for nome, _ in resto]})
+        return resultado
+
+    receitas_grupo = _agrupar(receitas_query, 5)
+    despesas_grupo = _agrupar(despesas_query, 10)
+
+    total_receitas = round(sum(r['valor'] for r in receitas_grupo), 2)
+    total_despesas = round(sum(d['valor'] for d in despesas_grupo), 2)
+
+    _meses_pt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    nome_mes = _meses_pt[mes - 1]
+
+    return render_template('relatorios/extrato_financeiro.html',
+                           receitas_grupo=receitas_grupo,
+                           despesas_grupo=despesas_grupo,
+                           total_receitas=total_receitas,
+                           total_despesas=total_despesas,
+                           mes=mes, ano=ano, nome_mes=nome_mes)
+
+
+@relatorios_bp.route('/api/extrato-financeiro/itens')
+@login_required
+def api_extrato_financeiro_itens():
+    """Retorna os lançamentos (despesas ou receitas) das categorias informadas, no mês/ano."""
+    tipo = request.args.get('tipo')  # 'receita' ou 'despesa'
+    mes = request.args.get('mes', type=int)
+    ano = request.args.get('ano', type=int)
+    categorias = request.args.getlist('categoria')
+
+    if tipo not in ('receita', 'despesa') or not mes or not ano or not categorias:
+        return jsonify({'success': False, 'error': 'Parâmetros inválidos'}), 400
+
+    if tipo == 'despesa':
+        registros = Despesa.query.join(CategoriaDespesa).filter(
+            CategoriaDespesa.nome.in_(categorias),
+            extract('month', Despesa.data_pagamento) == mes,
             extract('year', Despesa.data_pagamento) == ano,
-            func.lower(CategoriaDespesa.nome) != 'pagamentos',
-            _filtro_desp()
-        )
-        if sem_entidade:
-            q = q.filter(Despesa.entidade == None)
-        else:
-            q = q.filter(Despesa.entidade == entidade)
-        rows = {int(r.mes): float(r.total) for r in q.group_by('mes').all()}
-        return [rows.get(m, 0) for m in range(1, 13)]
-
-    dados_pf = _por_mes('pf')
-    dados_pj = _por_mes('pj')
-    dados_sc = _por_mes(sem_entidade=True)  # sem classificação (cartão antigo)
-
-    tabela = []
-    for i, mes_label in enumerate(meses_labels):
-        pf = dados_pf[i]
-        pj = dados_pj[i]
-        sc = dados_sc[i]
-        total = pf + pj + sc
-        tabela.append({'mes': mes_label, 'pf': pf, 'pj': pj, 'sc': sc, 'total': total})
-
-    total_pf = sum(dados_pf)
-    total_pj = sum(dados_pj)
-    total_sc = sum(dados_sc)
-
-    return render_template('relatorios/pf_pj_despesas.html',
-        ano=ano,
-        meses_labels=meses_labels,
-        dados_pf=dados_pf,
-        dados_pj=dados_pj,
-        dados_sc=dados_sc,
-        tabela=tabela,
-        total_pf=total_pf,
-        total_pj=total_pj,
-        total_sc=total_sc,
-    )
-
-
-@relatorios_bp.route('/pf-pj/receitas')
-@login_required
-@_promax_required
-def pf_pj_receitas():
-    """Relatório ProMax: receitas mensais PF vs PJ"""
-    from models import CategoriaReceita
-    from sqlalchemy import or_
-
-    ano = request.args.get('ano', datetime.now().year, type=int)
-
-    meses_labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-
-    def _por_mes(entidade):
-        q = db.session.query(
-            extract('month', Receita.data_recebimento).label('mes'),
-            func.sum(Receita.valor).label('total')
-        ).filter(
+            Despesa.user_id == current_user.id
+        ).order_by(Despesa.data_pagamento.desc()).all()
+        itens = [{
+            'descricao': r.descricao,
+            'categoria': r.categoria.nome,
+            'data': r.data_pagamento.strftime('%d/%m/%Y'),
+            'valor': round(r.valor, 2),
+        } for r in registros]
+    else:
+        registros = Receita.query.join(CategoriaReceita).filter(
+            CategoriaReceita.nome.in_(categorias),
+            extract('month', Receita.data_recebimento) == mes,
             extract('year', Receita.data_recebimento) == ano,
-            _filtro_rec()
-        )
-        if entidade == 'sem_entidade':
-            q = q.filter(Receita.entidade == None)
-        else:
-            q = q.filter(Receita.entidade == entidade)
-        rows = {int(r.mes): float(r.total) for r in q.group_by('mes').all()}
-        return [rows.get(m, 0) for m in range(1, 13)]
+            Receita.user_id == current_user.id
+        ).order_by(Receita.data_recebimento.desc()).all()
+        itens = [{
+            'descricao': r.descricao,
+            'categoria': r.categoria.nome,
+            'data': r.data_recebimento.strftime('%d/%m/%Y'),
+            'valor': round(r.valor, 2),
+        } for r in registros]
 
-    dados_pf = _por_mes('pf')
-    dados_pj = _por_mes('pj')
-
-    tabela = []
-    for i, mes_label in enumerate(meses_labels):
-        pf = dados_pf[i]
-        pj = dados_pj[i]
-        total = pf + pj
-        tabela.append({'mes': mes_label, 'pf': pf, 'pj': pj, 'total': total})
-
-    total_pf = sum(dados_pf)
-    total_pj = sum(dados_pj)
-
-    return render_template('relatorios/pf_pj_receitas.html',
-        ano=ano,
-        meses_labels=meses_labels,
-        dados_pf=dados_pf,
-        dados_pj=dados_pj,
-        tabela=tabela,
-        total_pf=total_pf,
-        total_pj=total_pj,
-    )
+    return jsonify({'success': True, 'itens': itens})

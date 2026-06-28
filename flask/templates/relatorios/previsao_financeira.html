@@ -1,0 +1,642 @@
+{% extends "base.html" %}
+{% block title %}Previsão Financeira — FiNan{% endblock %}
+{% block content %}
+<style>
+:root {
+  --pf-green:  #10b981;
+  --pf-red:    #ef4444;
+  --pf-blue:   #4361ee;
+  --pf-yellow: #f59e0b;
+  --pf-bg:     #f1f5f9;
+  --pf-surface:#ffffff;
+  --pf-border: #e2e8f0;
+  --pf-text:   #1e293b;
+  --pf-muted:  #64748b;
+}
+body { background: var(--pf-bg); }
+
+.pf-header {
+  background: linear-gradient(135deg,#0f2460,#4361ee);
+  color:#fff; border-radius:16px; padding:28px 32px 24px; margin-bottom:28px;
+}
+.pf-header h4 { font-weight:700; margin:0; font-size:1.35rem; }
+.pf-header p  { opacity:.75; margin:4px 0 0; font-size:.9rem; }
+
+.pf-card {
+  background:var(--pf-surface); border-radius:14px;
+  border:1px solid var(--pf-border); box-shadow:0 2px 8px rgba(0,0,0,.06);
+  padding:20px 24px; margin-bottom:20px;
+}
+.pf-card-title {
+  font-weight:700; font-size:.8rem; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--pf-muted); margin-bottom:14px;
+}
+
+/* inputs panel */
+.pf-section-title {
+  font-weight:700; font-size:.78rem; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--pf-muted); margin-bottom:10px;
+  border-bottom:1px solid var(--pf-border); padding-bottom:8px;
+}
+.pf-item-row {
+  background:#f8fafc; border:1px solid var(--pf-border);
+  border-radius:10px; padding:12px 14px; margin-bottom:10px; position:relative;
+}
+.pf-item-row .btn-remove {
+  position:absolute; top:10px; right:10px;
+  background:none; border:none; color:var(--pf-red); font-size:1.1rem; cursor:pointer; padding:0;
+}
+.pf-add-btn {
+  font-size:.82rem; font-weight:600; border-radius:8px;
+  padding:5px 14px; border:1.5px dashed var(--pf-border);
+  background:none; color:var(--pf-muted); cursor:pointer; transition:.15s;
+}
+.pf-add-btn:hover { border-color:var(--pf-blue); color:var(--pf-blue); }
+
+/* horizonte tabs */
+.hz-tab { display:inline-block; padding:5px 18px; border-radius:20px;
+  font-size:.82rem; font-weight:600; cursor:pointer; border:1.5px solid var(--pf-border);
+  background:var(--pf-surface); color:var(--pf-muted); margin-right:8px; transition:.15s; }
+.hz-tab.active { background:var(--pf-blue); color:#fff; border-color:var(--pf-blue); }
+
+/* chart */
+#pfChart { max-height:260px; }
+
+/* results table */
+.pf-table { width:100%; border-collapse:separate; border-spacing:0; }
+.pf-table th {
+  background:#f1f5f9; font-size:.75rem; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--pf-muted); font-weight:700;
+  padding:10px 14px; border-bottom:2px solid var(--pf-border);
+}
+.pf-table td { padding:11px 14px; border-bottom:1px solid var(--pf-border); vertical-align:middle; }
+.pf-table tr.mes-row { cursor:pointer; transition:.1s; }
+.pf-table tr.mes-row:hover td { background:#f0f7ff; }
+.pf-table tr.detail-row td { background:#f8fafc; padding:0; }
+.pf-table .detail-inner { padding:12px 20px; font-size:.85rem; display:none; }
+.pf-table .detail-inner.show { display:block; }
+.val-pos { color:var(--pf-green); font-weight:600; }
+.val-neg { color:var(--pf-red); font-weight:600; }
+.val-zero { color:var(--pf-muted); }
+
+.badge-saldo-pos { background:#d1fae5; color:#065f46; border-radius:20px; padding:2px 10px; font-size:.8rem; font-weight:700; }
+.badge-saldo-neg { background:#fee2e2; color:#991b1b; border-radius:20px; padding:2px 10px; font-size:.8rem; font-weight:700; }
+
+.pf-calc-btn {
+  background: linear-gradient(90deg,#4361ee,#10b981);
+  color:#fff; border:none; border-radius:10px;
+  font-weight:700; font-size:.95rem; padding:10px 30px;
+  cursor:pointer; transition:.15s; box-shadow:0 2px 8px rgba(67,97,238,.25);
+}
+.pf-calc-btn:hover { opacity:.9; }
+
+.loading-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.25);
+  z-index:9999; align-items:center; justify-content:center; }
+.loading-overlay.show { display:flex; }
+
+/* override cell inputs */
+.ov-input { width:90px; font-size:.8rem; padding:2px 6px; border:1px solid var(--pf-border); border-radius:6px; }
+</style>
+
+<div class="container-fluid px-3 px-md-4" style="max-width:1200px">
+
+  <!-- Header -->
+  <div class="pf-header d-flex align-items-start gap-3">
+    <i class="bi bi-graph-up-arrow fs-2 opacity-75 mt-1"></i>
+    <div class="flex-grow-1">
+      <h4><i class="bi bi-graph-up-arrow me-2"></i>Previsão Financeira</h4>
+      <p>Simule suas receitas, faturas de cartão e despesas fixas mês a mês.</p>
+    </div>
+    <a href="{{ url_for('relatorios.previsao_cartoes') }}" class="btn btn-outline-light btn-sm">
+      <i class="bi bi-credit-card me-1"></i>Previsão Cartões
+    </a>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- ══ Painel de Inputs (esquerda) ══ -->
+    <div class="col-lg-4">
+
+      <!-- Horizonte -->
+      <div class="pf-card">
+        <div class="pf-section-title"><i class="bi bi-calendar3 me-1"></i>Período</div>
+        <div class="mb-1">
+          <span class="hz-tab active" id="hz-proximo_ano" onclick="setHorizonte('proximo_ano',this)">Resto do ano + próximo</span>
+          <span class="hz-tab" id="hz-resto_ano" onclick="setHorizonte('resto_ano',this)">Só resto do ano</span>
+        </div>
+        <div class="mt-2 text-muted" style="font-size:.78rem" id="hz-desc">
+          Meses de <strong id="hz-range-label">—</strong>
+        </div>
+      </div>
+
+      <!-- Receitas recorrentes -->
+      <div class="pf-card">
+        <div class="pf-section-title d-flex justify-content-between align-items-center" style="border-bottom:none;margin-bottom:0;padding-bottom:0" onclick="toggleSecao('receitas')" role="button">
+          <span style="border-bottom:none"><i class="bi bi-arrow-down-circle me-1" style="color:var(--pf-green)"></i>Receitas Previstas</span>
+          <i class="bi bi-chevron-up" id="chev-receitas"></i>
+        </div>
+        <div id="secao-receitas" style="border-bottom:1px solid var(--pf-border); padding-bottom:8px; margin-bottom:10px; padding-top:10px">
+          <div id="lista-receitas"></div>
+          <button class="pf-add-btn" onclick="addReceita()"><i class="bi bi-plus-lg me-1"></i>Adicionar Receita</button>
+        </div>
+      </div>
+
+      <!-- Despesas fixas -->
+      <div class="pf-card">
+        <div class="pf-section-title d-flex justify-content-between align-items-center" style="border-bottom:none;margin-bottom:0;padding-bottom:0" onclick="toggleSecao('despesas')" role="button">
+          <span style="border-bottom:none"><i class="bi bi-arrow-up-circle me-1" style="color:var(--pf-red)"></i>Despesas / Pagamentos Fixos</span>
+          <i class="bi bi-chevron-up" id="chev-despesas"></i>
+        </div>
+        <div id="secao-despesas" style="border-bottom:1px solid var(--pf-border); padding-bottom:8px; margin-bottom:10px; padding-top:10px">
+          <div class="text-muted mb-2" style="font-size:.78rem">Condomínio, plano de saúde, financiamento — valores previsíveis.</div>
+          <div id="lista-despesas"></div>
+          <button class="pf-add-btn" onclick="addDespesa()"><i class="bi bi-plus-lg me-1"></i>Adicionar Despesa Fixa</button>
+        </div>
+      </div>
+
+      <!-- Faturas cartão (informativo) -->
+      <div class="pf-card" style="border-left:4px solid var(--pf-blue)">
+        <div class="pf-section-title"><i class="bi bi-credit-card me-1" style="color:var(--pf-blue)"></i>Faturas de Cartão</div>
+        <p class="text-muted mb-0" style="font-size:.82rem">
+          Os valores são calculados automaticamente a partir das suas despesas parceladas
+          cadastradas, usando os dias de fechamento e vencimento de cada cartão.
+        </p>
+      </div>
+
+      <button class="pf-calc-btn w-100" onclick="calcular()">
+        <i class="bi bi-play-fill me-2"></i>Calcular Previsão
+      </button>
+    </div>
+
+    <!-- ══ Resultado (direita) ══ -->
+    <div class="col-lg-8">
+
+      <!-- Gráfico -->
+      <div class="pf-card" id="resultado-area" style="display:none">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="pf-card-title mb-0"><i class="bi bi-bar-chart-fill me-1"></i>Evolução Mensal</div>
+          <div class="d-flex gap-3" style="font-size:.78rem">
+            <span><span style="display:inline-block;width:12px;height:12px;background:var(--pf-green);border-radius:3px;margin-right:4px"></span>Receitas</span>
+            <span><span style="display:inline-block;width:12px;height:12px;background:var(--pf-red);border-radius:3px;margin-right:4px"></span>Saídas</span>
+            <span><span style="display:inline-block;width:12px;height:3px;background:var(--pf-blue);border-radius:3px;margin-right:4px;vertical-align:middle"></span>Saldo</span>
+          </div>
+        </div>
+        <canvas id="pfChart"></canvas>
+      </div>
+
+      <!-- Tabela mês a mês -->
+      <div class="pf-card" id="tabela-area" style="display:none">
+        <div class="pf-card-title"><i class="bi bi-table me-1"></i>Detalhamento Mensal <small class="text-muted fw-normal">(clique no mês para ver o detalhamento)</small></div>
+        <div class="table-responsive">
+          <table class="pf-table">
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th class="text-end">Receitas</th>
+                <th class="text-end">Fat. Cartão</th>
+                <th class="text-end">Desp. Fixas</th>
+                <th class="text-end">Total Saídas</th>
+                <th class="text-end">Saldo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-meses"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Placeholder antes de calcular -->
+      <div class="pf-card text-center py-5" id="placeholder-area">
+        <i class="bi bi-calculator fs-1 text-muted opacity-50"></i>
+        <p class="text-muted mt-3">Preencha as receitas e despesas fixas ao lado<br>e clique em <strong>Calcular Previsão</strong>.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading">
+  <div class="text-center text-white">
+    <div class="spinner-border mb-2" role="status"></div>
+    <div>Calculando…</div>
+  </div>
+</div>
+
+<!-- Templates inline dos itens de entrada -->
+<template id="tmpl-receita">
+  <div class="pf-item-row" data-tipo="receita">
+    <button class="btn-remove" onclick="removeItem(this)" title="Remover">&times;</button>
+    <div class="row g-2">
+      <div class="col-12">
+        <input type="text" class="form-control form-control-sm" placeholder="Nome (ex: Salário)" data-field="nome">
+      </div>
+      <div class="col-6">
+        <label class="form-label mb-1" style="font-size:.75rem">Valor padrão (R$)</label>
+        <input type="number" class="form-control form-control-sm" placeholder="0,00" min="0" step="0.01" data-field="valor">
+      </div>
+      <div class="col-6">
+        <label class="form-label mb-1" style="font-size:.75rem">Meses</label>
+        <select class="form-select form-select-sm" data-field="tipo" onchange="toggleMesesExtra(this)">
+          <option value="todos">Todos os meses</option>
+          <option value="meses_especificos">Meses específicos</option>
+          <option value="periodo">Período (de/até)</option>
+        </select>
+      </div>
+      <div class="col-12 meses-extra" style="display:none">
+        <!-- preenchido dinamicamente -->
+      </div>
+      <div class="col-12">
+        <details style="font-size:.78rem">
+          <summary class="text-muted" style="cursor:pointer">Valores mensais individuais (opcional)</summary>
+          <div class="overrides-area mt-2 d-flex flex-wrap gap-2"></div>
+        </details>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="tmpl-despesa">
+  <div class="pf-item-row" data-tipo="despesa">
+    <button class="btn-remove" onclick="removeItem(this)" title="Remover">&times;</button>
+    <div class="row g-2">
+      <div class="col-12">
+        <input type="text" class="form-control form-control-sm" placeholder="Nome (ex: Condomínio)" data-field="nome">
+      </div>
+      <div class="col-6">
+        <label class="form-label mb-1" style="font-size:.75rem">Valor padrão (R$)</label>
+        <input type="number" class="form-control form-control-sm" placeholder="0,00" min="0" step="0.01" data-field="valor">
+      </div>
+      <div class="col-6">
+        <label class="form-label mb-1" style="font-size:.75rem">Meses</label>
+        <select class="form-select form-select-sm" data-field="tipo" onchange="toggleMesesExtra(this)">
+          <option value="todos">Todos os meses</option>
+          <option value="meses_especificos">Meses específicos</option>
+          <option value="periodo">Período (de/até)</option>
+        </select>
+      </div>
+      <div class="col-12 meses-extra" style="display:none">
+        <!-- preenchido dinamicamente -->
+      </div>
+      <div class="col-12">
+        <details style="font-size:.78rem">
+          <summary class="text-muted" style="cursor:pointer">Valores mensais individuais (opcional)</summary>
+          <div class="overrides-area mt-2 d-flex flex-wrap gap-2"></div>
+        </details>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ── Estado global ──────────────────────────────────────────────────────────
+let horizonte = 'proximo_ano';
+let pfChart = null;
+// meses do servidor (carregados do Jinja)
+const MESES_DATA = {{ meses_data | tojson }};
+// itens salvos previamente pelo usuário
+const RECEITAS_SALVAS = {{ receitas_salvas | tojson }};
+const DESPESAS_SALVAS = {{ despesas_salvas | tojson }};
+
+// ── Recolher/expandir seções ────────────────────────────────────────────────
+function toggleSecao(nome) {
+  const corpo = document.getElementById('secao-' + nome);
+  const chev = document.getElementById('chev-' + nome);
+  const oculto = corpo.style.display === 'none';
+  corpo.style.display = oculto ? '' : 'none';
+  chev.className = oculto ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+}
+
+// ── Horizonte ──────────────────────────────────────────────────────────────
+function setHorizonte(val, el) {
+  horizonte = val;
+  document.querySelectorAll('.hz-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  updateHzLabel();
+}
+
+function updateHzLabel() {
+  const meses = MESES_DATA;
+  if (!meses.length) return;
+  const fim = horizonte === 'resto_ano'
+    ? meses.find(m => m.mes === 12) || meses[meses.length - 1]
+    : meses[meses.length - 1];
+  document.getElementById('hz-range-label').textContent =
+    MESES_DATA[0].label + ' → ' + fim.label;
+}
+
+// ── Adicionar itens ────────────────────────────────────────────────────────
+function addReceita(data) { addItem('receita', document.getElementById('lista-receitas'), data); }
+function addDespesa(data) { addItem('despesa', document.getElementById('lista-despesas'), data); }
+
+function addItem(tipo, container, data) {
+  const tmpl = document.getElementById('tmpl-' + tipo);
+  const clone = tmpl.content.cloneNode(true);
+  container.appendChild(clone);
+  const row = container.lastElementChild;
+
+  if (data) {
+    row.querySelector('[data-field="nome"]').value = data.nome || '';
+    row.querySelector('[data-field="valor"]').value = (data.valor !== undefined && data.valor !== null) ? data.valor : '';
+    const selTipo = row.querySelector('[data-field="tipo"]');
+    selTipo.value = data.tipo || 'todos';
+    if (data.tipo === 'meses_especificos' || data.tipo === 'periodo') {
+      toggleMesesExtra(selTipo);
+      if (data.tipo === 'meses_especificos' && Array.isArray(data.meses)) {
+        const set = new Set(data.meses.map(Number));
+        row.querySelectorAll('[data-mes]').forEach(chk => {
+          chk.checked = set.has(parseInt(chk.value));
+        });
+      } else if (data.tipo === 'periodo') {
+        const ini = row.querySelector('[data-field="inicio"]');
+        const fim = row.querySelector('[data-field="fim"]');
+        if (ini) ini.value = data.inicio || '';
+        if (fim) fim.value = data.fim || '';
+      }
+    }
+  }
+
+  // popular overrides com os meses disponíveis
+  buildOverrides(row);
+
+  if (data && data.overrides) {
+    Object.entries(data.overrides).forEach(([key, val]) => {
+      const ov = row.querySelector(`.ov-input[data-key="${key}"]`);
+      if (ov) ov.value = val;
+    });
+  }
+}
+
+function removeItem(btn) { btn.closest('.pf-item-row').remove(); }
+
+function toggleMesesExtra(sel) {
+  const row = sel.closest('.pf-item-row');
+  const extra = row.querySelector('.meses-extra');
+  extra.innerHTML = '';
+  extra.style.display = 'none';
+  const val = sel.value;
+  if (val === 'meses_especificos') {
+    extra.style.display = '';
+    const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    nomes.forEach((n, i) => {
+      const chk = document.createElement('div');
+      chk.className = 'd-inline-flex align-items-center me-2 mb-1';
+      chk.innerHTML = `<input type="checkbox" class="form-check-input me-1" data-mes="${i+1}" value="${i+1}"><label style="font-size:.8rem">${n}</label>`;
+      extra.appendChild(chk);
+    });
+  } else if (val === 'periodo') {
+    extra.style.display = '';
+    extra.innerHTML = `
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <div><label style="font-size:.75rem">De</label>
+          <input type="month" class="form-control form-control-sm" data-field="inicio"></div>
+        <div><label style="font-size:.75rem">Até</label>
+          <input type="month" class="form-control form-control-sm" data-field="fim"></div>
+      </div>`;
+  }
+}
+
+function buildOverrides(row) {
+  const area = row.querySelector('.overrides-area');
+  area.innerHTML = '';
+  MESES_DATA.forEach(m => {
+    const w = document.createElement('div');
+    w.className = 'd-flex flex-column align-items-center';
+    w.style.minWidth = '72px';
+    w.innerHTML = `<span style="font-size:.72rem;color:#64748b">${m.label}</span>
+                   <input type="number" class="ov-input" data-key="${m.key}" placeholder="—" min="0" step="0.01">`;
+    area.appendChild(w);
+  });
+}
+
+function coletarItem(row) {
+  const nome = row.querySelector('[data-field="nome"]').value.trim() || 'Item';
+  const valor = parseFloat(row.querySelector('[data-field="valor"]').value) || 0;
+  const tipo = row.querySelector('[data-field="tipo"]').value;
+  const obj = { nome, valor, tipo };
+
+  if (tipo === 'meses_especificos') {
+    obj.meses = [...row.querySelectorAll('[data-mes]:checked')].map(c => parseInt(c.value));
+  } else if (tipo === 'periodo') {
+    obj.inicio = (row.querySelector('[data-field="inicio"]') || {}).value || '';
+    obj.fim    = (row.querySelector('[data-field="fim"]') || {}).value || '';
+  }
+
+  obj.overrides = {};
+  row.querySelectorAll('.ov-input').forEach(inp => {
+    if (inp.value !== '') obj.overrides[inp.dataset.key] = parseFloat(inp.value) || 0;
+  });
+  return obj;
+}
+
+// ── Calcular ───────────────────────────────────────────────────────────────
+async function calcular() {
+  const receitas = [...document.querySelectorAll('#lista-receitas .pf-item-row')].map(coletarItem);
+  const despesas = [...document.querySelectorAll('#lista-despesas .pf-item-row')].map(coletarItem);
+
+  document.getElementById('loading').classList.add('show');
+  try {
+    const resp = await fetch('/relatorios/api/previsao-financeira/calcular', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ horizonte, receitas, despesas })
+    });
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error || 'Erro');
+    renderResultado(data.meses);
+
+    // Salvar receitas/despesas para que persistam ao recarregar a página
+    fetch('/relatorios/api/previsao-financeira/itens', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ receitas, despesas })
+    }).catch(() => {});
+  } catch(e) {
+    alert('Erro ao calcular: ' + e.message);
+  } finally {
+    document.getElementById('loading').classList.remove('show');
+  }
+}
+
+// ── Renderizar ─────────────────────────────────────────────────────────────
+function fmt(v) {
+  return 'R$ ' + Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function renderResultado(meses) {
+  document.getElementById('placeholder-area').style.display = 'none';
+  document.getElementById('resultado-area').style.display = '';
+  document.getElementById('tabela-area').style.display = '';
+
+  // Filtrar pelo horizonte selecionado
+  const ano_atual = new Date().getFullYear();
+  const filtrados = horizonte === 'resto_ano'
+    ? meses.filter(m => m.ano === ano_atual)
+    : meses;
+
+  renderChart(filtrados);
+  renderTabela(filtrados);
+}
+
+function renderChart(meses) {
+  const labels = meses.map(m => m.label);
+  const rec    = meses.map(m => m.total_receitas);
+  const sai    = meses.map(m => m.total_saidas);
+  const saldo  = meses.map(m => m.saldo);
+
+  if (pfChart) pfChart.destroy();
+  pfChart = new Chart(document.getElementById('pfChart'), {
+    data: {
+      labels,
+      datasets: [
+        { type: 'bar',  label: 'Receitas', data: rec,
+          backgroundColor: 'rgba(16,185,129,.75)', borderRadius: 6, order: 2 },
+        { type: 'bar',  label: 'Saídas',   data: sai,
+          backgroundColor: 'rgba(239,68,68,.75)',  borderRadius: 6, order: 2 },
+        { type: 'line', label: 'Saldo',    data: saldo,
+          borderColor: '#4361ee', backgroundColor: 'rgba(67,97,238,.10)',
+          borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#4361ee',
+          fill: true, tension: .35, order: 1 },
+      ]
+    },
+    options: {
+      responsive: true, interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + ctx.dataset.label + ': R$ ' +
+              Math.abs(ctx.parsed.y).toLocaleString('pt-BR',{minimumFractionDigits:2})
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { grid: { color: '#f1f5f9' },
+             ticks: { callback: v => 'R$' + (Math.abs(v)/1000).toFixed(0)+'k', font:{ size:11 } } }
+      }
+    }
+  });
+}
+
+function renderTabela(meses) {
+  const tbody = document.getElementById('tbody-meses');
+  tbody.innerHTML = '';
+
+  meses.forEach((m, idx) => {
+    const saldoClass = m.saldo >= 0 ? 'val-pos' : 'val-neg';
+    const badgeClass = m.saldo >= 0 ? 'badge-saldo-pos' : 'badge-saldo-neg';
+    const saldoSinal = m.saldo >= 0 ? '+' : '';
+
+    // Linha resumo
+    const tr = document.createElement('tr');
+    tr.className = 'mes-row';
+    tr.setAttribute('data-idx', idx);
+    tr.onclick = () => toggleDetail(idx);
+    tr.innerHTML = `
+      <td><strong>${m.label}</strong></td>
+      <td class="text-end val-pos">${m.total_receitas > 0 ? fmt(m.total_receitas) : '<span class="val-zero">—</span>'}</td>
+      <td class="text-end val-neg">${m.fatura_cartao > 0 ? fmt(m.fatura_cartao) : '<span class="val-zero">—</span>'}</td>
+      <td class="text-end val-neg">${m.total_despesas_fixas > 0 ? fmt(m.total_despesas_fixas) : '<span class="val-zero">—</span>'}</td>
+      <td class="text-end"><span class="val-neg">${m.total_saidas > 0 ? fmt(m.total_saidas) : '—'}</span></td>
+      <td class="text-end"><span class="${badgeClass}">${saldoSinal}${fmt(m.saldo)}</span></td>
+      <td class="text-center"><i class="bi bi-chevron-down" style="font-size:.75rem;color:#94a3b8" id="chev-${idx}"></i></td>`;
+    tbody.appendChild(tr);
+
+    // Linha detalhe (colapsável)
+    const trDet = document.createElement('tr');
+    trDet.className = 'detail-row';
+    trDet.id = 'det-' + idx;
+    trDet.innerHTML = `<td colspan="7">
+      <div class="detail-inner" id="detail-inner-${idx}">
+        ${buildDetailHTML(m)}
+      </div></td>`;
+    tbody.appendChild(trDet);
+  });
+}
+
+function buildDetailHTML(m) {
+  let html = '<div class="row g-3">';
+
+  // Receitas
+  html += `<div class="col-md-4">
+    <div class="pf-section-title" style="color:var(--pf-green)"><i class="bi bi-arrow-down-circle me-1"></i>Receitas</div>`;
+  if (m.receitas.length) {
+    m.receitas.forEach(r => {
+      html += `<div class="d-flex justify-content-between mb-1">
+        <span class="text-muted">${escHtml(r.nome)}</span>
+        <span class="val-pos fw-semibold">${fmt(r.valor)}</span></div>`;
+    });
+    html += `<div class="d-flex justify-content-between border-top mt-1 pt-1">
+      <strong>Total</strong><strong class="val-pos">${fmt(m.total_receitas)}</strong></div>`;
+  } else {
+    html += '<span class="text-muted fst-italic">Sem receitas previstas</span>';
+  }
+  html += '</div>';
+
+  // Faturas cartão
+  html += `<div class="col-md-4">
+    <div class="pf-section-title" style="color:var(--pf-blue)"><i class="bi bi-credit-card me-1"></i>Faturas Cartão</div>
+    <div class="d-flex justify-content-between">
+      <span class="text-muted">Total faturas</span>
+      <span class="val-neg fw-semibold">${m.fatura_cartao > 0 ? fmt(m.fatura_cartao) : '—'}</span>
+    </div></div>`;
+
+  // Despesas fixas
+  html += `<div class="col-md-4">
+    <div class="pf-section-title" style="color:var(--pf-red)"><i class="bi bi-arrow-up-circle me-1"></i>Despesas Fixas</div>`;
+  if (m.despesas_fixas.length) {
+    m.despesas_fixas.forEach(d => {
+      html += `<div class="d-flex justify-content-between mb-1">
+        <span class="text-muted">${escHtml(d.nome)}</span>
+        <span class="val-neg fw-semibold">${fmt(d.valor)}</span></div>`;
+    });
+    html += `<div class="d-flex justify-content-between border-top mt-1 pt-1">
+      <strong>Total</strong><strong class="val-neg">${fmt(m.total_despesas_fixas)}</strong></div>`;
+  } else {
+    html += '<span class="text-muted fst-italic">Nenhuma despesa fixa</span>';
+  }
+  html += '</div>';
+
+  html += '</div>';
+
+  // Linha de saldo
+  const cls = m.saldo >= 0 ? 'success' : 'danger';
+  const sinal = m.saldo >= 0 ? '+' : '';
+  html += `<div class="alert alert-${cls} py-2 mt-2 mb-0 d-flex justify-content-between">
+    <span>Saldo previsto em <strong>${escHtml(m.label)}</strong></span>
+    <strong>${sinal}${fmt(m.saldo)}</strong></div>`;
+
+  return html;
+}
+
+function toggleDetail(idx) {
+  const inner = document.getElementById('detail-inner-' + idx);
+  const chev  = document.getElementById('chev-' + idx);
+  const open  = inner.classList.toggle('show');
+  chev.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+updateHzLabel();
+// Restaurar itens salvos anteriormente, ou criar uma linha vazia de exemplo
+if (RECEITAS_SALVAS.length) {
+  RECEITAS_SALVAS.forEach(r => addReceita(r));
+} else {
+  addReceita();
+}
+if (DESPESAS_SALVAS.length) {
+  DESPESAS_SALVAS.forEach(d => addDespesa(d));
+} else {
+  addDespesa();
+}
+// Se houver itens salvos, calcular automaticamente para exibir o resultado
+if (RECEITAS_SALVAS.length || DESPESAS_SALVAS.length) {
+  calcular();
+}
+</script>
+{% endblock %}

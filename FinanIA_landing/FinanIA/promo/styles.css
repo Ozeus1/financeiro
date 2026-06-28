@@ -182,7 +182,7 @@ img, svg { display: block; max-width: 100%; }
 .gauge span { width: 48px; height: 48px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; }
 
 /* Promo video player */
-.promo-vp-wrap { position: relative; }
+.promo-vp-wrap { margin-top: 28px; }
 .promo-vp-trigger {
   display: inline-flex; align-items: center; gap: 10px;
   background: var(--brand-grad); color: #fff;
@@ -196,10 +196,10 @@ img, svg { display: block; max-width: 100%; }
 .promo-vp-play-ic { font-size: 11px; }
 .promo-vp-chevron { font-size: 10px; opacity: .8; }
 .promo-vp-panel {
-  position: absolute; top: calc(100% + 12px); left: 0; z-index: 200;
+  position: relative; margin-top: 12px;
   background: var(--bg); border: 1px solid var(--line);
   border-radius: var(--r-xl); box-shadow: 0 24px 64px rgba(0,0,0,.22);
-  width: min(520px, 90vw); overflow: hidden;
+  width: min(520px, 100%); overflow: hidden;
   animation: vpSlideIn .2s ease;
 }
 @keyframes vpSlideIn { from { opacity:0; transform: translateY(-8px); } to { opacity:1; transform: translateY(0); } }

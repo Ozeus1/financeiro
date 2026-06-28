@@ -201,7 +201,6 @@ function Hero() {
           <p className="lead reveal d2">{d.sub}</p>
           <div className="hero-cta reveal d3">
             <a href={U().assinar} className="btn btn-primary btn-lg">{d.cta} →</a>
-            <PromoVideoPlayer />
           </div>
           <p className="hero-price reveal d3"><H html={d.price} /></p>
           <div className="hero-chips reveal d4">
@@ -211,6 +210,7 @@ function Hero() {
             <span className="hero-avatars"><span></span><span></span><span></span><span></span></span>
             {d.proof}
           </div>
+          <PromoVideoPlayer />
         </div>
         <div className="hero-visual reveal d2">
           <img className="hero-shot" src="hero-woman.png" alt="Profissional usando o FinanIA no celular" />

@@ -2,184 +2,178 @@
 
 {% block title %}Despesas Mensais - {{ nome_mes }}/{{ ano }}{% endblock %}
 
+{% block extra_css %}
+<style>
+:root{--dm-bg:#f1f5f9;--dm-surface:#fff;--dm-border:#e2e8f0;--dm-muted:#64748b;--dm-red:#ef4444;--dm-radius:14px;--dm-shadow:0 2px 12px rgba(0,0,0,.08)}
+.dm-page{background:var(--dm-bg);min-height:70vh;padding-bottom:3rem}
+.dm-header{background:linear-gradient(135deg,#7c1d1d 0%,#b91c1c 55%,#dc2626 100%);padding:1.4rem 1.5rem 1.2rem;color:#fff;margin-bottom:1.5rem}
+.dm-header-title{font-size:1.3rem;font-weight:700;margin:0}
+.dm-card{background:var(--dm-surface);border-radius:var(--dm-radius);box-shadow:var(--dm-shadow);overflow:hidden;margin-bottom:1.25rem}
+.dm-card-header{padding:.75rem 1.25rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--dm-muted);border-bottom:1px solid var(--dm-border);background:#f8fafc}
+.dm-kpis{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem}
+.dm-kpi{background:var(--dm-surface);border-radius:var(--dm-radius);box-shadow:var(--dm-shadow);padding:1rem 1.25rem;text-align:center}
+.dm-kpi-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--dm-muted);margin-bottom:.3rem}
+.dm-kpi-val{font-size:1.5rem;font-weight:800;line-height:1}
+.dm-table{margin:0;width:100%}
+.dm-table thead th{background:#f8fafc;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--dm-muted);border-bottom:2px solid var(--dm-border);padding:.55rem .9rem;white-space:nowrap}
+.dm-table tbody tr{cursor:pointer;transition:background .12s}
+.dm-table tbody tr:hover{background:#fff5f5}
+.dm-table tbody td{padding:.52rem .9rem;font-size:.85rem;border-bottom:1px solid var(--dm-border);vertical-align:middle}
+.dm-table tbody tr:last-child td{border-bottom:none}
+
+/* Layout desktop: tabela + gráfico lado a lado */
+.dm-layout{display:grid;grid-template-columns:1fr;gap:1.25rem}
+@media(min-width:992px){
+  .dm-layout{grid-template-columns:1fr 1fr;align-items:start}
+  .dm-chart-col{position:sticky;top:72px}
+}
+@media(max-width:575px){
+  .dm-kpi-val{font-size:1.2rem}
+  .dm-table thead th,.dm-table tbody td{padding:.4rem .55rem;font-size:.78rem}
+  .col-bar{display:none}
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row mt-4">
-    <div class="col-12">
-        <h2><i class="bi bi-wallet2"></i> Despesas Mensais - {{ nome_mes }}/{{ ano }}</h2>
-        <hr>
-    </div>
-</div>
+<div class="dm-page">
 
-<!-- Filtro de Mês/Ano -->
-<div class="card mb-3">
-    <div class="card-header">
-        <h5><i class="bi bi-calendar"></i> Selecionar Período</h5>
-    </div>
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Mês</label>
-                <select class="form-select" name="mes">
-                    {% for m in range(1, 13) %}
-                    <option value="{{ m }}" {% if m==mes %}selected{% endif %}>
-                        {{ ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][m-1] }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Ano</label>
-                <input type="number" class="form-control" name="ano" value="{{ ano }}" min="2000" max="2100">
-            </div>
-            {% if current_user.usa_separacao_pf_pj() %}
-            <div class="col-md-3">
-                <label class="form-label">Conta</label>
-                <select class="form-select" name="entidade">
-                    <option value="" {% if not entidade %}selected{% endif %}>Todas</option>
-                    <option value="pf" {% if entidade == 'pf' %}selected{% endif %}>Pessoa Física (PF)</option>
-                    <option value="pj" {% if entidade == 'pj' %}selected{% endif %}>Pessoa Jurídica (PJ)</option>
-                </select>
-            </div>
-            {% endif %}
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-search"></i> Filtrar
-                </button>
-            </div>
+  <div class="dm-header">
+    <div style="font-size:.8rem;opacity:.7;margin-bottom:.2rem"><i class="bi bi-bar-chart-line me-1"></i>Relatórios</div>
+    <h1 class="dm-header-title">Despesas Mensais — {{ nome_mes }}/{{ ano }}</h1>
+  </div>
+
+  <div class="container-fluid px-3">
+
+    <!-- Filtro -->
+    <div class="dm-card">
+      <div class="dm-card-header"><i class="bi bi-calendar3 me-1"></i>Selecionar Período</div>
+      <div style="padding:1rem 1.25rem">
+        <form method="GET" class="row g-2 align-items-end">
+          <div class="col-sm-4 col-6">
+            <label class="form-label mb-1" style="font-size:.8rem;font-weight:600">Mês</label>
+            <select class="form-select form-select-sm" name="mes">
+              {% for m in range(1, 13) %}
+              <option value="{{ m }}" {% if m==mes %}selected{% endif %}>
+                {{ ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][m-1] }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-sm-3 col-6">
+            <label class="form-label mb-1" style="font-size:.8rem;font-weight:600">Ano</label>
+            <input type="number" class="form-control form-control-sm" name="ano" value="{{ ano }}" min="2000" max="2100">
+          </div>
+          {% if current_user.usa_separacao_pf_pj() %}
+          <div class="col-sm-3 col-6">
+            <label class="form-label mb-1" style="font-size:.8rem;font-weight:600">Conta</label>
+            <select class="form-select form-select-sm" name="entidade">
+              <option value="" {% if not entidade %}selected{% endif %}>Todas</option>
+              <option value="pf" {% if entidade=='pf' %}selected{% endif %}>PF</option>
+              <option value="pj" {% if entidade=='pj' %}selected{% endif %}>PJ</option>
+            </select>
+          </div>
+          {% endif %}
+          <div class="col-sm-auto col-12">
+            <button type="submit" class="btn btn-primary btn-sm px-3"><i class="bi bi-search me-1"></i>Filtrar</button>
+          </div>
         </form>
+      </div>
     </div>
-</div>
 
-<!-- Cards de Resumo -->
-<div class="row mb-3">
-    <div class="col-md-6">
-        <div class="card bg-danger text-white">
-            <div class="card-body">
-                <h5>Total do Mês</h5>
-                <h2>R$ {{ "%.2f"|format(total_mes)|replace('.', ',') }}</h2>
-            </div>
-        </div>
+    <!-- KPIs -->
+    <div class="dm-kpis">
+      <div class="dm-kpi">
+        <div class="dm-kpi-label">Total do Mês</div>
+        <div class="dm-kpi-val" style="color:var(--dm-red)">R$ {{ "%.2f"|format(total_mes)|replace('.', ',') }}</div>
+      </div>
+      <div class="dm-kpi">
+        <div class="dm-kpi-label">Categorias com Gastos</div>
+        <div class="dm-kpi-val" style="color:#4361ee">{{ despesas_por_categoria|length }}</div>
+      </div>
     </div>
-    <div class="col-md-6">
-        <div class="card bg-info text-white">
-            <div class="card-body">
-                <h5>Categorias com Gastos</h5>
-                <h2>{{ despesas_por_categoria|length }}</h2>
-                <p class="mb-0">categorias registradas</p>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Tabela Detalhada -->
-<div class="card">
-    <div class="card-header">
-        <h5>Detalhamento por Categoria</h5>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Categoria</th>
-                        <th class="text-end">Valor Total</th>
-                        <th class="text-center">Quantidade</th>
-                        <th class="text-end">% do Total</th>
-                        <th>Visualização</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for id, categoria, valor, quantidade in despesas_por_categoria %}
-                    <tr class="clickable-row" style="cursor: pointer;"
-                        onclick="window.location.href='{{ url_for('relatorios.detalhes_despesas', categoria=categoria, mes=mes, ano=ano) }}'">
-                        <td><strong>{{ loop.index }}º</strong></td>
-                        <td>
-                            <span class="badge bg-secondary">{{ categoria }}</span>
-                        </td>
-                        <td class="text-end">
-                            <strong>R$ {{ "%.2f"|format(valor)|replace('.', ',') }}</strong>
-                        </td>
-                        <td class="text-center">{{ quantidade }} lançamentos</td>
-                        <td class="text-end">
-                            {{ "%.1f"|format((valor / total_mes * 100) if total_mes > 0 else 0) }}%
-                        </td>
-                        <td>
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-info" role="progressbar"
-                                    style="width: {{ (valor / total_mes * 100) if total_mes > 0 else 0 }}%">
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">Nenhuma despesa neste período</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+    {% if despesas_por_categoria %}
+    <!-- Layout lado a lado desktop -->
+    <div class="dm-layout">
 
-<!-- Gráfico de Barras -->
-{% if despesas_por_categoria %}
-<div class="card mt-4">
-    <div class="card-header">
-        <h5>Visualização Gráfica</h5>
+      <!-- Tabela -->
+      <div class="dm-card">
+        <div class="dm-card-header"><i class="bi bi-trophy me-1"></i>Detalhamento por Categoria</div>
+        <div class="table-responsive" style="max-height:500px;overflow-y:auto">
+          <table class="dm-table table">
+            <thead>
+              <tr>
+                <th style="width:36px">#</th>
+                <th>Categoria</th>
+                <th class="text-end">Valor Total</th>
+                <th class="text-center">Lançamentos</th>
+                <th class="text-end">%</th>
+                <th class="col-bar" style="min-width:100px">Barra</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for id, categoria, valor, quantidade in despesas_por_categoria %}
+              <tr onclick="window.location.href='{{ url_for('relatorios.detalhes_despesas', categoria=categoria, mes=mes, ano=ano) }}'">
+                <td><strong>{{ loop.index }}º</strong></td>
+                <td><span class="badge bg-{% if loop.index <= 3 %}danger{% elif loop.index <= 6 %}warning{% else %}secondary{% endif %}">{{ categoria }}</span></td>
+                <td class="text-end fw-bold text-danger">R$ {{ "%.2f"|format(valor)|replace('.', ',') }}</td>
+                <td class="text-center text-muted" style="font-size:.8rem">{{ quantidade }}</td>
+                <td class="text-end" style="font-size:.82rem;color:var(--dm-muted)">{{ "%.1f"|format((valor / total_mes * 100) if total_mes > 0 else 0) }}%</td>
+                <td class="col-bar">
+                  <div class="progress" style="height:8px;border-radius:99px;background:#f1f5f9">
+                    <div class="progress-bar bg-danger" style="border-radius:99px;width:{{ (valor / total_mes * 100) if total_mes > 0 else 0 }}%"></div>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Gráfico -->
+      <div class="dm-card dm-chart-col">
+        <div class="dm-card-header"><i class="bi bi-bar-chart-steps me-1"></i>Visualização Gráfica</div>
+        <div style="padding:1rem 1.25rem;min-height:400px;position:relative">
+          <canvas id="graficoDespesas" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas>
+        </div>
+      </div>
+
     </div>
-    <div class="card-body">
-        <canvas id="graficoDespesas" height="100"></canvas>
-    </div>
+    {% else %}
+    <div class="alert alert-info">Nenhuma despesa neste período.</div>
+    {% endif %}
+
+  </div>
 </div>
-{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 {% if despesas_por_categoria %}
 <script>
-    const ctx = document.getElementById('graficoDespesas');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: [{% for id, cat, val, qtd in despesas_por_categoria %}'{{ cat }}'{% if not loop.last %}, {% endif %} {% endfor %}],
-    datasets: [{
-        label: 'Valor Total (R$)',
-        data: [{% for id, cat, val, qtd in despesas_por_categoria %}{{ val }}{% if not loop.last %}, {% endif %} {% endfor %}],
-    backgroundColor: 'rgba(255, 99, 132, 0.7)',
-        borderColor: 'rgba(255, 99, 132, 1)',
-            borderWidth: 1
-            }]
-        },
+(function(){
+  const labels = [{% for id, cat, val, qtd in despesas_por_categoria %}'{{ cat }}'{% if not loop.last %},{% endif %}{% endfor %}];
+  const values = [{% for id, cat, val, qtd in despesas_por_categoria %}{{ val }}{% if not loop.last %},{% endif %}{% endfor %}];
+  const COLORS = ['#ef4444','#f87171','#fca5a5','#f97316','#fb923c','#fdba74','#94a3b8','#cbd5e1','#e2e8f0','#f1f5f9','#fde047','#86efac','#67e8f9','#a5b4fc','#f9a8d4'];
+  const bg = labels.map((_,i) => COLORS[i % COLORS.length]);
+  new Chart(document.getElementById('graficoDespesas'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Valor Total', data: values, backgroundColor: bg, borderWidth: 1, borderRadius: 4 }] },
     options: {
-        indexAxis: 'y',
-            responsive: true,
-                plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return 'R$ ' + context.parsed.x.toFixed(2).replace('.', ',');
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                beginAtZero: true,
-                    ticks: {
-                    callback: function(value) {
-                        return 'R$ ' + value.toLocaleString('pt-BR');
-                    }
-                }
-            }
-        }
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => 'R$ ' + c.parsed.x.toLocaleString('pt-BR', {minimumFractionDigits:2}) } }
+      },
+      scales: {
+        x: { beginAtZero: true, ticks: { callback: v => 'R$ ' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
+      }
     }
-    });
+  });
+})();
 </script>
 {% endif %}
 {% endblock %}

@@ -2,209 +2,169 @@
 
 {% block title %}Evolução por Categoria{% endblock %}
 
+{% block extra_css %}
+<style>
+:root{--ec-bg:#f1f5f9;--ec-surface:#fff;--ec-border:#e2e8f0;--ec-muted:#64748b;--ec-radius:14px;--ec-shadow:0 2px 12px rgba(0,0,0,.08)}
+.ec-page{background:var(--ec-bg);min-height:70vh;padding-bottom:3rem}
+.ec-header{background:linear-gradient(135deg,#1e3a8a 0%,#4361ee 55%,#7c3aed 100%);padding:1.4rem 1.5rem 1.2rem;color:#fff;margin-bottom:1.5rem}
+.ec-header-title{font-size:1.3rem;font-weight:700;margin:0}
+.ec-card{background:var(--ec-surface);border-radius:var(--ec-radius);box-shadow:var(--ec-shadow);overflow:hidden;margin-bottom:1.25rem}
+.ec-card-header{padding:.75rem 1.25rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ec-muted);border-bottom:1px solid var(--ec-border);background:#f8fafc}
+.ec-table{margin:0;width:100%}
+.ec-table thead th{background:#f8fafc;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ec-muted);border-bottom:2px solid var(--ec-border);padding:.55rem .9rem}
+.ec-table tbody td{padding:.52rem .9rem;font-size:.85rem;border-bottom:1px solid var(--ec-border);vertical-align:middle}
+.ec-table tbody tr:last-child td{border-bottom:none}
+
+/* Layout desktop: gráfico + tabela lado a lado */
+.ec-layout{display:grid;grid-template-columns:1fr;gap:1.25rem}
+@media(min-width:992px){
+  .ec-layout{grid-template-columns:1fr 1fr;align-items:start}
+  .ec-chart-col{position:sticky;top:72px}
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Evolução de Despesas por Categoria</h1>
+<div class="ec-page">
+
+  <div class="ec-header">
+    <div style="font-size:.8rem;opacity:.7;margin-bottom:.2rem"><i class="bi bi-bar-chart-line me-1"></i>Relatórios</div>
+    <h1 class="ec-header-title">Evolução de Despesas por Categoria</h1>
+  </div>
+
+  <div class="container-fluid px-3">
+
+    <!-- Filtros -->
+    <div class="ec-card">
+      <div class="ec-card-header"><i class="bi bi-funnel me-1"></i>Filtros</div>
+      <div style="padding:1rem 1.25rem">
+        <form method="get" class="row g-2 align-items-end">
+          <div class="col-sm-4 col-12">
+            <label class="form-label mb-1" style="font-size:.8rem;font-weight:600">Categoria</label>
+            <select class="form-select form-select-sm" id="categoria_id" name="categoria_id" onchange="this.form.submit()">
+              <option value="">Selecione uma categoria...</option>
+              {% for categoria in categorias %}
+              <option value="{{ categoria.id }}" {% if categoria_selecionada==categoria.id %}selected{% endif %}>{{ categoria.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-sm-3 col-6">
+            <label class="form-label mb-1" style="font-size:.8rem;font-weight:600">De</label>
+            <input type="month" class="form-control form-control-sm" id="mes_inicio" name="mes_inicio"
+              value="{{ mes_inicio if mes_inicio else '' }}" onchange="this.form.submit()">
+          </div>
+          <div class="col-sm-3 col-6">
+            <label class="form-label mb-1" style="font-size:.8rem;font-weight:600">Até</label>
+            <input type="month" class="form-control form-control-sm" id="mes_fim" name="mes_fim"
+              value="{{ mes_fim if mes_fim else '' }}" onchange="this.form.submit()">
+          </div>
+          <div class="col-sm-auto col-12">
+            <button type="submit" class="btn btn-primary btn-sm px-3"><i class="bi bi-search me-1"></i>Filtrar</button>
+          </div>
+        </form>
+      </div>
     </div>
 
-    <!-- Filter Card -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
-        </div>
-        <div class="card-body">
-            <form method="get" class="form-inline">
-                <label class="my-1 mr-2" for="categoria_id">Categoria:</label>
-                <select class="custom-select my-1 mr-sm-2" id="categoria_id" name="categoria_id"
-                    onchange="this.form.submit()">
-                    <option value="">Selecione uma categoria...</option>
-                    {% for categoria in categorias %}
-                    <option value="{{ categoria.id }}" {% if categoria_selecionada==categoria.id %}selected{% endif %}>
-                        {{ categoria.nome }}
-                    </option>
-                    {% endfor %}
-                </select>
-
-                <label class="my-1 mr-2 ml-3" for="mes_inicio">Mês Inicial:</label>
-                <input type="month" class="form-control my-1 mr-sm-2" id="mes_inicio" name="mes_inicio"
-                    value="{{ mes_inicio if mes_inicio else '' }}" onchange="this.form.submit()">
-
-                <label class="my-1 mr-2" for="mes_fim">Mês Final:</label>
-                <input type="month" class="form-control my-1 mr-sm-2" id="mes_fim" name="mes_fim"
-                    value="{{ mes_fim if mes_fim else '' }}" onchange="this.form.submit()">
-                <noscript><button type="submit" class="btn btn-primary my-1">Filtrar</button></noscript>
-            </form>
-        </div>
-    </div>
-
-    {% if categoria_selecionada %}
-    {% if resultados %}
-    <div class="row">
-        <!-- Chart -->
-        <div class="col-xl-12 col-lg-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Gráfico de Evolução</h6>
-                </div>
-                <div class="card-body">
-                    <div class="chart-area">
-                        <canvas id="evolutionChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <!-- Table -->
-        <div class="col-xl-12 col-lg-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Detalhamento Mensal</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                            <thead>
-                                <tr>
-                                    <th>Mês/Ano</th>
-                                    <th>Valor Total</th>
-                                    <th>Quantidade</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in resultados %}
-                                <tr>
-                                    <td>
-                                        <a
-                                            href="{{ url_for('despesas.lista', periodo='personalizado', data_inicio=row.data_inicio, data_fim=row.data_fim, categoria_id=categoria_selecionada) }}">
-                                            {{ row.mes_ano.split('-')[1] }}/{{ row.mes_ano.split('-')[0] }}
-                                        </a>
-                                    </td>
-                                    <td>R$ {{ "%.2f"|format(row.total)|replace('.', ',') }}</td>
-                                    <td>{{ row.quantidade }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% if not categoria_selecionada %}
+    <div class="alert alert-warning">Selecione uma categoria para visualizar o relatório.</div>
+    {% elif not resultados %}
+    <div class="alert alert-info">Nenhuma despesa encontrada para esta categoria.</div>
     {% else %}
-    <div class="alert alert-info">
-        Nenhuma despesa encontrada para esta categoria.
+
+    <!-- Layout lado a lado desktop -->
+    <div class="ec-layout">
+
+      <!-- Gráfico -->
+      <div class="ec-card ec-chart-col">
+        <div class="ec-card-header"><i class="bi bi-graph-up me-1"></i>Evolução Mensal</div>
+        <div style="padding:1rem 1.25rem;min-height:380px;position:relative">
+          <canvas id="evolutionChart" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas>
+        </div>
+      </div>
+
+      <!-- Tabela -->
+      <div class="ec-card">
+        <div class="ec-card-header"><i class="bi bi-table me-1"></i>Detalhamento Mensal</div>
+        <div class="table-responsive" style="max-height:500px;overflow-y:auto">
+          <table class="ec-table table">
+            <thead>
+              <tr>
+                <th>Mês/Ano</th>
+                <th class="text-end">Valor Total</th>
+                <th class="text-center">Quantidade</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in resultados %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('despesas.lista', periodo='personalizado', data_inicio=row.data_inicio, data_fim=row.data_fim, categoria_id=categoria_selecionada) }}" class="fw-semibold text-primary">
+                    {{ row.mes_ano.split('-')[1] }}/{{ row.mes_ano.split('-')[0] }}
+                  </a>
+                </td>
+                <td class="text-end fw-bold text-danger">R$ {{ "%.2f"|format(row.total)|replace('.', ',') }}</td>
+                <td class="text-center text-muted">{{ row.quantidade }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
     {% endif %}
-    {% else %}
-    <div class="alert alert-warning">
-        Por favor, selecione uma categoria para visualizar o relatório.
-    </div>
-    {% endif %}
+
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    {% if resultados %}
-    // Set new default font family and font color to mimic Bootstrap's default styling
-    Chart.defaults.font.family = 'Nunito, -apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
-    Chart.defaults.color = '#858796';
-
-    var ctx = document.getElementById("evolutionChart");
-    var myLineChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: {{ chart_labels | tojson }},
-    datasets: [{
+{% if resultados %}
+(function(){
+  var ctx = document.getElementById("evolutionChart");
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: {{ chart_labels | tojson }},
+      datasets: [{
         label: "Total Gastos",
         tension: 0.3,
-        backgroundColor: "rgba(78, 115, 223, 0.05)",
-        borderColor: "rgba(78, 115, 223, 1)",
-        pointRadius: 3,
-        pointBackgroundColor: "rgba(78, 115, 223, 1)",
-        pointBorderColor: "rgba(78, 115, 223, 1)",
-        pointHoverRadius: 3,
-        pointHoverBackgroundColor: "rgba(78, 115, 223, 1)",
-        pointHoverBorderColor: "rgba(78, 115, 223, 1)",
-        pointHitRadius: 10,
-        pointBorderWidth: 2,
+        backgroundColor: "rgba(67,97,238,0.08)",
+        borderColor: "rgba(67,97,238,1)",
+        borderWidth: 2,
+        pointRadius: 4,
+        pointBackgroundColor: "rgba(67,97,238,1)",
         fill: true,
         data: {{ chart_data | tojson }},
-    }],
-},
+      }]
+    },
     options: {
-        maintainAspectRatio: false,
-            layout: {
-            padding: {
-                left: 10,
-                    right: 25,
-                        top: 25,
-                            bottom: 0
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(c) {
+              return 'R$ ' + c.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits:2});
             }
-        },
-        scales: {
-            x: {
-                time: {
-                    unit: 'date'
-                },
-                grid: {
-                    display: false,
-                        drawBorder: false
-                },
-                ticks: {
-                    maxTicksLimit: 7
-                }
-            },
-            y: {
-                ticks: {
-                    maxTicksLimit: 5,
-                        padding: 10,
-                            // Include a dollar sign in the ticks
-                            callback: function(value, index, values) {
-                                return 'R$ ' + value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                            }
-                },
-                grid: {
-                    color: "rgb(234, 236, 244)",
-                        drawBorder: false,
-                            borderDash: [2],
-                                zeroLineBorderDash: [2]
-                }
-            },
-        },
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                backgroundColor: "rgb(255,255,255)",
-                    bodyColor: "#858796",
-                        titleMarginBottom: 10,
-                            titleColor: '#6e707e',
-                                titleFont: {
-                    size: 14
-                },
-                borderColor: '#dddfeb',
-                    borderWidth: 1,
-                        padding: 15,
-                            displayColors: false,
-                                intersect: false,
-                                    mode: 'index',
-                                        caretPadding: 10,
-                                            callbacks: {
-                    label: function(context) {
-                        var label = context.dataset.label || '';
-                        return label + ': R$ ' + context.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                    }
-                }
-            }
+          }
         }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 7 } },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            maxTicksLimit: 6,
+            callback: v => 'R$ ' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v)
+          }
+        }
+      }
     }
-});
-    {% endif %}
+  });
+})();
+{% endif %}
 </script>
 {% endblock %}

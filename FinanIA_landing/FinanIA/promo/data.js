@@ -174,8 +174,8 @@ window.PROMO = {
     kicker: "Depoimentos",
     titleHtml: 'Quem usa, <span class="mark">não volta pra planilha.</span>',
     videos: [
-      { id: "vid_depo_1", quote: "Acompanho desde a versão em planilha. A plataforma só melhora e minha vida financeira mudou de verdade.", name: "Depoimento em vídeo 1" },
-      { id: "vid_depo_2", quote: "Sempre deixava pra depois e no fim do mês era desespero. Hoje sei pra onde meu dinheiro vai.", name: "Depoimento em vídeo 2" },
+      { url: "https://www.youtube.com/watch?v=sQxAsmHRxKs", quote: "Acompanho desde a versão em planilha. A plataforma só melhora e minha vida financeira mudou de verdade.", name: "Depoimento em vídeo 1" },
+      { url: "https://www.youtube.com/watch?v=kCbe_PGheRU", quote: "Sempre deixava pra depois e no fim do mês era desespero. Hoje sei pra onde meu dinheiro vai.", name: "Depoimento em vídeo 2" },
     ],
     moreTitleHtml: 'Ainda não acabou... <span class="mark">veja isso.</span>',
     prints: [

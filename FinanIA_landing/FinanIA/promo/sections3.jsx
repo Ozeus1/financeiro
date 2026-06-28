@@ -18,19 +18,9 @@ function toEmbed(url) {
   return null;
 }
 
-function VideoSlot({ id, quote, name }) {
-  const key = "finania_promo_" + id;
-  const [url, setUrl] = React.useState(() => { try { return localStorage.getItem(key) || ""; } catch (e) { return ""; } });
-  const [draft, setDraft] = React.useState("");
+function VideoSlot({ url, quote, name }) {
   const [playing, setPlaying] = React.useState(false);
   const embed = toEmbed(url);
-
-  const save = () => {
-    const v = draft.trim();
-    setUrl(v);
-    try { v ? localStorage.setItem(key, v) : localStorage.removeItem(key); } catch (e) {}
-    setPlaying(false);
-  };
 
   return (
     <div className="vid-card">
@@ -43,25 +33,16 @@ function VideoSlot({ id, quote, name }) {
           <>
             {embed && embed.thumb
               ? <img className="vid-thumb" src={embed.thumb} alt={name} onError={(e) => { e.target.style.display = "none"; }} />
-              : <Ph label={embed ? "VÍDEO PRONTO — clique ▶ para reproduzir" : "VÍDEO VERTICAL 9:16 — cole o link abaixo"} dark />}
+              : <Ph label="VÍDEO VERTICAL 9:16" dark />}
             <button className="vid-play" onClick={() => embed && setPlaying(true)} style={{ position: "absolute" }} aria-label="Reproduzir">▶</button>
           </>
         )}
-      </div>
-      <div className="vid-input">
-        <input
-          type="url" placeholder="Cole o link do vídeo (YouTube, Vimeo ou .mp4)"
-          defaultValue={url} onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") save(); }}
-        />
-        <button onClick={save}>Salvar</button>
       </div>
       <div className="vid-meta">
         <div className="vid-stars">★★★★★</div>
         <p className="vid-quote">{quote}</p>
         <div className="vid-who"><span className="av"></span><b>{name}</b></div>
       </div>
-      <div className="vid-hint">↑ Campo editável: cole aqui o link do seu vídeo de depoimento.</div>
     </div>
   );
 }
@@ -78,7 +59,7 @@ function Testimonials() {
         </div>
 
         <div className="vid-grid reveal d1">
-          {d.videos.map((v, i) => <VideoSlot key={i} id={v.id} quote={v.quote} name={v.name} />)}
+          {d.videos.map((v, i) => <VideoSlot key={i} url={v.url} quote={v.quote} name={v.name} />)}
         </div>
 
         <H as="h3" className="h3 reveal" html={d.moreTitleHtml} style={undefined} />

@@ -174,8 +174,6 @@ window.PROMO = {
     kicker: "Depoimentos",
     titleHtml: 'Quem usa, <span class="mark">não volta pra planilha.</span>',
     videos: [
-      { url: "https://www.youtube.com/watch?v=sQxAsmHRxKs", quote: "Acompanho desde a versão em planilha. A plataforma só melhora e minha vida financeira mudou de verdade.", name: "Depoimento em vídeo 1" },
-      { url: "https://www.youtube.com/watch?v=3z0h6vPyuOg", quote: "Sempre deixava pra depois e no fim do mês era desespero. Hoje sei pra onde meu dinheiro vai.", name: "Depoimento em vídeo 2" },
       { url: "https://youtube.com/shorts/tXgCze7dnFQ", quote: "Eu tentei de tudo — app, caderninho, planilha. Nada ficava. Com o FinanIA eu finalmente entendi pra onde meu dinheiro ia e consegui guardar R$ 400 logo no primeiro mês.", name: "Laura — professora, 34 anos" },
       { url: "https://youtube.com/shorts/S88U2BZwna4", quote: "Sou autônomo e sempre misturava conta pessoal com profissional. O FinanIA separou tudo automaticamente. Hoje eu sei exatamente quanto sobra pra mim depois das despesas do trabalho.", name: "Pedro — freelancer, 29 anos" },
       { url: "https://youtube.com/shorts/-564XWW61RI", quote: "Tinha medo de olhar pro extrato porque sempre era surpresa ruim. Agora acompanho tudo pelo WhatsApp, é incrivelmente simples. Em 3 meses consegui quitar uma dívida que arrastava há 2 anos.", name: "Débora — empreendedora, 41 anos" },

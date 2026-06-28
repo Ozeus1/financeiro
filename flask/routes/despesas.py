@@ -299,9 +299,10 @@ def nova_despesa_fatura():
         if not ok:
             return jsonify({'success': False, 'message': msg})
 
+        valor_total = round(valor_parcela * num_parcelas, 2)
         nova = Despesa(
             descricao=descricao,
-            valor=valor_parcela,
+            valor=valor_total,
             categoria_id=categoria_id,
             meio_pagamento_id=int(cartao_id),
             num_parcelas=num_parcelas,

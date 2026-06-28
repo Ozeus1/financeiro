@@ -8,6 +8,29 @@ from utils.familia import (filtrar_despesas, get_categorias_despesa,
 
 despesas_bp = Blueprint('despesas', __name__)
 
+
+def _verificar_limite_free(user):
+    from models import LIMITES_PLANO, Receita as _Receita
+    from sqlalchemy import extract as _extract
+    limite_reg = LIMITES_PLANO.get(user.nivel_acesso, {}).get('registros_mensais')
+    if limite_reg is None:
+        return True, ''
+    hoje = date.today()
+    total = Despesa.query.filter(
+        Despesa.user_id == user.id,
+        _extract('month', Despesa.data_registro) == hoje.month,
+        _extract('year', Despesa.data_registro) == hoje.year
+    ).count()
+    total += _Receita.query.filter(
+        _Receita.user_id == user.id,
+        _extract('month', _Receita.data_registro) == hoje.month,
+        _extract('year', _Receita.data_registro) == hoje.year
+    ).count()
+    if total >= limite_reg:
+        return False, f'Limite de {limite_reg} registros mensais do plano FREE atingido. Faça upgrade para continuar.'
+    return True, ''
+
+
 @despesas_bp.route('/')
 @login_required
 def lista():

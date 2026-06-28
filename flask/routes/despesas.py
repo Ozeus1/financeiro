@@ -91,8 +91,8 @@ def lista():
     categorias = get_categorias_despesa()
     meios_pagamento = get_meios_pagamento()
     
-    # Args para paginação (excluindo page)
-    filtros_url = {k: v for k, v in request.args.items() if k != 'page'}
+    # Args para paginação (excluindo page e per_page — passados explicitamente)
+    filtros_url = {k: v for k, v in request.args.items() if k not in ('page', 'per_page')}
     
     return render_template('despesas/lista.html',
                          despesas=despesas,

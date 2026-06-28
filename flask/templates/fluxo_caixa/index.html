@@ -104,7 +104,7 @@
                                                     <option value="{{ i }}">{{ meses[i-1][:3] }}</option>
                                                     {% endfor %}
                                                 </select>
-                                                <input type="number" class="form-control" id="ano_inicio" style="max-width:72px">
+                                                <input type="number" class="form-control" id="ano_inicio" value="{{ ano_atual }}" style="max-width:72px">
                                             </div>
                                         </div>
                                         <div class="col-5">
@@ -227,89 +227,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
     let chartFluxoCaixa = null;
-
-    // Calcular saldo automaticamente
-    function calcularSaldo() {
-        const entradas = parseFloat(document.getElementById('total_entradas').value) || 0;
-        const saidas = parseFloat(document.getElementById('total_saidas').value) || 0;
-        const saldo = entradas - saidas;
-        document.getElementById('saldo_mes').value = 'R$ ' + saldo.toFixed(2).replace('.', ',');
-    }
-
-    document.getElementById('total_entradas').addEventListener('input', calcularSaldo);
-    document.getElementById('total_saidas').addEventListener('input', calcularSaldo);
-
-    // Calcular entradas automaticamente
-    document.getElementById('btnCalcEntradas').addEventListener('click', function () {
-        const ano = document.getElementById('ano').value;
-        const mes = document.getElementById('mes').value;
-
-        fetch('{{ url_for("fluxo_caixa.calcular_entradas") }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `ano=${ano}&mes=${mes}`
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('total_entradas').value = data.total_entradas.toFixed(2);
-                    calcularSaldo();
-                }
-            });
-    });
-
-    // Calcular saídas automaticamente
-    document.getElementById('btnCalcSaidas').addEventListener('click', function () {
-        const ano = document.getElementById('ano').value;
-        const mes = document.getElementById('mes').value;
-
-        fetch('{{ url_for("fluxo_caixa.calcular_saidas") }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `ano=${ano}&mes=${mes}`
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('total_saidas').value = data.total_saidas.toFixed(2);
-                    calcularSaldo();
-                }
-            });
-    });
-
-    // Limpar formulário de balanço
-    document.getElementById('btnLimpar').addEventListener('click', function () {
-        document.getElementById('formBalanco').reset();
-        document.getElementById('balanco_id').value = '';
-        document.getElementById('btnExcluir').style.display = 'none';
-        calcularSaldo();
-    });
-
-    // Selecionar balanço na tabela
-    document.querySelectorAll('.balanco-row').forEach(row => {
-        row.addEventListener('click', function () {
-            document.getElementById('balanco_id').value = this.dataset.balancoId;
-            document.getElementById('ano').value = this.dataset.ano;
-            document.getElementById('mes').value = this.dataset.mes;
-            document.getElementById('total_entradas').value = this.dataset.entradas;
-            document.getElementById('total_saidas').value = this.dataset.saidas;
-            document.getElementById('observacoes').value = this.dataset.obs;
-            document.getElementById('btnExcluir').style.display = 'block';
-            calcularSaldo();
-        });
-    });
-
-    // Excluir balanço
-    document.getElementById('btnExcluir').addEventListener('click', function () {
-        const id = document.getElementById('balanco_id').value;
-        if (confirm('Deseja realmente excluir este balanço?')) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/fluxo-caixa/balanco/${id}/excluir`;
-            document.body.appendChild(form);
-            form.submit();
-        }
-    });
 
     // Eventos de Caixa Avulsos
     document.getElementById('btnLimparEvento').addEventListener('click', function () {

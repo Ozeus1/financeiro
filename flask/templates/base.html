@@ -71,6 +71,11 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('fluxo_caixa.index') }}"><i class="bi bi-cash-stack me-1"></i>Fluxo de Caixa</a>
                 </li>
+                {% if current_user.is_pro() or current_user.is_promax() or current_user.is_admin() or current_user.is_familia() %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('investimentos.index') }}"><i class="bi bi-graph-up-arrow me-1"></i>Investimentos</a>
+                </li>
+                {% endif %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"><i class="bi bi-bar-chart me-1"></i>Relatórios</a>
                     <ul class="dropdown-menu">
@@ -194,6 +199,9 @@
 
         <div class="nav-divider"></div>
         <a class="nav-link" href="{{ url_for('fluxo_caixa.index') }}"><i class="bi bi-cash-stack"></i>Fluxo de Caixa</a>
+        {% if current_user.is_pro() or current_user.is_promax() or current_user.is_admin() or current_user.is_familia() %}
+        <a class="nav-link" href="{{ url_for('investimentos.index') }}"><i class="bi bi-graph-up-arrow"></i>Investimentos</a>
+        {% endif %}
 
         <div class="nav-section">Relatórios</div>
         <a class="nav-link dropdown-sub" href="{{ url_for('relatorios.balanco') }}"><i class="bi bi-bar-chart-line"></i>Balanço Mensal</a>

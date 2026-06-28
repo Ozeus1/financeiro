@@ -1,201 +1,329 @@
 {% extends "base.html" %}
+{% block title %}Top 10 Contas — {{ nome_mes }}/{{ ano }}{% endblock %}
 
-{% block title %}Top 10 Contas - {{ nome_mes }}/{{ ano }}{% endblock %}
+{% block extra_css %}
+<style>
+:root{
+  --tc-bg:#f1f5f9;--tc-surface:#fff;--tc-border:#e2e8f0;
+  --tc-muted:#64748b;--tc-red:#ef4444;--tc-blue:#4361ee;
+  --tc-radius:14px;--tc-shadow:0 2px 12px rgba(0,0,0,.08)
+}
+.tc-page{background:var(--tc-bg);min-height:70vh;padding-bottom:3rem}
+
+.tc-header{
+  background:linear-gradient(135deg,#7c1d1d 0%,#b91c1c 55%,#dc2626 100%);
+  padding:1.4rem 1.5rem 1.2rem;color:#fff;margin-bottom:1.5rem
+}
+.tc-header-title{font-size:1.3rem;font-weight:700;margin:0;letter-spacing:-.02em}
+.tc-header-sub{font-size:.8rem;opacity:.75;margin:.2rem 0 0}
+
+/* Filtro */
+.tc-filter{
+  background:var(--tc-surface);border-radius:var(--tc-radius);
+  box-shadow:var(--tc-shadow);padding:1rem 1.25rem;margin-bottom:1.25rem
+}
+.tc-filter-title{font-size:.72rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--tc-muted);margin-bottom:.75rem}
+
+/* KPIs */
+.tc-kpis{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem}
+.tc-kpi{
+  background:var(--tc-surface);border-radius:var(--tc-radius);
+  box-shadow:var(--tc-shadow);padding:1rem 1.25rem;text-align:center
+}
+.tc-kpi-label{font-size:.72rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--tc-muted);margin-bottom:.3rem}
+.tc-kpi-val{font-size:1.6rem;font-weight:800;line-height:1}
+.tc-kpi-val.red{color:var(--tc-red)}
+.tc-kpi-val.blue{color:var(--tc-blue)}
+.tc-kpi-sub{font-size:.75rem;color:var(--tc-muted);margin-top:.2rem}
+
+/* Card genérico */
+.tc-card{
+  background:var(--tc-surface);border-radius:var(--tc-radius);
+  box-shadow:var(--tc-shadow);overflow:hidden;margin-bottom:1.25rem
+}
+.tc-card-header{
+  padding:.75rem 1.25rem;font-size:.72rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--tc-muted);
+  border-bottom:1px solid var(--tc-border);background:#f8fafc;
+  display:flex;align-items:center;gap:.4rem
+}
+
+/* Layout principal: gráficos lado a lado no desktop */
+.tc-charts-row{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:1.25rem;
+  margin-bottom:1.25rem
+}
+@media(min-width:992px){
+  .tc-charts-row{grid-template-columns:1fr 1fr}
+}
+
+/* Tabela */
+.tc-table{margin:0;width:100%}
+.tc-table thead th{
+  background:#f8fafc;font-size:.72rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em;color:var(--tc-muted);
+  border-bottom:2px solid var(--tc-border);padding:.55rem .9rem;
+  white-space:nowrap
+}
+.tc-table tbody tr{cursor:pointer;transition:background .12s}
+.tc-table tbody tr:hover{background:#fff5f5}
+.tc-table tbody td{
+  padding:.52rem .9rem;font-size:.85rem;
+  border-bottom:1px solid var(--tc-border);vertical-align:middle
+}
+.tc-table tbody tr:last-child td{border-bottom:none}
+.tc-rank{font-weight:800;color:var(--tc-muted);font-size:.8rem}
+.tc-rank.top3{color:var(--tc-red)}
+.progress{border-radius:99px;background:#f1f5f9}
+.progress-bar{border-radius:99px;transition:width .6s ease}
+
+/* Doughnut centrado */
+.doughnut-wrap{
+  display:flex;align-items:center;justify-content:center;
+  padding:1.25rem;height:100%;min-height:260px
+}
+.doughnut-wrap canvas{max-width:280px;max-height:280px}
+
+/* Mobile */
+@media(max-width:575px){
+  .tc-header{padding:1rem}
+  .tc-header-title{font-size:1.05rem}
+  .tc-kpi-val{font-size:1.3rem}
+  .tc-table thead th,.tc-table tbody td{padding:.4rem .55rem;font-size:.78rem}
+  /* ocultar coluna % e barra em telas pequenas */
+  .tc-table .col-pct,.tc-table .col-bar{display:none}
+}
+@media(min-width:576px) and (max-width:767px){
+  .tc-kpis{grid-template-columns:1fr 1fr}
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row mt-4">
-    <div class="col-12">
-        <h2><i class="bi bi-star"></i> Top 10 Contas de Despesa - {{ nome_mes }}/{{ ano }}</h2>
-        <hr>
-    </div>
-</div>
+<div class="tc-page">
 
-<!-- Filtro -->
-<div class="card mb-3">
-    <div class="card-header">
-        <h5><i class="bi bi-calendar"></i> Selecionar Período</h5>
+  <!-- Header -->
+  <div class="tc-header">
+    <div style="font-size:.8rem;opacity:.7;margin-bottom:.2rem">
+      <i class="bi bi-star me-1"></i>Relatórios
     </div>
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Mês</label>
-                <select class="form-select" name="mes">
-                    {% for m in range(1, 13) %}
-                    <option value="{{ m }}" {% if m==mes %}selected{% endif %}>
-                        {{ ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][m-1] }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Ano</label>
-                <input type="number" class="form-control" name="ano" value="{{ ano }}" min="2000" max="2100">
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-search"></i> Filtrar
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
+    <h1 class="tc-header-title">Top 10 Contas de Despesa</h1>
+    <p class="tc-header-sub">{{ nome_mes }}/{{ ano }}</p>
+  </div>
 
-<!-- Cards de Resumo -->
-<div class="row mb-3">
-    <div class="col-md-6">
-        <div class="card bg-danger text-white">
-            <div class="card-body">
-                <h5>Total do Mês</h5>
-                <h2>R$ {{ "%.2f"|format(total_mes)|replace('.', ',') }}</h2>
-            </div>
+  <div class="container-fluid px-3">
+
+    <!-- Filtro -->
+    <div class="tc-filter">
+      <div class="tc-filter-title"><i class="bi bi-calendar3 me-1"></i>Selecionar Período</div>
+      <form method="GET" class="row g-2 align-items-end">
+        <div class="col-sm-4 col-6">
+          <label class="form-label mb-1" style="font-size:.8rem;font-weight:600">Mês</label>
+          <select class="form-select form-select-sm" name="mes">
+            {% for m in range(1, 13) %}
+            <option value="{{ m }}" {% if m==mes %}selected{% endif %}>
+              {{ ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][m-1] }}
+            </option>
+            {% endfor %}
+          </select>
         </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card bg-info text-white">
-            <div class="card-body">
-                <h5>Top 10 Representa</h5>
-                <h2>{{ "%.1f"|format((top_contas|sum(attribute='1') / total_mes * 100) if total_mes > 0 else 0) }}%</h2>
-                <p class="mb-0">do total de despesas</p>
-            </div>
+        <div class="col-sm-3 col-6">
+          <label class="form-label mb-1" style="font-size:.8rem;font-weight:600">Ano</label>
+          <input type="number" class="form-control form-control-sm" name="ano"
+                 value="{{ ano }}" min="2000" max="2100">
         </div>
-    </div>
-</div>
-
-<!-- Tabela Top 10 -->
-<div class="card">
-    <div class="card-header">
-        <h5>Ranking das 10 Maiores Despesas</h5>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Categoria</th>
-                        <th class="text-end">Valor Total</th>
-                        <th class="text-center">Quantidade</th>
-                        <th class="text-end">% do Total</th>
-                        <th>Visualização</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for categoria, valor, quantidade in top_contas %}
-                    <tr class="clickable-row" style="cursor: pointer;"
-                        onclick="window.location.href='{{ url_for('relatorios.detalhes_despesas', categoria=categoria, mes=mes, ano=ano) }}'">
-                        <td><strong>{{ loop.index }}º</strong></td>
-                        <td>
-                            <span
-                                class="badge bg-{% if loop.index <= 3 %}danger{% elif loop.index <= 6 %}warning{% else %}secondary{% endif %}">
-                                {{ categoria }}
-                            </span>
-                        </td>
-                        <td class="text-end">
-                            <strong>R$ {{ "%.2f"|format(valor)|replace('.', ',') }}</strong>
-                        </td>
-                        <td class="text-center">{{ quantidade }} lançamentos</td>
-                        <td class="text-end">
-                            {{ "%.1f"|format((valor / total_mes * 100) if total_mes > 0 else 0) }}%
-                        </td>
-                        <td>
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-{% if loop.index <= 3 %}danger{% elif loop.index <= 6 %}warning{% else %}info{% endif %}"
-                                    role="progressbar"
-                                    style="width: {{ (valor / total_mes * 100) if total_mes > 0 else 0 }}%">
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">Nenhuma despesa neste período</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="col-sm-auto col-12">
+          <button type="submit" class="btn btn-primary btn-sm px-3">
+            <i class="bi bi-search me-1"></i>Filtrar
+          </button>
         </div>
+      </form>
     </div>
-</div>
 
-<!-- Gráfico de Barras -->
-{% if top_contas %}
-<div class="card mt-4">
-    <div class="card-header">
-        <h5>Visualização Gráfica</h5>
+    <!-- KPIs -->
+    <div class="tc-kpis">
+      <div class="tc-kpi">
+        <div class="tc-kpi-label">Total do Mês</div>
+        <div class="tc-kpi-val red">R$ {{ "%.2f"|format(total_mes)|replace('.', ',') }}</div>
+      </div>
+      <div class="tc-kpi">
+        <div class="tc-kpi-label">Top 10 Representa</div>
+        <div class="tc-kpi-val blue">
+          {{ "%.1f"|format((top_contas|sum(attribute='1') / total_mes * 100) if total_mes > 0 else 0) }}%
+        </div>
+        <div class="tc-kpi-sub">do total de despesas</div>
+      </div>
     </div>
-    <div class="card-body">
-        <canvas id="graficoTop10" height="80"></canvas>
+
+    {% if top_contas %}
+    <!-- GRÁFICOS (antes das tabelas) -->
+    <div class="tc-charts-row">
+
+      <!-- Barras horizontais -->
+      <div class="tc-card">
+        <div class="tc-card-header"><i class="bi bi-bar-chart-steps me-1"></i>Visualização por Categoria</div>
+        <div style="padding:1rem 1.25rem">
+          <canvas id="graficoBarras"></canvas>
+        </div>
+      </div>
+
+      <!-- Rosca -->
+      <div class="tc-card">
+        <div class="tc-card-header"><i class="bi bi-pie-chart-fill me-1"></i>Despesas por Categoria</div>
+        <div class="doughnut-wrap">
+          <canvas id="graficoDoughnut"></canvas>
+        </div>
+      </div>
+
     </div>
+    {% endif %}
+
+    <!-- Tabela Ranking -->
+    <div class="tc-card">
+      <div class="tc-card-header"><i class="bi bi-trophy me-1"></i>Ranking das 10 Maiores Despesas</div>
+      <div class="table-responsive">
+        <table class="tc-table table">
+          <thead>
+            <tr>
+              <th style="width:40px">#</th>
+              <th>Categoria</th>
+              <th class="text-end">Valor Total</th>
+              <th class="text-center">Lançamentos</th>
+              <th class="text-end col-pct">%</th>
+              <th class="col-bar" style="min-width:120px">Barra</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for categoria, valor, quantidade in top_contas %}
+            <tr onclick="window.location.href='{{ url_for('relatorios.detalhes_despesas', categoria=categoria, mes=mes, ano=ano) }}'">
+              <td><span class="tc-rank {% if loop.index <= 3 %}top3{% endif %}">{{ loop.index }}º</span></td>
+              <td>
+                <span class="badge bg-{% if loop.index <= 3 %}danger{% elif loop.index <= 6 %}warning{% else %}secondary{% endif %}">
+                  {{ categoria }}
+                </span>
+              </td>
+              <td class="text-end fw-bold text-danger">
+                R$ {{ "%.2f"|format(valor)|replace('.', ',') }}
+              </td>
+              <td class="text-center text-muted" style="font-size:.8rem">{{ quantidade }}</td>
+              <td class="text-end col-pct" style="font-size:.82rem;color:var(--tc-muted)">
+                {{ "%.1f"|format((valor / total_mes * 100) if total_mes > 0 else 0) }}%
+              </td>
+              <td class="col-bar">
+                <div class="progress" style="height:8px">
+                  <div class="progress-bar bg-{% if loop.index <= 3 %}danger{% elif loop.index <= 6 %}warning{% else %}info{% endif %}"
+                       style="width:{{ (valor / total_mes * 100) if total_mes > 0 else 0 }}%">
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-4">Nenhuma despesa neste período</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
 </div>
-{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 {% if top_contas %}
 <script>
-    const ctx = document.getElementById('graficoTop10');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: [{% for cat, val, qtd in top_contas %}'{{ cat }}'{% if not loop.last %}, {% endif %} {% endfor %}],
-    datasets: [{
-        label: 'Valor Total (R$)',
-        data: [{% for cat, val, qtd in top_contas %}{{ val }}{% if not loop.last %}, {% endif %} {% endfor %}],
-    backgroundColor: [
-        'rgba(255, 99, 132, 0.7)',
-        'rgba(255, 99, 132, 0.6)',
-        'rgba(255, 99, 132, 0.5)',
-        'rgba(255, 159, 64, 0.7)',
-        'rgba(255, 159, 64, 0.6)',
-        'rgba(255, 159, 64, 0.5)',
-        'rgba(201, 203, 207, 0.7)',
-        'rgba(201, 203, 207, 0.6)',
-        'rgba(201, 203, 207, 0.5)',
-        'rgba(201, 203, 207, 0.4)'
-    ],
-        borderColor: [
-            'rgba(255, 99, 132, 1)',
-            'rgba(255, 99, 132, 1)',
-            'rgba(255, 99, 132, 1)',
-            'rgba(255, 159, 64, 1)',
-            'rgba(255, 159, 64, 1)',
-            'rgba(255, 159, 64, 1)',
-            'rgba(201, 203, 207, 1)',
-            'rgba(201, 203, 207, 1)',
-            'rgba(201, 203, 207, 1)',
-            'rgba(201, 203, 207, 1)'
-        ],
-            borderWidth: 1
-            }]
-        },
+(function(){
+  const labels = [{% for cat, val, qtd in top_contas %}'{{ cat }}'{% if not loop.last %},{% endif %}{% endfor %}];
+  const values = [{% for cat, val, qtd in top_contas %}{{ val }}{% if not loop.last %},{% endif %}{% endfor %}];
+
+  const COLORS = [
+    '#ef4444','#f87171','#fca5a5',
+    '#f97316','#fb923c','#fdba74',
+    '#94a3b8','#cbd5e1','#e2e8f0','#f1f5f9'
+  ];
+
+  const fmtBRL = v => 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2});
+  const isMobile = window.innerWidth < 576;
+
+  /* Gráfico de barras horizontais */
+  new Chart(document.getElementById('graficoBarras'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Valor Total',
+        data: values,
+        backgroundColor: COLORS,
+        borderColor: COLORS.map(c => c),
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
     options: {
-        indexAxis: 'y',
-            responsive: true,
-                plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return 'R$ ' + context.parsed.x.toFixed(2).replace('.', ',');
-                    }
-                }
-            }
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => fmtBRL(c.parsed.x) } }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            font: { size: isMobile ? 9 : 11 },
+            callback: v => 'R$ ' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v)
+          }
         },
-        scales: {
-            x: {
-                beginAtZero: true,
-                    ticks: {
-                    callback: function(value) {
-                        return 'R$ ' + value.toFixed(0);
-                    }
-                }
-            }
-        }
+        y: { ticks: { font: { size: isMobile ? 9 : 11 } } }
+      }
     }
-    });
+  });
+
+  /* Gráfico de rosca */
+  new Chart(document.getElementById('graficoDoughnut'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: COLORS,
+        borderColor: '#fff',
+        borderWidth: 2,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '62%',
+      plugins: {
+        legend: {
+          position: isMobile ? 'bottom' : 'right',
+          labels: {
+            font: { size: isMobile ? 10 : 11 },
+            boxWidth: 12, padding: 8,
+            generateLabels: chart => {
+              const ds = chart.data.datasets[0];
+              const total = ds.data.reduce((a,b) => a+b, 0);
+              return chart.data.labels.map((label, i) => ({
+                text: label + ' · ' + ((ds.data[i]/total*100).toFixed(1)) + '%',
+                fillStyle: ds.backgroundColor[i],
+                strokeStyle: '#fff',
+                lineWidth: 2,
+                index: i
+              }));
+            }
+          }
+        },
+        tooltip: { callbacks: { label: c => fmtBRL(c.parsed) } }
+      }
+    }
+  });
+})();
 </script>
 {% endif %}
 {% endblock %}

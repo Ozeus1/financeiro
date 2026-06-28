@@ -280,3 +280,38 @@ def exportar():
         as_attachment=True,
         download_name=f'despesas_{datetime.now().strftime("%Y%m%d")}.xlsx'
     )
+
+
+@despesas_bp.route('/nova-despesa-fatura', methods=['POST'])
+@login_required
+def nova_despesa_fatura():
+    """Criar despesa a partir da previsão de cartões (JSON)"""
+    try:
+        data = request.get_json()
+        cartao_id = data.get('cartao_id')
+        categoria_id = int(data.get('categoria_id'))
+        descricao = data.get('descricao', '').strip()
+        num_parcelas = int(data.get('num_parcelas', 1))
+        valor_parcela = float(data.get('valor_parcela'))
+        data_pagamento = datetime.strptime(data.get('data_pagamento'), '%Y-%m-%d').date()
+
+        ok, msg = _verificar_limite_free(current_user)
+        if not ok:
+            return jsonify({'success': False, 'message': msg})
+
+        nova = Despesa(
+            descricao=descricao,
+            valor=valor_parcela,
+            categoria_id=categoria_id,
+            meio_pagamento_id=int(cartao_id),
+            num_parcelas=num_parcelas,
+            data_pagamento=data_pagamento,
+            user_id=owner_id_para_novo_registro(),
+            registrado_por=current_user.id
+        )
+        db.session.add(nova)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Despesa cadastrada com sucesso!'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})

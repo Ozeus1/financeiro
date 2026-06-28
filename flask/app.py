@@ -188,6 +188,7 @@ def create_app(config_name='default'):
     from routes.assinatura import assinatura_bp
     from routes.familia import familia_bp
     from routes.investimentos import investimentos_bp
+    from routes.calculadora import calculadora_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -201,6 +202,7 @@ def create_app(config_name='default'):
     app.register_blueprint(upload_database_bp)
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     app.register_blueprint(investimentos_bp, url_prefix='/investimentos')
+    app.register_blueprint(calculadora_bp, url_prefix='/calculadora')
     
     return app
 

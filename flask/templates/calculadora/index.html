@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CalcFin Pro — FinanIA</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root{--bg:#0B1120;--card:#151E2F;--bdr:#1E2D45;--fg:#E5E7EB;--mt:#6B7280;--ac:#00E5A0;--ac2:#F5A623;--dng:#EF4444}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--fg);overflow-x:hidden}
+h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+
+.topbar{position:fixed;top:0;left:0;right:0;height:46px;background:rgba(11,17,32,.97);backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr);z-index:100;display:flex;align-items:center;padding:0 12px}
+.topbar-logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.85rem;color:var(--ac);margin-right:10px;flex-shrink:0;cursor:default}
+.topbar-logo span{color:var(--fg);font-weight:400;opacity:.5;font-size:.62rem;margin-left:3px}
+.topbar-back{margin-left:auto;flex-shrink:0;padding:0 11px;height:100%;display:flex;align-items:center;gap:5px;font-size:.72rem;color:#9CA3AF;cursor:pointer;border:none;background:none;font-family:'DM Sans',sans-serif;border-left:1px solid var(--bdr);transition:color .15s;text-decoration:none}
+.topbar-back:hover{color:var(--ac)}
+.tb-scroll{display:flex;align-items:center;height:100%;flex:1;overflow-x:auto;overflow-y:hidden;gap:0}
+.tb-scroll::-webkit-scrollbar{height:0}
+.tb-item{position:relative;height:100%;display:flex;align-items:center;flex-shrink:0}
+.tb-btn{display:flex;align-items:center;gap:4px;padding:0 11px;height:100%;font-size:.72rem;color:#9CA3AF;cursor:pointer;border:none;background:none;font-family:'DM Sans',sans-serif;white-space:nowrap;transition:color .15s}
+.tb-btn:hover,.tb-btn.on{color:var(--ac)}
+.tb-dd{display:none;position:fixed;top:46px;min-width:220px;max-height:calc(100vh - 50px);overflow-y:auto;background:rgba(21,30,47,.98);backdrop-filter:blur(14px);border:1px solid var(--bdr);border-radius:0 0 10px 10px;padding:5px 0;box-shadow:0 10px 36px rgba(0,0,0,.5);z-index:200;scrollbar-width:thin;scrollbar-color:var(--bdr) transparent}
+.tb-dd::-webkit-scrollbar{width:4px}.tb-dd::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+.tb-dd.show{display:block}
+.tb-opt{display:flex;align-items:center;gap:8px;padding:7px 14px;font-size:.78rem;color:#9CA3AF;cursor:pointer;transition:all .1s;border-left:3px solid transparent}
+.tb-opt:hover{color:var(--fg);background:rgba(0,229,160,.05)}
+.tb-opt.ac{color:var(--ac);background:rgba(0,229,160,.08);border-left-color:var(--ac)}
+.tb-opt i{width:14px;text-align:center;font-size:.68rem;opacity:.5}
+.tb-help{margin-left:8px;flex-shrink:0;padding:0 11px;height:100%;display:flex;align-items:center;gap:5px;font-size:.72rem;color:var(--ac2);cursor:pointer;border:none;background:none;font-family:'DM Sans',sans-serif;border-left:1px solid var(--bdr);transition:color .15s}
+.tb-help:hover{color:#fbbf24}
+
+.sidebar{width:252px;max-height:calc(100vh - 46px);background:rgba(17,24,39,.97);backdrop-filter:blur(18px);border-right:1px solid var(--bdr);position:fixed;left:0;top:46px;bottom:0;z-index:50;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bdr) transparent;transition:transform .3s}
+.sidebar::-webkit-scrollbar{width:4px}.sidebar::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+.sidebar.closed{transform:translateX(-100%)}
+.ct{font-size:.58rem;text-transform:uppercase;letter-spacing:.11em;color:var(--mt);padding:12px 14px 4px;font-weight:600;position:sticky;top:0;background:rgba(17,24,39,.96);backdrop-filter:blur(6px);z-index:2}
+.ni{display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:.78rem;color:#9CA3AF;cursor:pointer;transition:all .1s;border-left:3px solid transparent}
+.ni:hover{color:var(--fg);background:rgba(0,229,160,.04)}
+.ni.ac{color:var(--ac);background:rgba(0,229,160,.07);border-left-color:var(--ac)}
+.ni i{width:15px;text-align:center;font-size:.7rem;flex-shrink:0}
+.sb-bot{padding:8px 14px;border-top:1px solid var(--bdr);position:sticky;bottom:0;background:rgba(17,24,39,.96);backdrop-filter:blur(6px)}
+
+.mc{margin-left:252px;padding-top:46px;min-height:100vh;transition:margin .3s}
+.mc.full{margin-left:0}
+
+.cc{background:var(--card);border:1px solid var(--bdr);border-radius:12px;padding:24px;position:relative;overflow:hidden}
+.cc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--ac),transparent);opacity:.5}
+.fi{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--bdr);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:.86rem;font-family:'DM Sans',sans-serif;transition:border-color .2s,box-shadow .2s;outline:none}
+.fi:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(0,229,160,.1)}.fi::placeholder{color:#4B5563}
+select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236B7280' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:28px}
+select.fi option{background:#1a2332;color:var(--fg)}
+.fl{display:block;font-size:.74rem;color:var(--mt);margin-bottom:3px;font-weight:500}
+.hint{font-size:.66rem;color:#4B5563;margin-top:2px;line-height:1.35;font-style:italic}
+.bc{background:linear-gradient(135deg,#00E5A0,#00c484);color:#0B1120;font-weight:600;font-family:'Space Grotesk',sans-serif;padding:9px 22px;border:none;border-radius:8px;cursor:pointer;font-size:.85rem;transition:all .2s}
+.bc:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,229,160,.25)}.bc:active{transform:translateY(0)}
+.bs{background:transparent;border:1px solid var(--bdr);color:var(--fg);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.78rem;transition:all .2s;font-family:'DM Sans',sans-serif}
+.bs:hover{border-color:var(--ac);color:var(--ac)}
+.rb{background:rgba(0,229,160,.04);border:1px solid rgba(0,229,160,.13);border-radius:10px;padding:16px;margin-top:16px;animation:fu .3s}
+.ri{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.03);gap:10px}.ri:last-child{border-bottom:none}
+.rv{font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--ac);font-size:.95rem;text-align:right}.rv.g{color:var(--ac2)}.rv.r{color:var(--dng)}
+.ft{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:12px}
+.ft th{background:#0D1321;color:var(--ac);font-weight:600;padding:8px 9px;text-align:right;font-family:'Space Grotesk',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid rgba(0,229,160,.4);position:sticky;top:0;z-index:1}
+.ft th:first-child{text-align:center}.ft td{padding:7px 9px;text-align:right;border-bottom:1px solid rgba(255,255,255,.02);font-variant-numeric:tabular-nums}
+.ft td:first-child{text-align:center;color:var(--mt)}
+.ft tr:hover td{background:rgba(0,229,160,.03)}.ft tr:nth-child(even) td{background:rgba(0,0,0,.12)}
+.ft tr.best td{background:rgba(0,229,160,.08)!important}
+.tc{position:fixed;top:56px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:6px}
+.toast{padding:10px 16px;border-radius:8px;font-size:.8rem;animation:si .3s;backdrop-filter:blur(8px);max-width:320px}
+.toast.ok{background:rgba(16,185,129,.13);border:1px solid rgba(16,185,129,.25);color:#6ee7b7}
+.toast.er{background:rgba(239,68,68,.13);border:1px solid rgba(239,68,68,.25);color:#fca5a5}
+.toast.in{background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);color:var(--ac)}
+.ic{background:var(--card);border:1px solid var(--bdr);border-radius:10px;padding:13px;transition:border-color .2s}.ic:hover{border-color:rgba(0,229,160,.25)}
+.iv{font-family:'Space Grotesk',sans-serif;font-size:1.2rem;font-weight:700}
+.fb{background:rgba(0,0,0,.3);border:1px solid var(--bdr);border-radius:8px;padding:10px 14px;font-family:'Space Grotesk',monospace;color:var(--ac2);font-size:.85rem;text-align:center}
+.fr{display:flex;gap:6px;align-items:center;margin-bottom:4px}.fr input{flex:1}
+.fr button{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;width:28px;height:32px;border-radius:6px;cursor:pointer;font-size:.7rem;transition:all .2s}.fr button:hover{background:rgba(239,68,68,.25)}
+.tb2{padding:7px 18px;border:1px solid var(--bdr);background:transparent;color:var(--mt);cursor:pointer;font-size:.8rem;font-family:'DM Sans',sans-serif;transition:all .2s;border-radius:8px 8px 0 0}
+.tb2.ac{background:var(--card);color:var(--ac);border-bottom-color:var(--card)}.tb2:hover:not(.ac){color:var(--fg)}
+.bg-glow{position:fixed;width:350px;height:350px;border-radius:50%;filter:blur(120px);opacity:.06;pointer-events:none;z-index:0}
+@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes si{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+
+.help-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;backdrop-filter:blur(4px)}
+.help-ov.open{display:flex;align-items:flex-start;justify-content:center;padding:56px 16px 16px;overflow-y:auto}
+.help-mod{background:#111827;border:1px solid var(--bdr);border-radius:14px;width:100%;max-width:840px;max-height:calc(100vh - 72px);overflow-y:auto;animation:fu .25s;scrollbar-width:thin;scrollbar-color:var(--bdr) transparent}
+.help-mod::-webkit-scrollbar{width:5px}.help-mod::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+.help-hd{position:sticky;top:0;background:rgba(17,24,39,.98);backdrop-filter:blur(10px);padding:18px 24px;border-bottom:1px solid var(--bdr);z-index:2;display:flex;justify-content:space-between;align-items:center}
+.help-bd{padding:20px 24px 36px}
+.hcat{margin-bottom:24px}
+.hcat-t{font-size:.95rem;font-weight:700;color:var(--ac);margin-bottom:10px;display:flex;align-items:center;gap:7px;padding-bottom:7px;border-bottom:1px solid rgba(0,229,160,.15)}
+.hfn{margin-bottom:16px;padding:14px;background:rgba(0,0,0,.2);border-radius:10px;border:1px solid rgba(255,255,255,.03)}
+.hfn-t{font-size:.9rem;font-weight:600;color:var(--fg);margin-bottom:6px}
+.hfn-f{background:rgba(0,0,0,.3);border:1px solid var(--bdr);border-radius:8px;padding:9px 12px;font-family:'Space Grotesk',monospace;color:var(--ac2);font-size:.83rem;margin-bottom:8px;text-align:center}
+.hfn-x{font-size:.8rem;color:var(--mt);line-height:1.6;margin-bottom:8px}
+.hfn-e{background:rgba(0,229,160,.05);border-left:3px solid var(--ac);border-radius:0 8px 8px 0;padding:9px 12px;font-size:.78rem;line-height:1.55}
+.hfn-e strong{color:var(--ac);font-weight:600}
+.hcl{width:34px;height:34px;border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#fca5a5;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem;transition:all .2s}
+.hcl:hover{background:rgba(239,68,68,.2)}
+.htoc{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:5px;margin-bottom:20px}
+.htoc a{padding:5px 10px;font-size:.75rem;color:var(--mt);border-radius:6px;cursor:pointer;transition:all .12s;text-decoration:none;display:block;border:1px solid transparent}
+.htoc a:hover{color:var(--ac);background:rgba(0,229,160,.05);border-color:rgba(0,229,160,.15)}
+@media(max-width:900px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.mc{margin-left:0!important}.mt{display:flex!important}.tb-btn{padding:0 8px;font-size:.68rem}}
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40}
+.ov.open{display:block}
+.mt{display:none;position:fixed;top:54px;left:8px;z-index:60;width:34px;height:34px;background:var(--card);border:1px solid var(--bdr);border-radius:8px;align-items:center;justify-content:center;cursor:pointer;color:var(--fg);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="bg-glow" style="top:-100px;right:-100px;background:var(--ac);"></div>
+<div class="bg-glow" style="bottom:-150px;left:200px;background:var(--ac2);"></div>
+<div class="tc" id="TC"></div>
+<div class="ov" id="OV" onclick="toggleSB()"></div>
+<button class="mt" id="MT" onclick="toggleSB()" aria-label="Menu"><i class="fas fa-bars"></i></button>
+<header class="topbar" id="TOPBAR"></header>
+<nav class="sidebar" id="SB"><div id="NC"></div>
+<div class="sb-bot"><button onclick="atualizarIndices()" style="width:100%;padding:6px;border-radius:8px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);color:var(--ac2);font-size:.7rem;cursor:pointer;font-family:'DM Sans',sans-serif;"><i class="fas fa-sync-alt" style="margin-right:4px;"></i>Atualizar Índices</button><p style="font-size:.56rem;color:var(--mt);margin-top:3px;text-align:center;" id="LU">Índices locais</p>
+<button onclick="openHelp()" style="width:100%;padding:6px;border-radius:8px;background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.15);color:var(--ac);font-size:.7rem;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:6px;"><i class="fas fa-question-circle" style="margin-right:4px;"></i>Ajuda e Fórmulas</button></div>
+</nav>
+<div class="help-ov" id="HOV" onclick="if(event.target===this)closeHelp()"><div class="help-mod"><div class="help-hd"><div><h2 style="font-size:1.15rem;font-weight:700;">Central de Ajuda</h2><p style="font-size:.72rem;color:var(--mt);margin-top:2px;">Fórmulas, explicações e exemplos</p></div><button class="hcl" onclick="closeHelp()"><i class="fas fa-times"></i></button></div><div class="help-bd" id="HB"></div></div></div>
+<main class="mc"><div style="max-width:900px;margin:0 auto;padding:24px 20px 50px;" id="PC"></div></main>
+
+<script>
+var S={sec:'juros-simples',sbO:false,idx:{selic:{v:13.75,l:'SELIC',c:432,lu:null},cdi:{v:13.65,l:'CDI',c:12,lu:null},ipca:{v:4.83,l:'IPCA',c:433,lu:null,m:true},igpm:{v:2.05,l:'IGP-M',c:189,lu:null,m:true},incc:{v:3.12,l:'INCC',c:192,lu:null,m:true},tr:{v:0,l:'TR',c:226,lu:null},poupanca:{v:7.88,l:'Poupança',c:196,lu:null},usd:{v:5.68,l:'Dólar',c:1,lu:null},eur:{v:6.12,l:'Euro',c:21619,lu:null},selicEf:{v:14.02,l:'SELIC Ef.',c:11,lu:null}},ch:null,openDD:-1};
+
+function fm(v){if(isNaN(v)||!isFinite(v))return'R$ 0,00';return'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fn(v,d){if(isNaN(v)||!isFinite(v))return'0';return v.toLocaleString('pt-BR',{minimumFractionDigits:d||4,maximumFractionDigits:d||4})}
+function pn(s){return parseFloat(String(s).replace(/\./g,'').replace(',','.'))||0}
+function toast(m,t){t=t||'in';var c=document.getElementById('TC'),d=document.createElement('div');d.className='toast '+t;d.innerHTML='<i class="fas '+(t==='ok'?'fa-check-circle':t==='er'?'fa-exclamation-circle':'fa-info-circle')+'" style="margin-right:6px;"></i>'+m;c.appendChild(d);setTimeout(function(){d.style.opacity='0';d.style.transition='opacity .3s';setTimeout(function(){d.remove()},300)},3500)}
+
+var _fc=0;
+function fTog(t){var id='ft'+(++_fc);return'<div style="margin-bottom:16px;"><button type="button" class="bs" onclick="tFt(\''+id+'\')" style="font-size:.73rem;padding:4px 12px;"><i class="fas fa-chevron-right" id="'+id+'_i" style="margin-right:4px;font-size:.55rem;transition:transform .2s;display:inline-block;"></i><span id="'+id+'_t">Ver Fórmula</span></button><div id="'+id+'" class="fb" style="display:none;margin-top:6px;">'+t+'</div></div>'}
+function tFt(id){var e=document.getElementById(id),i=document.getElementById(id+'_i'),x=document.getElementById(id+'_t'),v=e.style.display!=='none';e.style.display=v?'none':'block';i.style.transform=v?'':'rotate(90deg)';x.textContent=v?'Ver Fórmula':'Ocultar Fórmula'}
+
+var HI={C:'Valor inicial em reais. Use vírgula para decimal e ponto para milhar.',i:'Taxa em % na mesma base temporal dos períodos.',n:'Quantidade de períodos (meses se taxa mensal, dias se diária).',N:'Valor nominal/face do título.',d:'Taxa de desconto em %.',VF:'Valor futuro desejado.',PV:'Valor presente ou financiado.',PMT:'Valor de cada parcela periódica.',inom:'Taxa nominal anual (sem efeito de capitalização intra-período).',m:'Capitalizações/ano: 12=mensal, 4=trimestral.',ie:'Taxa efetiva anual (já com efeito composto).',n1:'Períodos da taxa conhecida.',n2:'Períodos da taxa desejada.',i1:'Taxa conhecida em %.',inf:'Inflação em % (geralmente IPCA 12 meses).'};
+function gh(id){return HI[id]?'<div class="hint">'+HI[id]+'</div>':''}
+
+/* ===== HELP ===== */
+var HD=[
+{c:'Juros & Descontos',ic:'fa-coins',items:[
+{t:'Juros Simples',f:'M = C × (1 + i × n)',x:'Juros sempre sobre o capital inicial. Mesmo valor de juros por período. Curto prazo.',e:'<strong>Ex:</strong> R$ 10.000 a 5% a.m. × 12 meses → J = <strong>R$ 6.000,00</strong>'},
+{t:'Juros Compostos',f:'M = C × (1 + i)<sup>n</sup>',x:'Juros sobre juros. Regime mais usado no mercado. Cada período o capital cresce.',e:'<strong>Ex:</strong> R$ 10.000 a 2% a.m. × 12 meses → M = <strong>R$ 12.682,42</strong>'},
+{t:'Desc. Simples Comercial',f:'D = N × d × n | A = N - D',x:'Desconto "por fora" sobre o nominal. Mais usado por bancos. Taxa efetiva > informada.',e:'<strong>Ex:</strong> R$ 15.000 a 3% a.m., 2 meses → D = <strong>R$ 900,00</strong>'},
+{t:'Desc. Simples Racional',f:'A = N / (1 + i × n) | D = N - A',x:'Desconto "por dentro" sobre o valor atual. Desconto justo, menor que o comercial.',e:'<strong>Ex:</strong> R$ 15.000 a 3% a.m., 2 meses → A = <strong>R$ 14.150,94</strong>'},
+{t:'Desc. Composto Comercial',f:'A = N × (1 - d)<sup>n</sup>',x:'Desconto composto sobre o nominal. Para prazos longos com capitalização composta.',e:'<strong>Ex:</strong> R$ 50.000 a 4% a.t., 6 trim. → A = <strong>R$ 39.140,17</strong>'},
+{t:'Desc. Composto Racional',f:'A = N / (1 + i)<sup>n</sup>',x:'Desconto composto sobre o valor atual. Sempre menor que o comercial composto.',e:'<strong>Ex:</strong> R$ 50.000 a 4% a.t., 6 trim. → A = <strong>R$ 39.519,28</strong>'}
+]},
+{c:'Taxas',ic:'fa-percentage',items:[
+{t:'Taxas Equivalentes',f:'(1+i₁)<sup>n₁</sup> = (1+i₂)<sup>n₂</sup>',x:'Mesma base temporal, diferente capitalização, mesmo montante composto.',e:'<strong>Ex:</strong> 12% a.a. → mensal: (1,12)<sup>1/12</sup>-1 = <strong>0,9489% a.m.</strong>'},
+{t:'Nominal → Efetiva',f:'i<sub>ef</sub> = (1+i<sub>nom</sub>/m)<sup>m</sup>-1',x:'Efetiva ≥ nominal. Diferença cresce com a frequência de capitalização.',e:'<strong>Ex:</strong> 24% a.a. cap. mensal → <strong>26,82% a.a.</strong>'},
+{t:'Efetiva → Nominal',f:'i<sub>nom</sub> = m×[(1+i<sub>ef</sub>)<sup>1/m</sup>-1]',x:'Operação inversa: da efetiva encontra a nominal.',e:'<strong>Ex:</strong> 26,82% efetiva → nom. mensal = <strong>24,00% a.a.</strong>'},
+{t:'Taxa Proporcional',f:'i₂ = i₁ × (n₂/n₁)',x:'Regra de três. Só válida em juros simples! No composto, proporcionais ≠ equivalentes.',e:'<strong>Ex:</strong> 36% a.a. → mensal: 36×(30/360) = <strong>3% a.m.</strong> (só simples!)'}
+]},
+{c:'Amortização',ic:'fa-university',items:[
+{t:'SAC',f:'A = PV/n | Jₖ = Saldo×i | P = A + J',x:'Amortização fixa, parcelas decrescentes. 1ª = maior. Usado no SFH.',e:'<strong>Ex:</strong> R$ 200.000, 360 meses, 1% a.m. → 1ª = <strong>R$ 2.555,56</strong>'},
+{t:'PRICE',f:'PMT = PV×[i(1+i)<sup>n</sup>]/[(1+i)<sup>n</sup>-1]',x:'Parcelas fixas. Início: mais juros. Final: mais amortização. Mais comum em financiamentos.',e:'<strong>Ex:</strong> R$ 200.000, 360 meses, 1% a.m. → PMT = <strong>R$ 2.057,34</strong>'}
+]},
+{c:'Valor do Dinheiro',ic:'fa-clock',items:[
+{t:'Valor Presente',f:'VP = VF / (1+i)<sup>n</sup>',x:'Traz valor futuro para o presente descontando pela taxa.',e:'<strong>Ex:</strong> R$ 20.000 em 10 meses a 2% → VP = <strong>R$ 16.407,04</strong>'},
+{t:'Valor Futuro',f:'VF = VP × (1+i)<sup>n</sup>',x:'Projeta valor presente para o futuro com juros compostos.',e:'<strong>Ex:</strong> R$ 10.000 a 1,5% a.m., 24 meses → VF = <strong>R$ 14.295,03</strong>'},
+{t:'PMT — Parcela',f:'PMT = PV×[i(1+i)<sup>n</sup>]/[(1+i)<sup>n</sup>-1]',x:'Parcela fixa de financiamento (sistema PRICE).',e:'<strong>Ex:</strong> R$ 100.000, 36 parcelas, 1,5% → PMT = <strong>R$ 3.515,70</strong>'},
+{t:'VP de Série',f:'VP = PMT×[(1-(1+i)<sup>-n</sup>)/i]',x:'Valor presente de pagamentos iguais periódicos.',e:'<strong>Ex:</strong> 24×R$ 3.000 a 2% → VP = <strong>R$ 56.741,78</strong>'},
+{t:'Capitalização c/ Aportes',f:'M = C(1+i)<sup>n</sup> + PMT×[((1+i)<sup>n</sup>-1)/i]',x:'Capital inicial + aportes periódicos. Modelo previdência/poupança programada.',e:'<strong>Ex:</strong> R$ 5.000 + R$ 1.000/mês a 1% a.m., 120 meses → <strong>R$ 248.206,13</strong>'}
+]},
+{c:'Investimentos',ic:'fa-chart-pie',items:[
+{t:'Comparador de Investimentos',f:'CDI: VF=VI×(1+t<sub>dia</sub>×%)<sup>dias</sup> | IR regressivo',x:'Compara CDI, IPCA+, LCI/LCA e Poupança. IR: 22,5%(≤180d)→20%(≤360d)→17,5%(≤720d)→15%(>720d). LCI/LCA e Poupança isentas. CDI≈99% SELIC. Poupança: 70% SELIC se >8,5% a.a.',e:'<strong>Ex:</strong> R$ 10.000/365d, SELIC 13,75%: CDI 100%→R$1.263 liq. | LCI 95%→R$1.219 | Poupança→R$943'},
+{t:'VPL',f:'VPL = -CI + Σ FC<sub>t</sub>/(1+i)<sup>t</sup>',x:'Soma dos VPs futuros menos investimento. VPL>0 = viável. Quanto maior, melhor.',e:'<strong>Ex:</strong> -100k, +30k/+35k/+40k/+45k a 10% → VPL = <strong>R$ 19.737,65</strong> → Viável!'},
+{t:'TIR',f:'Σ FC<sub>t</sub>/(1+TIR)<sup>t</sup> = 0',x:'Taxa que zera o VPL. Se TIR > TMA, projeto aceito. Newton-Raphson.',e:'<strong>Ex:</strong> Mesmos fluxos → TIR ≈ <strong>19,84% a.a.</strong>'},
+{t:'Payback Simples',f:'Menor t: Σ FC<sub>k</sub> ≥ 0',x:'Tempo para recuperar o investimento sem desconto.',e:'<strong>Ex:</strong> -100k, +25k, +30k, +35k, +40k → <strong>3,25 períodos</strong>'},
+{t:'Payback Descontado',f:'Menor t: Σ FC<sub>k</sub>/(1+i)<sup>k</sup> ≥ 0',x:'Igual ao simples mas desconta cada fluxo. Mais realista, sempre ≥ simples.',e:'<strong>Ex:</strong> Mesmos fluxos a 10% → <strong>3,37 períodos</strong>'}
+]},
+{c:'Índices',ic:'fa-database',items:[
+{t:'Painel de Índices',f:'Dados em tempo real do BCB (SGS)',x:'Índices do Banco Central. IPCA/IGP-M/INCC: acumulado 12 meses. Clique "Atualizar" para dados recentes.',e:'<strong>Uso:</strong> Consulte valores. Usados como padrão no Comparador e Correção.'},
+{t:'Correção Monetária',f:'Corrigido = Original × (1+i)<sup>n</sup>',x:'Atualiza valor por índice ao longo de n períodos. Reajuste de contratos, aluguéis.',e:'<strong>Ex:</strong> R$ 50.000 × IPCA 4,83% a.a. × 2 anos = <strong>R$ 54.947,35</strong>'},
+{t:'Rentabilidade Real',f:'(1+i<sub>nom</sub>)=(1+i<sub>real</sub>)×(1+inf)',x:'Fisher: desconta inflação da rentabilidade. Aproximação simples subestima.',e:'<strong>Ex:</strong> 13,75% nom., 4,83% inf. → Real = <strong>8,5063%</strong>'},
+{t:'Regra de 72',f:'n ≈ 72/i | i ≈ 72/n',x:'Estima tempo para dobrar. Bom entre 4% e 15%.',e:'<strong>Ex:</strong> 6% a.a. → n ≈ 72/6 = <strong>12 anos</strong>'}
+]},
+{c:'Unidades',ic:'fa-ruler-combined',items:[
+{t:'Conversão de Unidades',f:'Convertido = Original × (Fator origem / Fator destino)',x:'Cada unidade tem fator relativo à base. Temperatura usa fórmula específica. Tempo real ao digitar.',e:'<strong>Ex:</strong> 100 km/h → m/s: <strong>27,78 m/s</strong> | 32°F → °C: <strong>0°C</strong>'}
+]}
+];
+
+function openHelp(){document.getElementById('HOV').classList.add('open');document.body.style.overflow='hidden';rH()}
+function closeHelp(){document.getElementById('HOV').classList.remove('open');document.body.style.overflow='';closeDD()}
+function rH(){var b=document.getElementById('HB'),h='<div style="margin-bottom:16px;"><h3 style="font-size:.82rem;color:var(--ac2);font-weight:600;margin-bottom:8px;">Índice Rápido</h3><div class="htoc">';for(var c=0;c<HD.length;c++)for(var i=0;i<HD[c].items.length;i++){var it=HD[c].items[i];h+='<a href="#h'+c+i+'" onclick="event.preventDefault();document.getElementById(\'h'+c+i+'\').scrollIntoView({behavior:\'smooth\',block:\'center\'})">'+it.t+'</a>';}h+='</div></div>';for(var c=0;c<HD.length;c++){h+='<div class="hcat"><div class="hcat-t"><i class="fas '+HD[c].ic+'"></i>'+HD[c].c+'</div>';for(var i=0;i<HD[c].items.length;i++){var it=HD[c].items[i];h+='<div class="hfn" id="h'+c+i+'"><div class="hfn-t">'+it.t+'</div><div class="hfn-f">'+it.f+'</div><div class="hfn-x">'+it.x+'</div><div class="hfn-e">'+it.e+'</div></div>';}h+='</div>';}b.innerHTML=h;}
+
+/* ===== DROPDOWN TOPBAR ===== */
+function closeDD(){if(S.openDD>=0){var dd=document.getElementById('dd_'+S.openDD);if(dd)dd.classList.remove('show');S.openDD=-1;}}
+function toggleDD(idx,btn){closeDD();var dd=document.getElementById('dd_'+idx);if(dd){dd.classList.add('show');S.openDD=idx;var r=btn.getBoundingClientRect();dd.style.left=Math.min(r.left,window.innerWidth-dd.offsetWidth-10)+'px';dd.style.top='46px';}return false;}
+document.addEventListener('click',function(e){if(!e.target.closest('.tb-item')&&!e.target.closest('.tb-dd'))closeDD()});
+
+/* ===== NAV ===== */
+var NAV=[
+{c:'Juros & Descontos',ic:'fa-coins',it:[{id:'juros-simples',l:'Juros Simples',i:'fa-percent'},{id:'juros-compostos',l:'Juros Compostos',i:'fa-chart-line'},{id:'desc-simples-comercial',l:'Desc. Simples Comercial',i:'fa-tag'},{id:'desc-simples-racional',l:'Desc. Simples Racional',i:'fa-calculator'},{id:'desc-composto-comercial',l:'Desc. Composto Comercial',i:'fa-tags'},{id:'desc-composto-racional',l:'Desc. Composto Racional',i:'fa-receipt'}]},
+{c:'Taxas',ic:'fa-percentage',it:[{id:'taxas-equivalentes',l:'Taxas Equivalentes',i:'fa-exchange-alt'},{id:'nominal-efetiva',l:'Nominal → Efetiva',i:'fa-arrow-right'},{id:'efetiva-nominal',l:'Efetiva → Nominal',i:'fa-arrow-left'},{id:'taxa-proporcional',l:'Taxa Proporcional',i:'fa-balance-scale'}]},
+{c:'Amortização',ic:'fa-university',it:[{id:'amortizacao-sac',l:'SAC (Tabela)',i:'fa-layer-group'},{id:'amortizacao-price',l:'PRICE (Tabela)',i:'fa-list-ol'}]},
+{c:'Valor do Dinheiro',ic:'fa-clock',it:[{id:'valor-presente',l:'Valor Presente',i:'fa-backward'},{id:'valor-futuro',l:'Valor Futuro',i:'fa-forward'},{id:'pmt-parcela',l:'PMT (Parcela)',i:'fa-money-bill-wave'},{id:'vp-serie',l:'VP de Série',i:'fa-stream'},{id:'capitalizacao-aportes',l:'Capitalização c/ Aportes',i:'fa-piggy-bank'}]},
+{c:'Investimentos',ic:'fa-chart-pie',it:[
+{id:'comparador-investimentos',l:'Comparador de Investimentos',i:'fa-balance-scale-right'},
+{id:'vpl',l:'VPL',i:'fa-project-diagram'},{id:'tir',l:'TIR',i:'fa-crosshairs'},
+{id:'payback-simples',l:'Payback Simples',i:'fa-hourglass-half'},{id:'payback-descontado',l:'Payback Descontado',i:'fa-hourglass-end'}]},
+{c:'Índices',ic:'fa-database',it:[{id:'indices-economicos',l:'Painel de Índices',i:'fa-th-large'},{id:'correcao-monetaria',l:'Correção Monetária',i:'fa-shield-alt'},{id:'rentabilidade-real',l:'Rentabilidade Real',i:'fa-balance-scale'},{id:'regra-72',l:'Regra de 72',i:'fa-magic'}]},
+{c:'Unidades',ic:'fa-ruler-combined',it:[{id:'conv-comprimento',l:'Comprimento',i:'fa-ruler'},{id:'conv-massa',l:'Massa',i:'fa-weight-hanging'},{id:'conv-volume',l:'Volume',i:'fa-flask'},{id:'conv-temperatura',l:'Temperatura',i:'fa-thermometer-half'},{id:'conv-area',l:'Área',i:'fa-vector-square'},{id:'conv-velocidade',l:'Velocidade',i:'fa-tachometer-alt'},{id:'conv-tempo',l:'Tempo',i:'fa-stopwatch'},{id:'conv-dados',l:'Dados',i:'fa-hdd'},{id:'conv-pressao',l:'Pressão',i:'fa-compress-arrows-alt'},{id:'conv-energia',l:'Energia',i:'fa-bolt'}]}
+];
+
+function rNav(){var c=document.getElementById('NC'),h='';for(var i=0;i<NAV.length;i++){var cat=NAV[i];h+='<div class="ct"><i class="fas '+cat.ic+'" style="margin-right:4px;opacity:.5;"></i>'+cat.c+'</div>';for(var j=0;j<cat.it.length;j++){var it=cat.it[j];h+='<div class="ni '+(S.sec===it.id?'ac':'')+'" onclick="goTo(\''+it.id+'\')"><i class="fas '+it.i+'"></i><span>'+it.l+'</span></div>';}}c.innerHTML=h}
+
+function rTop(){var old=document.getElementById('DDC');if(old)old.remove();S.openDD=-1;var tb=document.getElementById('TOPBAR'),h='<div class="topbar-logo">CalcFin <span>Pro</span></div><div class="tb-scroll">';
+for(var i=0;i<NAV.length;i++){var cat=NAV[i];
+h+='<div class="tb-item"><button type="button" class="tb-btn" data-idx="'+i+'" onclick="return toggleDD('+i+',this)"><i class="fas '+cat.ic+'"></i> '+cat.c+' <i class="fas fa-caret-down"></i></button></div>';}
+h+='</div><button class="tb-help" onclick="openHelp()"><i class="fas fa-question-circle"></i> Ajuda</button>';
+h+='<a href="/investimentos/" class="topbar-back"><i class="fas fa-arrow-left" style="margin-right:4px;"></i>Voltar</a>';
+tb.innerHTML=h;
+
+var ddContainer=document.createElement('div');
+ddContainer.id='DDC';
+document.body.appendChild(ddContainer);
+for(var i=0;i<NAV.length;i++){
+var dd=document.createElement('div');dd.className='tb-dd';dd.id='dd_'+i;
+for(var j=0;j<NAV[i].it.length;j++){
+var it=NAV[i].it[j];
+var opt=document.createElement('div');
+opt.className='tb-opt '+(S.sec===it.id?'ac':'');
+opt.textContent=it.l;
+opt.onclick=(function(id){return function(){goTo(id);closeDD();}})(it.id);
+dd.appendChild(opt);
+}
+ddContainer.appendChild(dd);
+}
+}
+
+function goTo(id){S.sec=id;rNav();rTop();rP();if(window.innerWidth<900&&S.sbO)toggleSB(false);document.getElementById('PC').scrollIntoView({behavior:'smooth',block:'start'})}
+function toggleSB(force){S.sbO=(typeof force==='boolean')?force:!S.sbO;document.getElementById('SB').classList.toggle('open',S.sbO);document.getElementById('OV').classList.toggle('open',S.sbO)}
+
+/* ===== CALC DEFS ===== */
+var CD={
+'juros-simples':{t:'Juros Simples',f:'M = C × (1 + i × n)',d:'Juros sobre o capital inicial.',fd:[{id:'C',l:'Capital (R$)',p:'10.000,00'},{id:'i',l:'Taxa (%)',p:'5'},{id:'n',l:'Períodos',p:'12'}],fn:function(v){var i=v.i/100,J=v.C*i*v.n;return[{l:'Juros',v:fm(J)},{l:'Montante',v:fm(v.C+J)}]}},
+'juros-compostos':{t:'Juros Compostos',f:'M = C × (1 + i)<sup>n</sup>',d:'Juros sobre juros.',fd:[{id:'C',l:'Capital (R$)',p:'10.000,00'},{id:'i',l:'Taxa (%)',p:'2'},{id:'n',l:'Períodos',p:'12'}],fn:function(v){var i=v.i/100,M=v.C*Math.pow(1+i,v.n);return[{l:'Montante',v:fm(M)},{l:'Juros',v:fm(M-v.C)}]}},
+'desc-simples-comercial':{t:'Desc. Simples Comercial',f:'D = N × d × n',d:'Desconto sobre o nominal.',fd:[{id:'N',l:'Nominal (R$)',p:'15.000,00'},{id:'d',l:'Taxa desc. (%)',p:'3'},{id:'n',l:'Períodos',p:'2'}],fn:function(v){var D=v.N*v.d/100*v.n;return[{l:'Desconto',v:fm(D)},{l:'Valor Atual',v:fm(v.N-D)}]}},
+'desc-simples-racional':{t:'Desc. Simples Racional',f:'A = N / (1 + i × n)',d:'Desconto sobre o valor atual.',fd:[{id:'N',l:'Nominal (R$)',p:'15.000,00'},{id:'i',l:'Taxa (%)',p:'3'},{id:'n',l:'Períodos',p:'2'}],fn:function(v){var A=v.N/(1+v.i/100*v.n);return[{l:'Valor Atual',v:fm(A)},{l:'Desconto',v:fm(v.N-A)}]}},
+'desc-composto-comercial':{t:'Desc. Composto Comercial',f:'A = N × (1 - d)<sup>n</sup>',d:'Desconto composto sobre o nominal.',fd:[{id:'N',l:'Nominal (R$)',p:'50.000,00'},{id:'d',l:'Taxa (%)',p:'4'},{id:'n',l:'Períodos',p:'6'}],fn:function(v){var A=v.N*Math.pow(1-v.d/100,v.n);return[{l:'Valor Atual',v:fm(A)},{l:'Desconto',v:fm(v.N-A)}]}},
+'desc-composto-racional':{t:'Desc. Composto Racional',f:'A = N / (1 + i)<sup>n</sup>',d:'Desconto composto sobre o valor atual.',fd:[{id:'N',l:'Nominal (R$)',p:'50.000,00'},{id:'i',l:'Taxa (%)',p:'4'},{id:'n',l:'Períodos',p:'6'}],fn:function(v){var A=v.N/Math.pow(1+v.i/100,v.n);return[{l:'Valor Atual',v:fm(A)},{l:'Desconto',v:fm(v.N-A)}]}},
+'taxas-equivalentes':{t:'Taxas Equivalentes',f:'(1+i₁)<sup>n₁</sup> = (1+i₂)<sup>n₂</sup>',d:'Taxa equivalente em outra base.',fd:[{id:'i1',l:'Taxa conhecida (%)',p:'12'},{id:'n1',l:'Períodos conhecida',p:'12'},{id:'n2',l:'Períodos desejada',p:'1'}],fn:function(v){var i2=Math.pow(1+v.i1/100,v.n2/v.n1)-1;return[{l:'Equivalente',v:fn(i2*100,6)+' %'}]}},
+'nominal-efetiva':{t:'Nominal → Efetiva',f:'i<sub>ef</sub> = (1+i<sub>nom</sub>/m)<sup>m</sup>-1',d:'Converte nominal em efetiva.',fd:[{id:'inom',l:'Nominal (% a.a.)',p:'24'},{id:'m',l:'Capitalizações/ano',p:'12'}],fn:function(v){var e=Math.pow(1+v.inom/100/v.m,v.m)-1;return[{l:'Efetiva Anual',v:fn(e*100,4)+' %'},{l:'Por período',v:fn(e/v.m*100,4)+' %'}]}},
+'efetiva-nominal':{t:'Efetiva → Nominal',f:'i<sub>nom</sub> = m×[(1+i<sub>ef</sub>)<sup>1/m</sup>-1]',d:'Converte efetiva em nominal.',fd:[{id:'ie',l:'Efetiva (% a.a.)',p:'26.82'},{id:'m',l:'Capitalizações/ano',p:'12'}],fn:function(v){var n=v.m*(Math.pow(1+v.ie/100,1/v.m)-1);return[{l:'Nominal Anual',v:fn(n*100,4)+' %'}]}},
+'taxa-proporcional':{t:'Taxa Proporcional',f:'i₂ = i₁ × (n₂/n₁)',d:'Só válida em juros simples.',fd:[{id:'i1',l:'Taxa (%)',p:'36'},{id:'n1',l:'Base atual',p:'360'},{id:'n2',l:'Base desejada',p:'30'}],fn:function(v){return[{l:'Proporcional',v:fn(v.i1*(v.n2/v.n1),6)+' %'},{l:'Atenção',v:'Só válida em juros simples',g:true}]}},
+'valor-presente':{t:'Valor Presente',f:'VP = VF / (1+i)<sup>n</sup>',d:'Traz valor futuro para o presente.',fd:[{id:'VF',l:'Valor Futuro (R$)',p:'20.000,00'},{id:'i',l:'Taxa (%)',p:'2'},{id:'n',l:'Períodos',p:'10'}],fn:function(v){var VP=v.VF/Math.pow(1+v.i/100,v.n);return[{l:'Valor Presente',v:fm(VP)},{l:'Desconto',v:fm(v.VF-VP)}]}},
+'valor-futuro':{t:'Valor Futuro',f:'VF = VP × (1+i)<sup>n</sup>',d:'Projeta para o futuro.',fd:[{id:'VP',l:'Valor Presente (R$)',p:'10.000,00'},{id:'i',l:'Taxa (%)',p:'1.5'},{id:'n',l:'Períodos',p:'24'}],fn:function(v){var VF=v.VP*Math.pow(1+v.i/100,v.n);return[{l:'Valor Futuro',v:fm(VF)},{l:'Juros',v:fm(VF-v.VP)},{l:'Rendimento',v:fn((VF-v.VP)/v.VP*100,2)+' %'}]}},
+'pmt-parcela':{t:'PMT — Parcela',f:'PMT = PV×[i(1+i)<sup>n</sup>]/[(1+i)<sup>n</sup>-1]',d:'Parcela fixa (PRICE).',fd:[{id:'PV',l:'Financiado (R$)',p:'100.000,00'},{id:'i',l:'Taxa/período (%)',p:'1.5'},{id:'n',l:'Parcelas',p:'36'}],fn:function(v){var i=v.i/100,f=Math.pow(1+i,v.n),P=v.PV*(i*f)/(f-1);return[{l:'Parcela',v:fm(P)},{l:'Total',v:fm(P*v.n)},{l:'Juros',v:fm(P*v.n-v.PV)}]}},
+'vp-serie':{t:'VP de Série',f:'VP = PMT×[(1-(1+i)<sup>-n</sup>)/i]',d:'VP de pagamentos iguais.',fd:[{id:'PMT',l:'Parcela (R$)',p:'3.000,00'},{id:'i',l:'Taxa (%)',p:'2'},{id:'n',l:'Parcelas',p:'24'}],fn:function(v){var i=v.i/100,VP=v.PMT*(1-Math.pow(1+i,-v.n))/i;return[{l:'Valor Presente',v:fm(VP)},{l:'Total',v:fm(v.PMT*v.n)},{l:'Juros',v:fm(v.PMT*v.n-VP)}]}},
+'capitalizacao-aportes':{t:'Capitalização c/ Aportes',f:'M = C(1+i)<sup>n</sup>+PMT×[((1+i)<sup>n</sup>-1)/i]',d:'Montante com aportes.',fd:[{id:'C',l:'Capital inicial (R$)',p:'5.000,00'},{id:'PMT',l:'Aporte (R$)',p:'1.000,00'},{id:'i',l:'Taxa (%)',p:'1'},{id:'n',l:'Períodos',p:'120'}],fn:function(v){var i=v.i/100,fc=Math.pow(1+i,v.n),M=v.C*fc+v.PMT*(fc-1)/i,ta=v.C+v.PMT*v.n;return[{l:'Montante',v:fm(M)},{l:'Investido',v:fm(ta)},{l:'Rendimento',v:fm(M-ta)},{l:'%',v:fn((M-ta)/ta*100,2)+' %'}]}},
+'rentabilidade-real':{t:'Rentabilidade Real',f:'(1+i<sub>nom</sub>)=(1+i<sub>real</sub>)×(1+inf)',d:'Fórmula de Fisher.',fd:[{id:'inom',l:'Nominal (%)',p:'13.75'},{id:'inf',l:'Inflação (%)',p:'4.83'}],fn:function(v){var r=(1+v.inom/100)/(1+v.inf/100)-1;return[{l:'Real',v:fn(r*100,4)+' %'},{l:'Aprox.',v:fn(v.inom-v.inf,4)+' %'}]}},
+'regra-72':{t:'Regra de 72',f:'n≈72/i | i≈72/n',d:'Estima tempo para dobrar.',fd:[{id:'i',l:'Taxa (%)',p:'6'},{id:'n',l:'Períodos (0=calc)',p:'0'}],fn:function(v){var r=[];if(v.i>0)r.push({l:'Dobrar em',v:fn(72/v.i,2)+' per.'});if(v.n>0)r.push({l:'Taxa neces.',v:fn(72/v.n,2)+' %'});if(!r.length)r.push({l:'Preencha taxa ou período',v:''});return r}}
+};
+
+/* ===== UNIDADES ===== */
+var UD={
+'conv-comprimento':{t:'Comprimento',u:{mm:{n:'Milímetro',f:.001},cm:{n:'Centímetro',f:.01},m:{n:'Metro',f:1},km:{n:'Quilômetro',f:1000},in:{n:'Polegada',f:.0254},ft:{n:'Pé',f:.3048},yd:{n:'Jarda',f:.9144},mi:{n:'Milha',f:1609.344},mn:{n:'Milha Náutica',f:1852}}},
+'conv-massa':{t:'Massa',u:{mg:{n:'Miligrama',f:1e-6},g:{n:'Grama',f:.001},kg:{n:'Quilograma',f:1},t:{n:'Tonelada',f:1000},oz:{n:'Onça',f:.0283495},lb:{n:'Libra',f:.453592}}},
+'conv-volume':{t:'Volume',u:{ml:{n:'Mililitro',f:1e-6},l:{n:'Litro',f:.001},m3:{n:'m³',f:1},gal:{n:'Galão EUA',f:.00378541},qt:{n:'Quarto EUA',f:.000946353},pt:{n:'Pinta EUA',f:.000473176},ft3:{n:'ft³',f:.0283168}}},
+'conv-temperatura':{t:'Temperatura',sp:true,u:{C:'Celsius (°C)',F:'Fahrenheit (°F)',K:'Kelvin (K)'},cv:function(v,fr,to){var c;if(fr==='C')c=v;else if(fr==='F')c=(v-32)*5/9;else c=v-273.15;if(to==='C')return c;else if(to==='F')return c*9/5+32;else return c+273.15}},
+'conv-area':{t:'Área',u:{mm2:{n:'mm²',f:1e-6},cm2:{n:'cm²',f:1e-4},m2:{n:'m²',f:1},km2:{n:'km²',f:1e6},ha:{n:'Hectare',f:1e4},ac:{n:'Acre',f:4046.86},ft2:{n:'ft²',f:.092903},in2:{n:'in²',f:6.4516e-4}}},
+'conv-velocidade':{t:'Velocidade',u:{ms:{n:'m/s',f:1},kmh:{n:'km/h',f:.277778},mph:{n:'mi/h',f:.44704},kn:{n:'Nó',f:.514444},fts:{n:'ft/s',f:.3048}}},
+'conv-tempo':{t:'Tempo',u:{mst:{n:'Milissegundo',f:.001},s:{n:'Segundo',f:1},min:{n:'Minuto',f:60},h:{n:'Hora',f:3600},d:{n:'Dia',f:86400},sem:{n:'Semana',f:604800},mes:{n:'Mês (30d)',f:2592000},ano:{n:'Ano (365d)',f:31536000}}},
+'conv-dados':{t:'Dados',u:{bit:{n:'Bit',f:1},byte:{n:'Byte',f:8},kb:{n:'KB',f:8192},mb:{n:'MB',f:8388608},gb:{n:'GB',f:8589934592},tb:{n:'TB',f:8.796e12},pb:{n:'PB',f:9.007e15}}},
+'conv-pressao':{t:'Pressão',u:{pa:{n:'Pascal',f:1},kpa:{n:'kPa',f:1000},mpa:{n:'MPa',f:1e6},bar:{n:'Bar',f:1e5},atm:{n:'Atmosfera',f:101325},psi:{n:'PSI',f:6894.76},mmhg:{n:'mmHg',f:133.322}}},
+'conv-energia':{t:'Energia',u:{j:{n:'Joule',f:1},kj:{n:'kJ',f:1000},cal:{n:'Caloria',f:4.184},kcal:{n:'kcal',f:4184},wh:{n:'Wh',f:3600},kwh:{n:'kWh',f:36e5},btu:{n:'BTU',f:1055.06},cv:{n:'CV',f:735.499}}}
+};
+
+/* ===== RENDER ===== */
+function rP(){var pc=document.getElementById('PC'),id=S.sec;try{if(id==='amortizacao-sac')return rAm(pc,'SAC');if(id==='amortizacao-price')return rAm(pc,'PRICE');if(id==='vpl')return rFx(pc,'VPL','VPL — Valor Presente Líquido','Soma dos VPs dos fluxos futuros.','VPL = Σ FC<sub>t</sub>/(1+i)<sup>t</sup>','vpl');if(id==='tir')return rFx(pc,'TIR','TIR — Taxa Interna de Retorno','Taxa que zera o VPL.','Σ FC<sub>t</sub>/(1+TIR)<sup>t</sup>=0','tir');if(id==='payback-simples')return rPB(pc,false);if(id==='payback-descontado')return rPB(pc,true);if(id==='indices-economicos')return rIdx(pc);if(id==='correcao-monetaria')return rCor(pc);if(id==='comparador-investimentos')return rComp(pc);if(UD[id])return rUn(pc,id);if(CD[id])return rGen(pc,id);}catch(e){console.error(e);}pc.innerHTML='<div class="cc"><p>Seção não encontrada.</p></div>';}
+
+function rGen(pc,id){var d=CD[id],fh='';for(var i=0;i<d.fd.length;i++){var f=d.fd[i];fh+='<div><label class="fl" for="f_'+f.id+'">'+f.l+'</label><input class="fi" type="text" id="f_'+f.id+'" placeholder="'+(f.p||'')+'" inputmode="decimal">'+gh(f.id)+'</div>';}pc.innerHTML='<div style="animation:fu .3s;"><h2 style="font-size:1.4rem;font-weight:700;margin-bottom:4px;">'+d.t+'</h2><p style="color:var(--muted);font-size:.83rem;margin-bottom:14px;">'+d.d+'</p>'+fTog(d.f)+'<div class="cc"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr);gap:12px;">'+fh+'</div><div style="margin-top:16px;display:flex;gap:8px;"><button class="bc" onclick="cG(\''+id+'\')"><i class="fas fa-calculator" style="margin-right:6px;"></i>Calcular</button><button class="bs" onclick="clG(\''+id+'\')"><i class="fas fa-er" style="margin-right:4px;"></i>Limpar</button></div><div id="RA"></div></div></div>';}
+function cG(id){var d=CD[id],v={};for(var i=0;i<d.fd.length;i++){var f=d.fd[i],el=document.getElementById('f_'+f.id);if(el.value.trim()===''){toast('Preencha todos.','er');el.focus();return;}v[f.id]=pn(el.value);}var r=d.fn(v),h='<div class="rb"><h4 style="font-size:.85rem;font-weight:600;margin-bottom:8px;">Resultado</h4>';for(var j=0;j<r.length;j++)h+='<div class="ri"><span style="color:var(--muted);font-size:.8rem;">'+r[j].l+'</span><span class="rv '+(r[j].g?'g':'')+'">'+r[j].v+'</span></div>';h+='</div>';document.getElementById('RA').innerHTML=h;}
+function clG(id){var d=CD[id];for(var i=0;i<d.fd.length;i++)document.getElementById('f_'+d.fd[i].id).value='';document.getElementById('RA').innerHTML='';}
+
+function rAm(pc,tipo){var isS=tipo==='SAC';pc.innerHTML='<div style="animation:fu .3s;"><h2 style="font-size:1.4rem;font-weight:700;margin-bottom:4px;">'+(isS?'Amortização SAC':'Amortização PRICE')+'</h2><p style="color:var(--muted);font-size:.83rem;margin-bottom:14px;">'+(isS?'Parcelas decrescentes, amortização fixa.':'Parcelas fixas.')+'</p>'+fTog(isS?'A=PV/n | J=Saldo×i':'PMT=PV×[i(1+i)<sup>n</sup>]/[(1+i)<sup>n</sup>-1]')+'<div class="cc"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr);gap:12px;"><div><label class="fl">Financiamento (R$)</label><input class="fi" type="text" id="amPV" placeholder="200.000,00" inputmode="decimal"><div class="hint">Valor total do empréstimo.</div></div><div><label class="fl">Taxa/período (%)</label><input class="fi" type="text" id="amI" placeholder="1.2" inputmode="decimal"><div class="hint">Taxa na mesma base das parcelas (mensal se parcelas mensais).</div></div><div><label class="fl">Parcelas</label><input class="fi" type="text" id="amN" placeholder="360" inputmode="decimal"><div class="hint">Total de parcelas. Ex: 360 para 30 anos.</div></div></div><div style="margin-top:16px;display:flex;gap:8px;"><button class="bc" onclick="cAm(\''+tipo+'\')"><i class="fas fa-table" style="margin-right:6px;"></i>Gerar Tabela</button><button class="bs" onclick="document.getElementById(\'amR\').innerHTML=\'\'"><i class="fas fa-eraser" style="margin-right:4px;"></i>Limpar</button></div><div id="amR"></div></div></div>';}
+function cAm(tipo){var PV=pn(document.getElementById('amPV').value),i=pn(document.getElementById('amI').value)/100,n=parseInt(pn(document.getElementById('amN').value));if(!PV||!i||!n){toast('Preencha todos.','er');return;}var isS=tipo==='SAC',Af=PV/n,sal=PV,rows=[],tJ=0,tP=0;if(isS){for(var k=1;k<=n;k++){var J=sal*i,P=Af+J;tJ+=J;tP+=P;rows.push({n:k,p:P,a:Af,j:J,s:Math.max(0,sal-Af)});sal=Math.max(0,sal-Af);}}else{var fc=Math.pow(1+i,n),PMT=PV*(i*fc)/(fc-1);for(var k=1;k<=n;k++){var J=sal*i,A=PMT-J;tJ+=J;tP+=PMT;rows.push({n:k,p:PMT,a:A,j:J,s:Math.max(0,sal-A)});sal=Math.max(0,sal-A);}}var h='<div class="rb"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr);gap:8px;"><div><span style="font-size:.7rem;color:var(--muted);">Financiado</span><br><strong>'+fm(PV)+'</strong></div><div><span style="font-size:.7rem;color:var(--muted);">Total Pago</span><br><strong class="rv g">'+fm(tP)+'</strong></div><div><span style="font-size:.7rem;color:var(--muted);">Juros</span><br><strong style="color:var(--dng);">'+fm(tJ)+'</strong></div><div><span style="font-size:.7rem;color:var(--muted);">'+(isS?'1ª Parc.':'Parc. Fixa')+'</span><br><strong style="color:var(--ac);">'+fm(rows[0].p)+'</strong></div>'+(isS?'<div><span style="font-size:.7rem;color:var(--muted);">Última</span><br><strong style="color:var(--ac);">'+fm(rows[rows.length-1].p)+'</strong></div>':'')+'</div></div><div style="max-height:460px;overflow:auto;border-radius:10px;border:1px solid var(--border);margin-top:8px;"><table class="ft"><thead><tr><th>Nº</th><th>Parcela</th><th>Amortização</th><th>Juros</th><th>Saldo</th></tr></thead><tbody>';for(var j=0;j<rows.length;j++){var r=rows[j];h+='<tr><td>'+r.n+'</td><td>'+fm(r.p)+'</td><td>'+fm(r.a)+'</td><td>'+fm(r.j)+'</td><td>'+fm(r.s)+'</td></tr>';}h+='</tbody></table></div>';document.getElementById('amR').innerHTML=h;toast('Tabela gerada!','ok');}
+
+function rFx(pc,id,title,desc,form,pfx){pc.innerHTML='<div style="animation:fu .3s;"><h2 style="font-size:1.4rem;font-weight:700;margin-bottom:4px;">'+title+'</h2><p style="color:var(--muted);font-size:.83rem;margin-bottom:14px;">'+desc+'</p>'+fTog(form)+'<div class="cc"><div style="margin-bottom:12px;"><label class="fl">Taxa (%)</label><input class="fi" type="text" id="'+pfx+'I" placeholder="12" inputmode="decimal" style="max-width:240px;"><div class="hint">Taxa mínima de atratividade (TMA). Use a mesma base temporal dos períodos.</div></div><div style="margin-bottom:12px;"><button class="bs" onclick="aFR(\''+pfx+'F\')"><i class="fas fa-plus" style="margin-right:4px;"></i>Adicionar Período</button></div><div id="'+pfx+'F">'+mkF()+'</div><div style="margin-top:16px;"><button class="bc" onclick="c'+id+'()"><i class="fas fa-calculator" style="margin-right:6px;"></i>Calcular</button></div><div id="'+pfx+'R"></div></div></div></div>';}
+function mkF(){var h='';for(var t=0;t<5;t++)h+='<div class="fr"><span style="min-width:45px;font-size:.72rem;color:var(--muted);">t='+t+'</span><input class="fi" placeholder="'+(t===0?'-100000':'50000')+'"><button onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button></div>';return h;}
+function gFL(c){var rs=document.getElementById(c).querySelectorAll('.fr'),a=[];for(var i=0;i<rs.length;i++)a.push(pn(rs[i].querySelector('input').value));return a;}
+function aFR(c){var el=document.getElementById(c),n=el.querySelectorAll('.fr').length,d=document.createElement('div');d.className='fr';d.innerHTML='<span style="min-width:45px;font-size:.72rem;color:var(--muted);">t='+n+'</span><input class="fi" placeholder="50000"><button onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>';el.appendChild(d);}
+function cVPL(){var i=pn(document.getElementById('vplI').value)/100,fl=gFL('vplF');if(!i||fl.length<2){toast('Preencha taxa e 2+ fluxos.','er');return;}var vpl=0,det=[];for(var t=0;t<fl.length;t++){var vp=fl[t]/Math.pow(1+i,t);vpl+=vp;det.push({t:t,fc:fl[t],vp:vp});}var h='<div class="rb"><div class="ri"><span>VPL</span><span class="rv '+(vpl<0?'r':'')+'">'+fm(vpl)+'</span></div><div class="ri"><span>Status</span><span style="color:'+(vpl>=0?'var(--ac)':'var(--dng)')+';font-weight:600;">'+(vpl>=0?'Viável':'Inviável')+'</span></div></div><div style="max-height:240px;overflow:auto;border-radius:10px;border:1px solid var(--border);margin-top:8px;"><table class="ft"><thead><tr><th>t</th><th>FC</th><th>VP</th></tr></thead><tbody>';for(var j=0;j<det.length;j++)h+='<tr><td>'+det[j].t+'</td><td>'+fm(det[j].fc)+'</td><td>'+fm(det[j].vp)+'</td></tr>';h+='</tbody></table></div>';document.getElementById('vplR').innerHTML=h;}
+function cTIR(){var fl=gFL('tirF');if(fl.length<2){toast('Insira 2+ fluxos.','er');return;}var tir=0.1;for(var it=0;it<2000;it++){var npv=0,dn=0;for(var t=0;t<fl.length;t++){var d=Math.pow(1+tir,t);npv+=fl[t]/d;if(t>0)dn-=t*fl[t]/Math.pow(1+tir,t+1);}if(Math.abs(dn)<1e-14)break;var nv=tir-npv/dn;if(Math.abs(nv-tir)<1e-10){tir=nv;break;}tir=nv;if(tir<-.999)tir=-.5;if(tir>100)tir=5;}document.getElementById('tirR').innerHTML='<div class="rb"><div class="ri"><span>TIR</span><span class="rv">'+fn(tir*100,4)+' %</span></div></div>';toast('TIR calculada!','ok');}
+
+function rPB(pc,desc){pc.innerHTML='<div style="animation:fu .3s;"><h2 style="font-size:1.4rem;font-weight:700;margin-bottom:4px;">'+(desc?'Payback Descontado':'Payback Simples')+'</h2><p style="color:var(--muted);font-size:.83rem;margin-bottom:14px;">'+(desc?'Com desconto pela taxa.':'Sem desconto.')+'</p>'+fTog(desc?'Σ FC<sub>k</sub>/(1+i)<sup>k</sup> ≥ 0':'Σ FC<sub>k</sub> ≥ 0')+'<div class="cc">'+(desc?'<div style="margin-bottom:12px;"><label class="fl">Taxa (%)</label><input class="fi" type="text" id="pbI" placeholder="10" inputmode="decimal" style="max-width:240px;"><div class="hint">Taxa de atratividade para descontar fluxos.</div></div>':'')+'<div style="margin-bottom:12px;"><button class="bs" onclick="aFR(\'pbF\')"><i class="fas fa-plus" style="margin-right:4px;"></i>Adicionar</button></div><div id="pbF">'+mkF()+'</div><div style="margin-top:16px;"><button class="bc" onclick="cPB('+(desc?'true':'false')+')"><i class="fas fa-hourglass-half" style="margin-right:6px;"></i>Calcular</button></div><div id="pbR"></div></div></div>';}
+function cPB(desc){var fl=gFL('pbF');if(fl.length<2){toast('Insira 2+ fluxos.','er');return;}var i=desc?pn(document.getElementById('pbI').value)/100:0,ac=0,pb=null,rows=[];for(var t=0;t<fl.length;t++){var fc=i?fl[t]/Math.pow(1+i,t):fl[t];ac+=fc;rows.push({t:t,fc:fc,ac:ac});if(pb===null&&ac>=0&&t>0)pb=(t-1)+(-rows[t-1].ac)/fc;}var h='<div class="rb"><div class="ri"><span>Payback</span><span class="rv">'+(pb!==null?fn(pb,2)+' períodos':'Não recuperado')+'</span></div></div><div style="max-height:240px;overflow:auto;border-radius:10px;border:1px solid var(--border);margin-top:8px;"><table class="ft"><thead><tr><th>t</th><th>FC</th><th>Acumulado</th></tr></thead><tbody>';for(var j=0;j<rows.length;j++)h+='<tr><td>'+rows[j].t+'</td><td>'+fm(rows[j].fc)+'</td><td style="color:'+(rows[j].ac<0?'var(--dng)':'var(--ac)')+'">'+fm(rows[j].ac)+'</td></tr>';h+='</tbody></table></div>';document.getElementById('pbR').innerHTML=h;}
+
+function rIdx(pc){var ch='',keys=['selic','cdi','ipca','igpm','incc','tr','poupanca','usd','eur','selicEf'];for(var i=0;i<keys.length;i++){var k=keys[i],d=S.idx[k],isC=k==='usd'||k==='eur',dv=isC?'R$ '+d.v.toFixed(4):fn(d.v,2)+' %';ch+='<div class="ic"><div style="font-size:.7rem;color:var(--muted);margin-bottom:2px;">'+d.l+'</div><div class="iv" style="'+(!isC&&d.v>0?'color:var(--dng);':'')+'">'+dv+'</div><div style="font-size:.64rem;color:var(--muted);margin-top:2px;">'+(d.lu?d.lu:'')+'</div></div>';}pc.innerHTML='<div style="animation:fu .3s;"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:16px;"><div><h2 style="font-size:1.4rem;font-weight:700;margin-bottom:4px;">Painel de Índices</h2><p style="color:var(--muted);font-size:.83rem;">Banco Central (SGS).</p></div><button class="bc" onclick="atualizarIndices()"><i class="fas fa-sync-alt" style="margin-right:6px;"></i>Atualizar</button></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr);gap:10px;">'+ch+'</div></div>';}
+async function atualizarIndices(){toast('Buscando...','in');var base='https://api.bcb.gov.br/dados/serie/bcdata.sgs.',ct=0,keys=Object.keys(S.idx);for(var i=0;i<keys.length;i++){var k=keys[i],d=S.idx[k];try{var r=await fetch(base+d.c+'/dados/ultimos/'+(d.m?13:1)+'?formato=json',{signal:AbortSignal.timeout(8000)});if(!r.ok)continue;var j=await r.json();if(!j.length)continue;if(d.m){var u=j.slice(0,12).reverse();S.idx[k].v=((u.reduce(function(a,x){return a*(1+parseFloat(x.valor)/100)},1)-1)*100);}else S.idx[k].v=parseFloat(j[0].valor);S.idx[k].lu=j[0].data;ct++;}catch(e){}}if(ct>0){document.getElementById('LU').textContent=ct+' atualizados';toast(ct+' atualizados!','ok');if(S.sec==='indices-economicos')rIdx(document.getElementById('PC'));}else toast('API indisponível.','er');}
+
+function rCor(pc){var km={IPCA:'ipca','IGP-M':'igpm',INCC:'incc',SELIC:'selic',CDI:'cdi',Poupança:'poupanca',TR:'tr'},oh='';var lk=Object.keys(km);for(var i=0;i<lk.length;i++)oh+='<option value="'+lk[i]+'">'+lk[i]+' ('+fn(S.idx[km[lk[i]]].v,2)+' %)</option>';oh+='<option value="custom">Personalizado...</option>';pc.innerHTML='<div style="animation:fu .3s;"><h2 style="font-size:1.4rem;font-weight:700;margin-bottom:4px;">Correção Monetária</h2><p style="color:var(--muted);font-size:.83rem;margin-bottom:14px;">Atualiza valor por índice.</p>'+fTog('Corrigido = Original × (1+i)<sup>n</sup>')+'<div class="cc"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr);gap:12px;"><div><label class="fl">Valor (R$)</label><input class="fi" type="text" id="corV" placeholder="50.000,00" inputmode="decimal"><div class="hint">Valor original a corrigir.</div></div><div><label class="fl">Índice</label><select class="fi" id="corI">'+oh+'</select><div class="hint">Índice do BCB. Valores atualizáveis.</div></div><div id="corCW" style="display:none;"><label class="fl">Taxa (%)</label><input class="fi" type="text" id="corC" placeholder="5.5" inputmode="decimal"><div class="hint">Taxa personalizada anual.</div></div><div><label class="fl">Períodos</label><input class="fi" type="text" id="corN" value="1" inputmode="decimal"><div class="hint">Anos de correção. 1 = anual.</div></div></div><div style="margin-top:16px;"><button class="bc" onclick="cCor()"><i class="fas fa-shield-alt" style="margin-right:6px;"></i>Corrigir</button></div><div id="corR"></div></div></div>';document.getElementById('corI').addEventListener('change',function(){document.getElementById('corCW').style.display=this.value==='custom'?'block':'none';});}
+function cCor(){var val=pn(document.getElementById('corV').value),idx=document.getElementById('corI').value,n=pn(document.getElementById('corN').value)||1,taxa;if(idx==='custom')taxa=pn(document.getElementById('corC').value)/100;else{var km={IPCA:'ipca','IGP-M':'igpm',INCC:'incc',SELIC:'selic',CDI:'cdi',Poupança:'poupanca',TR:'tr'};taxa=S.idx[km[idx]].v/100;}if(!val){toast('Informe o valor.','er');return;}var cor=val*Math.pow(1+taxa,n);document.getElementById('corR').innerHTML='<div class="rb"><div class="ri"><span>Original</span><span>'+fm(val)+'</span></div><div class="ri"><span>Índice</span><span style="color:var(--ac2);">'+idx+' ('+fn(taxa*100,2)+' %)</span></div><div class="ri"><span>Corrigido</span><span class="rv">'+fm(cor)+'</span></div><div class="ri"><span>Diferença</span><span class="rv g">'+fm(cor-val)+'</span></div></div>';}
+
+function rUn(pc,id){var d=UD[id],ks=Object.keys(d.u),oh='';for(var i=0;i<ks.length;i++)oh+='<option value="'+ks[i]+'">'+(d.sp?d.u[ks[i]]:d.u[ks[i]].n)+'</option>';pc.innerHTML='<div style="animation:fu .3s;"><h2 style="font-size:1.4rem;font-weight:700;margin-bottom:4px;">Conversão de '+d.t+'</h2><div class="cc" style="max-width:540px;"><div style="margin-bottom:12px;"><label class="fl">De</label><select class="fi" id="ucF">'+oh+'</select></div><div><label class="fl">Valor</label><input class="fi" type="text" id="ucV" placeholder="Valor" inputmode="decimal" oninput="cU(\''+id+'\')"><div class="hint">Conversão instantânea ao digitar.</div></div><div style="text-align:center;padding:6px 0;"><i class="fas fa-arrow-down" style="color:var(--ac);"></i></div><div style="margin-bottom:12px;"><label class="fl">Para</label><select class="fi" id="ucT" onchange="cU(\''+id+'\')">'+oh+'</select></div><div style="margin-bottom:16px;"><label class="fl">Resultado</label><div id="ucR" style="font-family:Space Grotesk,sans-serif;font-size:1.4rem;font-weight:700;color:var(--ac);padding:8px 0;">—</div></div><button class="bs" onclick="sU(\''+id+'\')"><i class="fas fa-exchange-alt" style="margin-right:4px;"></i>Inverter</button></div><div class="cc" style="margin-top:12px;max-width:540px;"><h4 style="font-size:.8rem;font-weight:600;margin-bottom:6px;">Referência</h4><div id="ucTB" style="max-height:240px;overflow:auto;"></div></div></div></div>';if(ks.length>1)document.getElementById('ucT').value=ks[1];bRT(id);}
+
+function cU(id){var d=UD[id],val=pn(document.getElementById('ucV').value),fr=document.getElementById('ucF').value,to=document.getElementById('ucT').value;if(document.getElementById('ucV').value.trim()===''){document.getElementById('ucR').textContent='—';return;}var r;if(d.sp)r=d.cv(val,fr,to);else r=val*d.u[fr].f/d.u[to].f;var dp=Math.abs(r)>=1e9||(Math.abs(r)<.0001&&r!==0)?r.toExponential(6):r.toLocaleString('pt-BR',{maximumFractionDigits:8});document.getElementById('ucR').innerHTML=dp+' <span style="font-size:.78rem;color:var(--muted);">'+(d.sp?d.u[to]:d.u[to].n)+'</span>';}
+function sU(id){var f=document.getElementById('ucF'),t=document.getElementById('ucT'),tmp=f.value;f.value=t.value;t.value=tmp;cU(id);}
+function bRT(id){var d=UD[id],ks=Object.keys(d.u),base=ks[0],bn=d.sp?d.u[base]:d.u[base].n,h='<table class="ft"><thead><tr><th>Unidade</th><th>1 '+bn+' =</th></tr></thead><tbody>';for(var i=0;i<ks.length;i++){var k=ks[i],n=d.sp?d.u[k]:d.u[k].n,v;if(d.sp)v=d.cv(1,base,k);else v=d.u[base].f/d.u[k].f;var dp=Math.abs(v)>=1e9||(Math.abs(v)<.0001&&v!==0)?v.toExponential(4):v.toLocaleString('pt-BR',{maximumFractionDigits:8});h+='<tr><td style="text-align:left;">'+n+'</td><td>'+dp+'</td></tr>';}h+='</tbody></table>';document.getElementById('ucTB').innerHTML=h;}
+
+/* ===== COMPARADOR ===== */
+function rComp(pc){var sv=fn(S.idx.selic.v,2).replace('.',','),iv=fn(S.idx.ipca.v,2).replace('.',',');pc.innerHTML='<div style="animation:fu .3s;"><h2 style="font-size:1.4rem;font-weight:700;margin-bottom:4px;">Comparador de Investimentos</h2><p style="color:var(--muted);font-size:.83rem;margin-bottom:14px;">Compare CDI, IPCA+, LCI/LCA e Poupança.</p>'+fTog('CDI: VF=VI×(1+t<sub>dia</sub>×%)<sup>dias</sup> | IR: 22,5%→15%')+'<div class="cc" style="margin-bottom:14px;"><h4 style="font-size:.85rem;font-weight:600;margin-bottom:12px;color:var(--ac);">Dados</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr);gap:12px;margin-bottom:12px;"><div><label class="fl">Valor Inicial (R$)</label><input class="fi" type="text" id="cmpVI" value="10.000,00" inputmode="decimal"><div class="hint">Valor que será investido.</div></div><div><label class="fl">Prazo (dias)</label><input class="fi" type="text" id="cmpPr" value="365" inputmode="decimal"><div class="hint">Dias corridos. Define alíquota de IR.</div></div><div><label class="fl">SELIC (% a.a.)</label><input class="fi" type="text" id="cmpSe" value="'+sv+'" inputmode="decimal"><div class="hint">CDI = 99% deste valor.</div></div><div><label class="fl">IPCA (% a.a.)</label><input class="fi" type="text" id="cmpIp" value="'+iv+'" inputmode="decimal"><div class="hint">IPCA acumulado 12 meses.</div></div></div><h4 style="font-size:.85rem;font-weight:600;margin-bottom:12px;color:var(--ac2);">Parâmetros</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr);gap:12px;"><div><label class="fl">CDI (% do CDI)</label><input class="fi" type="text" id="cmpPC" value="100,00" inputmode="decimal"><div class="hint">100% = CDI cheio.</div></div><div><label class="fl">IPCA+ Adicional (% a.a.)</label><input class="fi" type="text" id="cmpAI" value="5,50" inputmode="decimal"><div class="hint">Apenas o adicional X de "IPCA + X%".</div></div><div><label class="fl">LCI/LCA (% do CDI)</label><input class="fi" type="text" id="cmpPL" value="95,50" inputmode="decimal"><div class="hint">Isenta de IR para PF.</div></div></div><div style="margin-top:16px;"><button class="bc" onclick="cComp()"><i class="fas fa-balance-scale-right" style="margin-right:6px;"></i>Comparar</button></div></div><div style="display:flex;gap:0;"><button class="tb2 ac" id="tTab" onclick="sTab(\'tabela\')">Tabela</button><button class="tb2" id="tGra" onclick="sTab(\'grafico\')">Gráfico</button></div><div class="cc" style="border-top-left-radius:0;border-top-right-radius:0;"><div id="cmpTT"></div><div id="cmpTG" style="display:none;"><canvas id="cmpCh" style="max-height:400px;"></canvas></div></div><div id="cmpNF" style="margin-top:12px;"></div></div></div>';}
+function sTab(t){document.getElementById('cmpTT').style.display=t==='tabela'?'block':'none';document.getElementById('cmpTG').style.display=t==='grafico'?'block':'none';document.getElementById('tTab').classList.toggle('ac',t==='tabela');document.getElementById('tGra').classList.toggle('ac',t==='grafico');}
+function getIR(d){if(d<=180)return .225;if(d<=360)return .20;if(d<=720)return .175;return .15;}
+function tDia(ta){return Math.pow(1+ta,1/252)-1;}
+function cComp(){
+  var vi=pn(document.getElementById('cmpVI').value),
+      prazo=parseInt(pn(document.getElementById('cmpPr').value)),
+      selicAA=pn(document.getElementById('cmpSe').value)/100,
+      ipcaAA=pn(document.getElementById('cmpIp').value)/100,
+      pctCDI=pn(document.getElementById('cmpPC').value),
+      adicIPCA=pn(document.getElementById('cmpAI').value)/100,
+      pctLCI=pn(document.getElementById('cmpPL').value);
+  if(!vi||!prazo||!selicAA){toast('Preencha todos.','er');return;}
+  var cdiAA=selicAA*.99,
+      tDC=tDia(cdiAA),
+      tEC=tDC*(pctCDI/100),
+      tDI=tDia(ipcaAA+adicIPCA),
+      tEL=tDC*(pctLCI/100),
+      tPM=Math.pow(1+(selicAA>.085?selicAA*.70:.06),1/12)-1;
+  var vbC=vi*Math.pow(1+tEC,prazo), rbC=vbC-vi, irC=rbC*getIR(prazo), rlC=rbC-irC;
+  var vbI=vi*Math.pow(1+tDI,prazo), rbI=vbI-vi, irI=rbI*getIR(prazo), rlI=rbI-irI;
+  var vfL=vi*Math.pow(1+tEL,prazo), rlL=vfL-vi;
+  var vfP=vi*Math.pow(1+tPM,prazo/30.44), rlP=vfP-vi;
+  function eqCDI(rl,temIR){
+    var a=temIR?getIR(prazo):0,
+        rbN=rl/(1-a),
+        tET=Math.pow((vi+rbN)/vi,1/prazo)-1;
+    return tDC===0?0:(tET/tDC)*100;
+  }
+  var dados=[
+    {n:'CDI '+pctCDI+'%',vf:vi+rlC,rl:rlC,ir:irC,rent:rlC/vi*100,eq:pctCDI},
+    {n:'IPCA+ '+fn(adicIPCA*100,2).replace('.',',')+'% a.a.',vf:vi+rlI,rl:rlI,ir:irI,rent:rlI/vi*100,eq:eqCDI(rlI,true)},
+    {n:'LCI/LCA '+pctLCI+'%',vf:vfL,rl:rlL,ir:0,rent:rlL/vi*100,eq:eqCDI(rlL,false)},
+    {n:'Poupança',vf:vfP,rl:rlP,ir:0,rent:rlP/vi*100,eq:eqCDI(rlP,false)}
+  ];
+  dados.sort(function(a,b){return b.rl-a.rl;});
+  var th='<div style="overflow-x:auto;"><table class="ft"><thead><tr><th>Investimento</th><th>Valor Final</th><th>Rend. Líquido</th><th>Rent. %</th><th>CDI Eq.</th><th>IR</th></tr></thead><tbody>';
+  for(var i=0;i<dados.length;i++){
+    var d=dados[i];
+    th+='<tr class="'+(i===0?'best':'')+'"><td style="text-align:left;font-weight:'+(i===0?600:400)+';">'+d.n+'</td><td>'+fm(d.vf)+'</td><td>'+fm(d.rl)+'</td><td>'+fn(d.rent,2)+' %</td><td>'+fn(d.eq,1)+' %</td><td>'+fm(d.ir)+'</td></tr>';
+  }
+  th+='</tbody></table></div>';
+  document.getElementById('cmpTT').innerHTML=th;
+  document.getElementById('cmpNF').innerHTML='<div class="rb"><div class="ri"><span>Melhor</span><span class="rv">'+dados[0].n+'</span></div><div class="ri"><span>Rend. Líquido</span><span class="rv g">'+fm(dados[0].rl)+'</span></div><div class="ri"><span>IR</span><span>'+fn(getIR(prazo)*100,1)+' %</span></div></div>';
+  var step=Math.max(1,Math.floor(prazo/500)),labels=[],dC=[],dI=[],dL=[],dP=[];
+  for(var dia=0;dia<=prazo;dia+=step){
+    labels.push(dia);
+    var vC=vi*Math.pow(1+tEC,dia), rC2=vC-vi; dC.push(vi+rC2-rC2*getIR(dia));
+    var vI=vi*Math.pow(1+tDI,dia), rI2=vI-vi; dI.push(vi+rI2-rI2*getIR(dia));
+    dL.push(vi*Math.pow(1+tEL,dia));
+    dP.push(vi*Math.pow(1+tPM,dia/30.44));
+  }
+  if(window.Chart && document.getElementById('cmpCh')){
+    if(S.ch){S.ch.destroy();S.ch=null;}
+    var ctx=document.getElementById('cmpCh').getContext('2d');
+    S.ch=new Chart(ctx,{type:'line',data:{labels:labels,datasets:[
+      {label:'CDI '+pctCDI+'%',data:dC,borderColor:'#3B82F6',backgroundColor:'rgba(59,130,246,.08)',borderWidth:2,pointRadius:0,tension:.3,fill:true},
+      {label:'IPCA+ '+fn(adicIPCA*100,1).replace('.',',')+'%',data:dI,borderColor:'#EF4444',backgroundColor:'rgba(239,68,68,.08)',borderWidth:2,pointRadius:0,tension:.3,fill:true},
+      {label:'LCI/LCA '+pctLCI+'%',data:dL,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,.08)',borderWidth:2,pointRadius:0,tension:.3,fill:true},
+      {label:'Poupança',data:dP,borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,.08)',borderWidth:2,pointRadius:0,tension:.3,fill:true}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9CA3AF'}}},scales:{x:{ticks:{color:'#6B7280'},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#6B7280',callback:function(v){return fm(v)}},grid:{color:'rgba(255,255,255,.04)'}}},interaction:{intersect:false,mode:'index'}}});
+  }
+  toast('Comparação calculada!','ok');
+}
+
+/* ===== INIT ===== */
+function init(){try{rTop();rNav();rP();}catch(e){console.error(e);document.getElementById('PC').innerHTML='<div class="cc"><p style="color:var(--dng);">Erro ao carregar.</p></div>';}document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.classList.contains('fi')){var b=e.target.closest('.cc');if(b){var bc=b.querySelector('.bc');if(bc)bc.click();}}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeHelp();});
+setTimeout(function(){var base='https://api.bcb.gov.br/dados/serie/bcdata.sgs.',ct=0,keys=Object.keys(S.idx),idx=0;function nx(){if(idx>=keys.length){if(ct>0){document.getElementById('LU').textContent=ct+' atualizados';if(S.sec==='indices-economicos')rIdx(document.getElementById('PC'));}return;}var k=keys[idx],d=S.idx[k];fetch(base+d.c+'/dados/ultimos/'+(d.m?13:1)+'?formato=json',{signal:AbortSignal.timeout(5000)}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(j){if(!j.length)return;if(d.m){var u=j.slice(0,12).reverse();S.idx[k].v=((u.reduce(function(a,x){return a*(1+parseFloat(x.valor)/100)},1)-1)*100);}else S.idx[k].v=parseFloat(j[0].valor);S.idx[k].lu=j[0].data;ct++;}).catch(function(){}).finally(function(){idx++;nx();});}nx();},600);}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>

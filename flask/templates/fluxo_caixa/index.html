@@ -110,100 +110,101 @@
                     </div>
                 </div>
 
-                <!-- Tabela e Gráfico -->
+                <!-- Tabela + Gráfico lado a lado no desktop -->
                 <div class="col-md-8">
-                    <!-- Histórico -->
-                    <div class="card shadow-sm mb-4">
-                        <div
-                            class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Histórico de Balanços</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive" style="max-height: 300px;">
-                                <table class="table table-hover table-sm">
-                                    <thead class="table-light sticky-top">
-                                        <tr>
-                                            <th>Mês/Ano</th>
-                                            <th class="text-end">Entradas</th>
-                                            <th class="text-end">Saídas</th>
-                                            <th class="text-end">Saldo</th>
-                                            <th class="text-center">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for balanco in balancos %}
-                                        <tr data-balanco-id="{{ balanco.id }}" data-ano="{{ balanco.ano }}"
-                                            data-mes="{{ balanco.mes }}" data-entradas="{{ balanco.total_entradas }}"
-                                            data-saidas="{{ balanco.total_saidas }}"
-                                            data-obs="{{ balanco.observacoes or '' }}" class="balanco-row"
-                                            style="cursor: pointer;">
-                                            <td>{{ '%02d'|format(balanco.mes) }}/{{ balanco.ano }}</td>
-                                            <td class="text-end text-success">R$ {{
-                                                '{:,.2f}'.format(balanco.total_entradas) }}</td>
-                                            <td class="text-end text-danger">R$ {{
-                                                '{:,.2f}'.format(balanco.total_saidas) }}</td>
-                                            <td
-                                                class="text-end fw-bold {% if balanco.saldo_mes >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                                R$ {{ '{:,.2f}'.format(balanco.saldo_mes) }}
-                                            </td>
-                                            <td class="text-center">
-                                                <a href="{{ url_for('fluxo_caixa.detalhes_mes', ano=balanco.ano, mes=balanco.mes) }}"
-                                                    class="btn btn-sm btn-info" title="Ver detalhes">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="{{ url_for('fluxo_caixa.exportar_excel', ano=balanco.ano, mes=balanco.mes) }}"
-                                                    class="btn btn-sm btn-success" title="Exportar Excel">
-                                                    <i class="fas fa-file-excel"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
+                    <div class="row g-3">
+                        <!-- Histórico -->
+                        <div class="col-lg-5">
+                            <div class="card shadow-sm h-100">
+                                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Histórico de Balanços</h5>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive" style="max-height: 420px;">
+                                        <table class="table table-hover table-sm mb-0">
+                                            <thead class="table-light sticky-top">
+                                                <tr>
+                                                    <th>Mês/Ano</th>
+                                                    <th class="text-end">Entradas</th>
+                                                    <th class="text-end">Saídas</th>
+                                                    <th class="text-end">Saldo</th>
+                                                    <th class="text-center">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for balanco in balancos %}
+                                                <tr data-balanco-id="{{ balanco.id }}" data-ano="{{ balanco.ano }}"
+                                                    data-mes="{{ balanco.mes }}" data-entradas="{{ balanco.total_entradas }}"
+                                                    data-saidas="{{ balanco.total_saidas }}"
+                                                    data-obs="{{ balanco.observacoes or '' }}" class="balanco-row"
+                                                    style="cursor: pointer;">
+                                                    <td>{{ '%02d'|format(balanco.mes) }}/{{ balanco.ano }}</td>
+                                                    <td class="text-end text-success">R$ {{ '{:,.2f}'.format(balanco.total_entradas) }}</td>
+                                                    <td class="text-end text-danger">R$ {{ '{:,.2f}'.format(balanco.total_saidas) }}</td>
+                                                    <td class="text-end fw-bold {% if balanco.saldo_mes >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                        R$ {{ '{:,.2f}'.format(balanco.saldo_mes) }}
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <a href="{{ url_for('fluxo_caixa.detalhes_mes', ano=balanco.ano, mes=balanco.mes) }}"
+                                                            class="btn btn-sm btn-info" title="Ver detalhes">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <a href="{{ url_for('fluxo_caixa.exportar_excel', ano=balanco.ano, mes=balanco.mes) }}"
+                                                            class="btn btn-sm btn-success" title="Exportar Excel">
+                                                            <i class="fas fa-file-excel"></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Gráfico -->
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-info text-white">
-                            <h5 class="mb-0">Evolução do Fluxo de Caixa</h5>
-                        </div>
-                        <div class="card-body">
-                            <!-- Filtros -->
-                            <div class="row mb-3">
-                                <div class="col-md-5">
-                                    <label class="form-label small">Período: De</label>
-                                    <div class="input-group input-group-sm">
-                                        <select class="form-select" id="mes_inicio">
-                                            {% for i in range(1, 13) %}
-                                            <option value="{{ i }}">{{ meses[i-1][:3] }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <input type="number" class="form-control" id="ano_inicio"
-                                            style="max-width: 80px;">
-                                    </div>
+                        <!-- Gráfico -->
+                        <div class="col-lg-7">
+                            <div class="card shadow-sm h-100">
+                                <div class="card-header bg-info text-white">
+                                    <h5 class="mb-0">Evolução do Fluxo de Caixa</h5>
                                 </div>
-                                <div class="col-md-5">
-                                    <label class="form-label small">Até</label>
-                                    <div class="input-group input-group-sm">
-                                        <select class="form-select" id="mes_fim">
-                                            {% for i in range(1, 13) %}
-                                            <option value="{{ i }}" {% if i==mes_atual %}selected{% endif %}>{{
-                                                meses[i-1][:3] }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <input type="number" class="form-control" id="ano_fim" value="{{ ano_atual }}"
-                                            style="max-width: 80px;">
+                                <div class="card-body d-flex flex-column">
+                                    <!-- Filtros -->
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-5">
+                                            <label class="form-label small mb-1">De</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select" id="mes_inicio">
+                                                    {% for i in range(1, 13) %}
+                                                    <option value="{{ i }}">{{ meses[i-1][:3] }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <input type="number" class="form-control" id="ano_inicio" style="max-width:72px">
+                                            </div>
+                                        </div>
+                                        <div class="col-5">
+                                            <label class="form-label small mb-1">Até</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select" id="mes_fim">
+                                                    {% for i in range(1, 13) %}
+                                                    <option value="{{ i }}" {% if i==mes_atual %}selected{% endif %}>{{ meses[i-1][:3] }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <input type="number" class="form-control" id="ano_fim" value="{{ ano_atual }}" style="max-width:72px">
+                                            </div>
+                                        </div>
+                                        <div class="col-2 d-flex align-items-end">
+                                            <button class="btn btn-sm btn-primary w-100" id="btnAtualizarGrafico">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="col-md-2 d-flex align-items-end">
-                                    <button class="btn btn-sm btn-primary w-100" id="btnAtualizarGrafico">
-                                        <i class="fas fa-sync-alt"></i>
-                                    </button>
+                                    <div style="flex:1;min-height:300px;position:relative">
+                                        <canvas id="chartFluxoCaixa" style="position:absolute;inset:0;width:100%!important;height:100%!important"></canvas>
+                                    </div>
                                 </div>
                             </div>
-                            <canvas id="chartFluxoCaixa" height="150"></canvas>
                         </div>
                     </div>
                 </div>
@@ -470,7 +471,7 @@
                     },
                     options: {
                         responsive: true,
-                        maintainAspectRatio: true,
+                        maintainAspectRatio: false,
                         scales: {
                             y: {
                                 beginAtZero: true,

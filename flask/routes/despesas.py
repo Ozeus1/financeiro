@@ -13,7 +13,9 @@ despesas_bp = Blueprint('despesas', __name__)
 def lista():
     """Listar despesas com filtros"""
     page = request.args.get('page', 1, type=int)
-    per_page = 20
+    per_page = request.args.get('per_page', 20, type=int)
+    if per_page not in (10, 20, 50, 100):
+        per_page = 20
     
     # Filtros
     categoria_id = request.args.get('categoria_id', type=int)

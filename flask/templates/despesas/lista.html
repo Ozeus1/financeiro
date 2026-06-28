@@ -146,29 +146,56 @@
             </table>
         </div>
 
-        <!-- Paginação -->
-        {% if despesas.pages > 1 %}
-        <nav>
-            <ul class="pagination justify-content-center">
-                <li class="page-item {% if not despesas.has_prev %}disabled{% endif %}">
-                    <a class="page-link"
-                        href="{{ url_for('despesas.lista', page=despesas.prev_num, **filtros_url) }}">Anterior</a>
-                </li>
+        <!-- Rodapé: linhas por página + paginação -->
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
+            <!-- Seletor de linhas por página -->
+            <div class="d-flex align-items-center gap-2">
+                <label class="form-label mb-0 text-muted" style="font-size:.85rem;white-space:nowrap">Linhas por página:</label>
+                <select class="form-select form-select-sm" style="width:auto" id="perPageSelect"
+                    onchange="window.location.href=this.value">
+                    {% for n in [10, 20, 50, 100] %}
+                    <option value="{{ url_for('despesas.lista', page=1, per_page=n, **filtros_url) }}"
+                        {% if despesas.per_page == n %}selected{% endif %}>{{ n }}</option>
+                    {% endfor %}
+                </select>
+                <span class="text-muted" style="font-size:.82rem">
+                    Exibindo {{ despesas.first }} – {{ despesas.last }} de {{ despesas.total }}
+                </span>
+            </div>
 
-                {% for page_num in range(1, despesas.pages + 1) %}
-                <li class="page-item {% if page_num == despesas.page %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for('despesas.lista', page=page_num, **filtros_url) }}">{{
-                        page_num }}</a>
-                </li>
-                {% endfor %}
-
-                <li class="page-item {% if not despesas.has_next %}disabled{% endif %}">
-                    <a class="page-link"
-                        href="{{ url_for('despesas.lista', page=despesas.next_num, **filtros_url) }}">Próximo</a>
-                </li>
-            </ul>
-        </nav>
-        {% endif %}
+            <!-- Paginação -->
+            {% if despesas.pages > 1 %}
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item {% if not despesas.has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('despesas.lista', page=despesas.prev_num, per_page=despesas.per_page, **filtros_url) }}">‹</a>
+                    </li>
+                    {% set start_page = [despesas.page - 2, 1] | max %}
+                    {% set end_page = [despesas.page + 2, despesas.pages] | min %}
+                    {% if start_page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('despesas.lista', page=1, per_page=despesas.per_page, **filtros_url) }}">1</a>
+                    </li>
+                    {% if start_page > 2 %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+                    {% endif %}
+                    {% for page_num in range(start_page, end_page + 1) %}
+                    <li class="page-item {% if page_num == despesas.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('despesas.lista', page=page_num, per_page=despesas.per_page, **filtros_url) }}">{{ page_num }}</a>
+                    </li>
+                    {% endfor %}
+                    {% if end_page < despesas.pages %}
+                    {% if end_page < despesas.pages - 1 %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('despesas.lista', page=despesas.pages, per_page=despesas.per_page, **filtros_url) }}">{{ despesas.pages }}</a>
+                    </li>
+                    {% endif %}
+                    <li class="page-item {% if not despesas.has_next %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('despesas.lista', page=despesas.next_num, per_page=despesas.per_page, **filtros_url) }}">›</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
     </div>
 </div>
 

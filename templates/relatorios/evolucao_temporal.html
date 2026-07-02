@@ -3,164 +3,133 @@
 {% block title %}Evolução Temporal dos Gastos{% endblock %}
 
 {% block content %}
-<div class="row mt-4">
-    <div class="col-12">
-        <h2><i class="bi bi-graph-up"></i> Evolução Temporal dos Gastos</h2>
-        <hr>
+<div class="pg-page">
+
+<!-- Header -->
+<div class="pg-header">
+    <div>
+        <div class="pg-header-eyebrow"><i class="bi bi-bar-chart-line me-1"></i>Relatórios</div>
+        <h1 class="pg-header-title"><i class="bi bi-graph-up me-2"></i>Evolução Temporal dos Gastos</h1>
     </div>
 </div>
+
+<div class="container-fluid px-3">
 
 <!-- Filtros -->
-<div class="row">
-    <div class="col-md-12">
-        <div class="card mb-4">
-            <div class="card-body">
-                <form method="GET" class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Período</label>
-                        <select name="periodo" id="periodo" class="form-select">
-                            <option value="mes_atual" {% if periodo=='mes_atual' %}selected{% endif %}>Mês Atual</option>
-                            <option value="ultimos_3_meses" {% if periodo=='ultimos_3_meses' %}selected{% endif %}>Últimos 3 Meses</option>
-                            <option value="ultimos_6_meses" {% if periodo=='ultimos_6_meses' %}selected{% endif %}>Últimos 6 Meses</option>
-                            <option value="ultimo_ano" {% if periodo=='ultimo_ano' %}selected{% endif %}>Último Ano</option>
-                            <option value="personalizado" {% if periodo=='personalizado' %}selected{% endif %}>Personalizado</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3" id="div_data_inicio" style="display: {% if periodo=='personalizado' %}block{% else %}none{% endif %}">
-                        <label class="form-label">Data Início</label>
-                        <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
-                    </div>
-                    <div class="col-md-3" id="div_data_fim" style="display: {% if periodo=='personalizado' %}block{% else %}none{% endif %}">
-                        <label class="form-label">Data Fim</label>
-                        <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-search"></i> Filtrar
-                        </button>
-                    </div>
-                </form>
-            </div>
+<div class="pg-filter">
+    <div class="pg-filter-title"><i class="bi bi-funnel"></i>Período</div>
+    <form method="GET" class="row g-2 align-items-end">
+        <div class="col-12 col-sm-5 col-md-4">
+            <label class="form-label small fw-semibold mb-1">Período</label>
+            <select name="periodo" id="periodo" class="form-select form-select-sm">
+                <option value="mes_atual" {% if periodo=='mes_atual' %}selected{% endif %}>Mês Atual</option>
+                <option value="ultimos_3_meses" {% if periodo=='ultimos_3_meses' %}selected{% endif %}>Últimos 3 Meses</option>
+                <option value="ultimos_6_meses" {% if periodo=='ultimos_6_meses' %}selected{% endif %}>Últimos 6 Meses</option>
+                <option value="ultimo_ano" {% if periodo=='ultimo_ano' %}selected{% endif %}>Último Ano</option>
+                <option value="personalizado" {% if periodo=='personalizado' %}selected{% endif %}>Personalizado</option>
+            </select>
         </div>
-    </div>
+        <div class="col-6 col-sm-3 col-md-3" id="div_data_inicio" style="display: {% if periodo=='personalizado' %}block{% else %}none{% endif %}">
+            <label class="form-label small fw-semibold mb-1">Data Início</label>
+            <input type="date" name="data_inicio" class="form-control form-control-sm" value="{{ data_inicio }}">
+        </div>
+        <div class="col-6 col-sm-3 col-md-3" id="div_data_fim" style="display: {% if periodo=='personalizado' %}block{% else %}none{% endif %}">
+            <label class="form-label small fw-semibold mb-1">Data Fim</label>
+            <input type="date" name="data_fim" class="form-control form-control-sm" value="{{ data_fim }}">
+        </div>
+        <div class="col-12 col-sm-auto">
+            <button type="submit" class="btn btn-primary btn-sm w-100">
+                <i class="bi bi-search me-1"></i>Filtrar
+            </button>
+        </div>
+    </form>
 </div>
 
-<!-- Cards de Estatísticas -->
-<div class="row">
-    <div class="col-md-3">
-        <div class="card text-white bg-primary mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Total Período</h5>
-                <h3>R$ {{ "{:,.2f}".format(total_periodo).replace(",", "X").replace(".", ",").replace("X", ".") }}</h3>
-            </div>
+<!-- KPIs -->
+<div class="fin-kpis">
+    <div class="fin-kpi fin-kpi--blue">
+        <div class="fin-kpi-icon"><i class="bi bi-cash-stack"></i></div>
+        <div>
+            <div class="fin-kpi-label">Total do Período</div>
+            <div class="fin-kpi-value">R$ {{ total_periodo|moeda }}</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-success mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Dias com Gastos</h5>
-                <h3>{{ dias_com_gastos }}</h3>
-            </div>
+    <div class="fin-kpi fin-kpi--green">
+        <div class="fin-kpi-icon"><i class="bi bi-calendar-check"></i></div>
+        <div>
+            <div class="fin-kpi-label">Dias com Gastos</div>
+            <div class="fin-kpi-value">{{ dias_com_gastos }}</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-info mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Média Diária</h5>
-                <h3>R$ {{ "{:,.2f}".format(media_diaria).replace(",", "X").replace(".", ",").replace("X", ".") }}</h3>
-            </div>
+    <div class="fin-kpi fin-kpi--cyan">
+        <div class="fin-kpi-icon"><i class="bi bi-graph-up"></i></div>
+        <div>
+            <div class="fin-kpi-label">Média Diária</div>
+            <div class="fin-kpi-value">R$ {{ media_diaria|moeda }}</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-danger mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Maior Gasto/Dia</h5>
-                <h3>R$ {{ "{:,.2f}".format(maior_gasto_dia).replace(",", "X").replace(".", ",").replace("X", ".") }}</h3>
-            </div>
+    <div class="fin-kpi fin-kpi--red">
+        <div class="fin-kpi-icon"><i class="bi bi-exclamation-triangle"></i></div>
+        <div>
+            <div class="fin-kpi-label">Maior Gasto/Dia</div>
+            <div class="fin-kpi-value" style="color:var(--fin-red)">R$ {{ maior_gasto_dia|moeda }}</div>
         </div>
     </div>
 </div>
 
 <!-- Gráfico -->
-<div class="row">
-    <div class="col-md-12">
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Evolução dos Gastos Diários</h5>
-                <canvas id="chartEvolucao" height="60"></canvas>
-            </div>
-        </div>
+<div class="pg-card">
+    <div class="pg-card-header"><i class="bi bi-graph-up"></i>Evolução dos Gastos Diários</div>
+    <div class="p-3">
+        <div class="fin-chart"><canvas id="chartEvolucao"></canvas></div>
     </div>
 </div>
+
+</div><!-- /container -->
+</div><!-- /pg-page -->
 {% endblock %}
 
 {% block extra_js %}
 <script>
 // Mostrar/ocultar campos de data personalizada
 document.getElementById('periodo').addEventListener('change', function() {
-    const divInicio = document.getElementById('div_data_inicio');
-    const divFim = document.getElementById('div_data_fim');
-    if (this.value === 'personalizado') {
-        divInicio.style.display = 'block';
-        divFim.style.display = 'block';
-    } else {
-        divInicio.style.display = 'none';
-        divFim.style.display = 'none';
-    }
+    const show = this.value === 'personalizado' ? 'block' : 'none';
+    document.getElementById('div_data_inicio').style.display = show;
+    document.getElementById('div_data_fim').style.display = show;
 });
 
 // Gráfico de Linha
-const ctx = document.getElementById('chartEvolucao').getContext('2d');
-new Chart(ctx, {
+new Chart(document.getElementById('chartEvolucao'), {
     type: 'line',
     data: {
         labels: {{ chart_labels | tojson }},
         datasets: [{
-            label: 'Gastos Diários (R$)',
+            label: 'Gastos Diários',
             data: {{ chart_data | tojson }},
-            borderColor: '#3498db',
-            backgroundColor: 'rgba(52, 152, 219, 0.1)',
-            borderWidth: 2,
+            borderColor: '#4361ee',
+            backgroundColor: 'rgba(67,97,238,.08)',
+            borderWidth: 2.5,
             fill: true,
-            tension: 0.4,
-            pointRadius: 3,
-            pointHoverRadius: 5
+            pointBackgroundColor: '#4361ee'
         }]
     },
     options: {
         responsive: true,
-        interaction: {
-            intersect: false,
-            mode: 'index'
-        },
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
         plugins: {
-            legend: {
-                display: true,
-                position: 'top'
-            },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return 'R$ ' + context.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    }
-                }
-            }
+            legend: { display: false },
+            tooltip: { callbacks: { label: FinanUI.tooltipLabel } }
         },
         scales: {
             y: {
                 beginAtZero: true,
-                ticks: {
-                    callback: function(value) {
-                        return 'R$ ' + value.toLocaleString('pt-BR');
-                    }
-                }
+                grid: { color: '#f1f5f9' },
+                ticks: { callback: v => FinanUI.brlCompact(v) }
             },
             x: {
-                ticks: {
-                    maxTicksLimit: 20,
-                    maxRotation: 45,
-                    minRotation: 0
-                }
+                grid: { display: false },
+                ticks: { maxTicksLimit: 15, maxRotation: 45, minRotation: 0 }
             }
         }
     }

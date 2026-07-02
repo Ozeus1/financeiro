@@ -110,7 +110,7 @@
 <!-- Gráfico -->
 <div class="pg-card">
     <div class="pg-card-header"><i class="bi bi-bar-chart-line"></i>Top 10 Maiores Despesas</div>
-    <div class="p-3"><canvas id="chartTop10" height="80"></canvas></div>
+    <div class="p-3"><div class="fin-chart"><canvas id="chartTop10"></canvas></div></div>
 </div>
 
 <!-- Tabela detalhada -->
@@ -167,7 +167,7 @@ new Chart(document.getElementById('chartTop10').getContext('2d'),{
         datasets:[{label:'Valor (R$)',data:{{ chart_data|tojson }},backgroundColor:['#e74c3c','#e67e22','#f39c12','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#34495e','#95a5a6'],borderRadius:4}]
     },
     options:{
-        indexAxis:'y',responsive:true,
+        indexAxis:'y',responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'R$ '+c.parsed.x.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},
         scales:{x:{beginAtZero:true,ticks:{callback:v=>'R$ '+(v>=1000?(v/1000).toFixed(0)+'k':v)}}}
     }

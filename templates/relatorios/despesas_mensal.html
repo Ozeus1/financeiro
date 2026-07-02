@@ -122,7 +122,7 @@
 {% if despesas_por_categoria %}
 <div class="pg-card">
     <div class="pg-card-header"><i class="bi bi-bar-chart-line"></i>Visualização Gráfica</div>
-    <div class="p-3"><canvas id="graficoDespesas" height="100"></canvas></div>
+    <div class="p-3"><div class="fin-chart"><canvas id="graficoDespesas"></canvas></div></div>
 </div>
 {% endif %}
 
@@ -143,7 +143,7 @@ new Chart(document.getElementById('graficoDespesas'),{
         labels:[{% for id,c,v,q in despesas_por_categoria %}'{{ c }}'{% if not loop.last %},{% endif %}{% endfor %}],
         datasets:[{label:'Valor Total (R$)',data:[{% for id,c,v,q in despesas_por_categoria %}{{ v }}{% if not loop.last %},{% endif %}{% endfor %}],backgroundColor:bg,borderColor:bc,borderWidth:1,borderRadius:4}]
     },
-    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'R$ '+c.parsed.x.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},scales:{x:{beginAtZero:true,ticks:{callback:v=>'R$ '+(v>=1000?(v/1000).toFixed(0)+'k':v)}}}}
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'R$ '+c.parsed.x.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},scales:{x:{beginAtZero:true,ticks:{callback:v=>'R$ '+(v>=1000?(v/1000).toFixed(0)+'k':v)}}}}
 });
 </script>
 {% endif %}

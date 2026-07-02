@@ -181,7 +181,7 @@ body { background: var(--pf-bg); }
             <span><span style="display:inline-block;width:12px;height:3px;background:var(--pf-blue);border-radius:3px;margin-right:4px;vertical-align:middle"></span>Saldo</span>
           </div>
         </div>
-        <div class="fin-chart fin-chart--sm"><canvas id="pfChart"></canvas></div>
+        <canvas id="pfChart"></canvas>
       </div>
 
       <!-- Tabela mês a mês -->
@@ -287,6 +287,7 @@ body { background: var(--pf-bg); }
   </div>
 </template>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 // ── Estado global ──────────────────────────────────────────────────────────
 let horizonte = 'proximo_ano';
@@ -499,8 +500,7 @@ function renderChart(meses) {
       ]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
+      responsive: true, interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {

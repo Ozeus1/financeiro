@@ -127,7 +127,7 @@
 <!-- Gráfico -->
 <div class="pg-card">
     <div class="pg-card-header"><i class="bi bi-bar-chart-line"></i>Visualização Comparativa</div>
-    <div class="p-3"><div class="fin-chart"><canvas id="graficoComparativo"></canvas></div></div>
+    <div class="p-3"><canvas id="graficoComparativo" height="100"></canvas></div>
 </div>
 
 {% endif %}
@@ -147,7 +147,7 @@ new Chart(document.getElementById('graficoComparativo'),{
             {label:'Gasto',data:[{% for i in comparativo %}{{ i.gasto }}{% if not loop.last %},{% endif %}{% endfor %}],backgroundColor:'rgba(239,68,68,.6)',borderColor:'rgba(239,68,68,1)',borderWidth:1,borderRadius:4}
         ]
     },
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>c.dataset.label+': R$ '+c.parsed.y.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'R$ '+(v>=1000?(v/1000).toFixed(0)+'k':v)}}}}
+    options:{responsive:true,plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>c.dataset.label+': R$ '+c.parsed.y.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'R$ '+(v>=1000?(v/1000).toFixed(0)+'k':v)}}}}
 });
 </script>
 {% endif %}

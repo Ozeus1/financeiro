@@ -4,85 +4,77 @@
 
 {% block extra_css %}
 <style>
-.donut-wrap{position:relative;width:100%;max-width:280px;margin:0 auto}
-.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;width:80%}
-.donut-center .dc-label{font-size:.68rem;color:var(--fin-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
-.donut-center .dc-value{font-size:1rem;font-weight:800;color:var(--fin-text);word-break:break-word}
+.resumo-card { border-left: 4px solid #059669; }
+.total-valor { font-size: 2rem; font-weight: 700; color: #059669; }
+.chart-container { position: relative; height: 320px; }
+.categoria-badge { font-size: .82rem; padding: .35em .7em; border-radius: 6px; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="pg-page">
-
-<!-- Header -->
-<div class="pg-header pg-header--green">
-    <div>
-        <div class="pg-header-eyebrow"><i class="bi bi-bar-chart-line me-1"></i>Relatórios</div>
-        <h1 class="pg-header-title"><i class="bi bi-cash-coin me-2"></i>Receitas Mensais — {{ nome_mes }}/{{ ano }}</h1>
+<div class="row mt-4">
+    <div class="col-12">
+        <h2><i class="bi bi-cash-coin"></i> Receitas Mensais - {{ nome_mes }}/{{ ano }}</h2>
+        <hr>
     </div>
 </div>
 
-<div class="container-fluid px-3">
-
 <!-- Filtro -->
-<div class="pg-filter">
-    <div class="pg-filter-title"><i class="bi bi-funnel"></i>Selecionar Período</div>
-    <form method="GET" class="row g-2 align-items-end">
-        <div class="col-6 col-sm-4 col-md-3">
-            <label class="form-label small fw-semibold mb-1">Mês</label>
-            <select class="form-select form-select-sm" name="mes">
-                {% for m in range(1, 13) %}
-                <option value="{{ m }}" {% if m==mes %}selected{% endif %}>
-                    {{ ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-                        'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][m-1] }}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-6 col-sm-3 col-md-2">
-            <label class="form-label small fw-semibold mb-1">Ano</label>
-            <input type="number" class="form-control form-control-sm" name="ano" value="{{ ano }}" min="2000" max="2100">
-        </div>
-        <div class="col-12 col-sm-auto">
-            <button type="submit" class="btn btn-success btn-sm w-100">
-                <i class="bi bi-search me-1"></i>Filtrar
-            </button>
-        </div>
-    </form>
+<div class="card mb-4">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-calendar"></i> Selecionar Período</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Mês</label>
+                <select class="form-select" name="mes">
+                    {% for m in range(1, 13) %}
+                    <option value="{{ m }}" {% if m==mes %}selected{% endif %}>
+                        {{ ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                            'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][m-1] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Ano</label>
+                <input type="number" class="form-control" name="ano" value="{{ ano }}" min="2000" max="2100">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-success w-100">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Resumo -->
-<div class="fin-kpis">
-    <div class="fin-kpi fin-kpi--green">
-        <div class="fin-kpi-icon"><i class="bi bi-cash-coin"></i></div>
+<div class="card mb-4 resumo-card">
+    <div class="card-body d-flex align-items-center gap-4">
         <div>
-            <div class="fin-kpi-label">Total de Receitas — {{ nome_mes }}/{{ ano }}</div>
-            <div class="fin-kpi-value" style="color:var(--fin-green)">R$ {{ total_mes|moeda }}</div>
+            <div class="total-valor">R$ {{ "{:,.2f}".format(total_mes).replace(',', 'X').replace('.', ',').replace('X', '.') }}</div>
+            <div class="text-muted">Total de Receitas em {{ nome_mes }}/{{ ano }}</div>
         </div>
-    </div>
-    <div class="fin-kpi fin-kpi--cyan">
-        <div class="fin-kpi-icon"><i class="bi bi-tags"></i></div>
-        <div>
-            <div class="fin-kpi-label">Categorias com Receita</div>
-            <div class="fin-kpi-value">{{ receitas_por_categoria|length }}</div>
+        <div class="ms-4">
+            <span class="badge bg-success fs-6">{{ receitas_por_categoria|length }} categoria{{ 's' if receitas_por_categoria|length != 1 else '' }}</span>
         </div>
     </div>
 </div>
 
 {% if receitas_por_categoria %}
 <!-- Gráfico + Tabela lado a lado -->
-<div class="row g-3">
-    <!-- Gráfico Doughnut -->
+<div class="row g-4">
+    <!-- Gráfico de Pizza -->
     <div class="col-md-5">
-        <div class="pg-card h-100">
-            <div class="pg-card-header"><i class="bi bi-pie-chart"></i>Distribuição por Categoria</div>
-            <div class="p-3 d-flex align-items-center justify-content-center">
-                <div class="donut-wrap">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Distribuição por Categoria</h5>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <div class="chart-container w-100">
                     <canvas id="graficoReceitas"></canvas>
-                    <div class="donut-center">
-                        <div class="dc-label">Total</div>
-                        <div class="dc-value">R$ {{ total_mes|moeda }}</div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -90,51 +82,57 @@
 
     <!-- Tabela Detalhada -->
     <div class="col-md-7">
-        <div class="pg-card h-100">
-            <div class="pg-card-header pg-card-header--green"><i class="bi bi-table"></i>Detalhamento por Categoria</div>
-            <div class="table-responsive">
-                <table class="pg-table table">
-                    <thead>
-                        <tr>
-                            <th>Categoria</th>
-                            <th class="text-end">Valor Total</th>
-                            <th class="text-end">%</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for categoria, valor in receitas_por_categoria %}
-                        <tr>
-                            <td class="fw-semibold">
-                                <span class="cat-dot" data-idx="{{ loop.index0 }}"
-                                      style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:.5rem;vertical-align:1px"></span>{{ categoria }}
-                            </td>
-                            <td class="text-end pg-val-green">R$ {{ valor|moeda }}</td>
-                            <td class="text-end">
-                                {{ "%.1f"|format((valor / total_mes * 100) if total_mes > 0 else 0) }}%
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <th>Total</th>
-                            <th class="text-end pg-val-green">R$ {{ total_mes|moeda }}</th>
-                            <th class="text-end">100%</th>
-                        </tr>
-                    </tfoot>
-                </table>
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Detalhamento por Categoria</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Categoria</th>
+                                <th class="text-end">Valor Total</th>
+                                <th class="text-end">Quantidade</th>
+                                <th class="text-end">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for categoria, valor in receitas_por_categoria %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-success categoria-badge">{{ categoria }}</span>
+                                </td>
+                                <td class="text-end text-success fw-bold">
+                                    R$ {{ "{:,.2f}".format(valor).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                                </td>
+                                <td class="text-end text-muted">—</td>
+                                <td class="text-end">
+                                    {{ "%.1f"|format((valor / total_mes * 100) if total_mes > 0 else 0) }}%
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-active">
+                            <tr>
+                                <th>Total</th>
+                                <th class="text-end text-success">R$ {{ "{:,.2f}".format(total_mes).replace(',', 'X').replace('.', ',').replace('X', '.') }}</th>
+                                <th></th>
+                                <th class="text-end">100%</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
 {% else %}
-<div class="alert alert-warning">
-    <i class="bi bi-exclamation-triangle me-2"></i>Nenhuma receita registrada em {{ nome_mes }}/{{ ano }}.
+<div class="alert alert-warning mt-2">
+    <i class="bi bi-exclamation-triangle"></i> Nenhuma receita registrada em {{ nome_mes }}/{{ ano }}.
 </div>
 {% endif %}
 
-</div><!-- /container -->
-</div><!-- /pg-page -->
 {% endblock %}
 
 {% block extra_js %}
@@ -143,16 +141,15 @@
     const labels = [{% for cat, val in receitas_por_categoria %}'{{ cat }}'{% if not loop.last %}, {% endif %}{% endfor %}];
     const valores = [{% for cat, val in receitas_por_categoria %}{{ "%.2f"|format(val) }}{% if not loop.last %}, {% endif %}{% endfor %}];
 
-    const cores = ['#059669','#10b981','#34d399','#06b6d4','#3b82f6','#60a5fa',
-                   '#a78bfa','#f59e0b','#f97316','#ef4444','#8b5cf6','#14b8a6'];
+    const cores = [
+        '#059669','#10b981','#34d399','#6ee7b7',
+        '#3b82f6','#60a5fa','#a78bfa','#f59e0b',
+        '#f97316','#ef4444','#8b5cf6','#14b8a6'
+    ];
 
-    // pinta os marcadores de cor da tabela na mesma ordem do gráfico
-    document.querySelectorAll('.cat-dot').forEach(d => {
-        d.style.background = cores[parseInt(d.dataset.idx) % cores.length];
-    });
-
-    new Chart(document.getElementById('graficoReceitas'), {
-        type: 'doughnut',
+    const ctx = document.getElementById('graficoReceitas');
+    new Chart(ctx, {
+        type: 'pie',
         data: {
             labels: labels,
             datasets: [{
@@ -164,17 +161,20 @@
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
-            cutout: '68%',
+            maintainAspectRatio: false,
             plugins: {
-                legend: { display: false },
+                legend: {
+                    position: 'bottom',
+                    labels: { padding: 12, font: { size: 12 } }
+                },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
                             const val = context.parsed;
                             const total = context.dataset.data.reduce((a, b) => a + b, 0);
                             const pct = ((val / total) * 100).toFixed(1);
-                            return ` ${context.label}: ${FinanUI.brl(val)} (${pct}%)`;
+                            const fmt = val.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                            return ` ${context.label}: R$ ${fmt} (${pct}%)`;
                         }
                     }
                 }
